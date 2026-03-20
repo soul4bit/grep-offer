@@ -1,40 +1,60 @@
 {{define "title"}}Вход{{end}}
 
 {{define "body"}}
-<section class="auth-shell">
+<section class="auth-shell auth-shell-ops">
   <div class="auth-copy auth-copy-rich">
     <div class="eyebrow">вход в маршрут</div>
     <p class="auth-kicker">Быстрый возврат в продукт без лишней сцены.</p>
-    <h1 class="auth-title">Войти и продолжить путь, а не заново собирать его по заметкам.</h1>
+    <h1 class="auth-title">Войти и продолжить путь, а не собирать карьерный lore по чатам заново.</h1>
     <p class="lead auth-lead">
-      Вход нужен для одного: быстро вернуть тебя к маршруту, этапам и текущей точке движения,
-      а не разворачивать еще один квест до того, как ты увидишь продукт.
+      Вход нужен для одного: быстро вернуть тебя к маршруту, текущему этапу и следующему чекпоинту,
+      а не открывать еще один корпоративный лабиринт до того, как ты увидишь продукт.
     </p>
+
+    <div class="auth-signal-row">
+      <span class="auth-signal-chip auth-signal-chip-accent">маршрут внутри</span>
+      <span class="auth-signal-chip">следующий чекпоинт виден</span>
+      <span class="auth-signal-chip">никакой церемонии</span>
+    </div>
 
     <div class="auth-highlights">
       <article class="auth-highlight-card">
         <strong>Один экран</strong>
-        <p>Без лишних развилок и без ощущения, что вход важнее самого продукта.</p>
+        <p>Почта, пароль и обратно к этапам. Не OAuth-ярмарка и не квест на полчаса.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Возврат к прогрессу</strong>
-        <p>После входа ты снова видишь маршрут и текущую точку, а не пустой экран.</p>
+        <strong>Маршрут под рукой</strong>
+        <p>После входа открывается не пустота, а путь с нормальным порядком тем и чекпоинтами.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Четкий фокус</strong>
-        <p>Почта, пароль и сразу обратно к этапам, которые ты уже себе собрал.</p>
+        <strong>Рофл, но по делу</strong>
+        <p>Да, YAML все еще опасен, но хотя бы теперь он не сваливается на тебя раньше времени.</p>
       </article>
     </div>
 
-    <div class="auth-side-card auth-side-console">
+    <div class="auth-side-card auth-side-console auth-ops-console">
       <div class="auth-console-head">
-        <span class="card-kicker">внутри кабинета</span>
-        <strong>/dashboard</strong>
+        <span class="card-kicker">после входа</span>
+        <strong>resume-session.sh</strong>
       </div>
+
+      <div class="auth-console-tape" aria-hidden="true">
+        <div class="auth-console-tape-track">
+          <span>load roadmap</span>
+          <span>restore checkpoint</span>
+          <span>panic level: low</span>
+          <span>bash first</span>
+          <span>k8s later</span>
+          <span>load roadmap</span>
+          <span>restore checkpoint</span>
+          <span>panic level: low</span>
+        </div>
+      </div>
+
       <ul class="auth-console-list">
         <li>
           <span class="auth-console-key">что увидишь</span>
-          <p>Маршрут, текущие этапы и опорную точку, с которой можно продолжить движение.</p>
+          <p>Маршрут, текущие этапы и опорную точку, с которой можно продолжить движение без гадания.</p>
         </li>
         <li>
           <span class="auth-console-key">зачем это нужно</span>

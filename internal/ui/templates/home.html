@@ -1,15 +1,21 @@
 {{define "title"}}Рофл-роадмап в DevOps{{end}}
 
 {{define "body"}}
-<section class="landing-hero">
+<section class="landing-hero landing-hero-product">
   <div class="landing-copy">
     <div class="eyebrow">маршрут до devops</div>
-    <p class="landing-kicker">Рофл-стиль, но порядок тем все еще важнее хайпа.</p>
-    <h1 class="landing-title">Сначала bash. Потом деплой. Потом уже Kubernetes.</h1>
+    <p class="landing-kicker">Рофл-стиль, но без карьерного шаманства.</p>
+    <h1 class="landing-title">Собери путь до DevOps без культа вокруг Kubernetes.</h1>
     <p class="landing-lead">
-      grep-offer.ru это продукт про путь до DevOps: что учить, в каком порядке двигаться
-      и как не перепутать реальный рост с коллекцией громких слов в резюме.
+      grep-offer.ru это продукт про маршрут до оффера: в каком порядке двигаться,
+      какие чекпоинты закрывать руками и как не перепутать реальный рост с коллекцией громких слов в резюме.
     </p>
+
+    <div class="landing-signal-row">
+      <span class="landing-signal-chip landing-signal-chip-accent">4 этапа</span>
+      <span class="landing-signal-chip">чекпоинты по делу</span>
+      <span class="landing-signal-chip">прогресс без тумана</span>
+    </div>
 
     <div class="cta-row">
       <a class="primary-button" href="/register">Подать заявку</a>
@@ -18,68 +24,88 @@
 
     <div class="landing-facts">
       <article class="landing-fact">
-        <strong>Фокус</strong>
-        <span>Нормальный порядок тем вместо хаотичного прыганья по стеку.</span>
+        <strong>Маршрут</strong>
+        <span>От shell и логов до платформы и собесов, без прыжков через базу.</span>
       </article>
       <article class="landing-fact">
-        <strong>Формат</strong>
-        <span>Этапы, чекпоинты и прогресс, чтобы путь был виден целиком.</span>
+        <strong>Чекпоинты</strong>
+        <span>Каждый этап показывает, что именно стоит понять и собрать руками.</span>
       </article>
       <article class="landing-fact">
         <strong>Финиш</strong>
-        <span>Дойти от базы и деплоя до собесов и оффера без инфоцыганского тумана.</span>
+        <span>Дойти до оффера без инфоцыганской магии и “учи все подряд”.</span>
       </article>
     </div>
 
-    <div class="landing-note">
+    <div class="landing-note landing-note-product">
       <span class="landing-note-command">$ grep -R "магия" ./career</span>
-      <p>Ничего не найдено. Только логи, YAML, CI и привычка сначала понимать, потом трогать прод.</p>
+      <p>Ничего не найдено. Только shell, delivery, observability и привычка не катить в прод с закрытыми глазами.</p>
     </div>
   </div>
 
   <aside class="roadmap-hero-card roadmap-poster">
     <div class="roadmap-hero-top roadmap-poster-head">
       <div>
-        <span class="card-kicker">карта пути</span>
-        <strong>от первой `ssh`-сессии до оффера</strong>
+        <span class="card-kicker">что делает продукт</span>
+        <strong>превращает хаос советов в нормальный маршрут</strong>
       </div>
-      <span class="poster-badge">4 шага</span>
+      <span class="poster-badge">devops pipeline</span>
+    </div>
+
+    <div class="poster-ops-strip" aria-hidden="true">
+      <div class="poster-ops-track">
+        <span>ci: green</span>
+        <span>yaml: suspicious</span>
+        <span>logs: readable</span>
+        <span>panic: low</span>
+        <span>deploy: controlled</span>
+        <span>offer: pending</span>
+        <span>ci: green</span>
+        <span>yaml: suspicious</span>
+        <span>logs: readable</span>
+        <span>panic: low</span>
+      </div>
+    </div>
+
+    <div class="poster-pipeline" aria-hidden="true">
+      <article class="poster-pipeline-node poster-pipeline-node-active">
+        <strong>shell</strong>
+        <span>понять систему</span>
+      </article>
+      <article class="poster-pipeline-node">
+        <strong>deliver</strong>
+        <span>довезти код</span>
+      </article>
+      <article class="poster-pipeline-node">
+        <strong>platform</strong>
+        <span>держать нагрузку</span>
+      </article>
+      <article class="poster-pipeline-node">
+        <strong>offer</strong>
+        <span>дойти до рынка</span>
+      </article>
+      <span class="pipeline-packet"></span>
     </div>
 
     <div class="roadmap-poster-grid">
-      <article class="poster-stage poster-stage-foundation">
-        <span class="route-index">01</span>
-        <h2>Фундамент</h2>
-        <p>Linux, bash, git, tcp/ip и чтение логов без гадания по кофейной гуще.</p>
-      </article>
-
-      <article class="poster-stage poster-stage-delivery">
-        <span class="route-index">02</span>
-        <h2>Доставка</h2>
-        <p>Docker, registry, CI/CD и деплой без жанра «но локально же работало».</p>
-      </article>
-
-      <article class="poster-stage poster-stage-platform">
-        <span class="route-index">03</span>
-        <h2>Платформа</h2>
-        <p>Kubernetes, observability, Terraform и понимание, где кончается магия и начинается эксплуатация.</p>
-      </article>
-
-      <article class="poster-stage poster-stage-offer">
-        <span class="route-index">04</span>
-        <h2>Оффер</h2>
-        <p>Резюме, собесы и разговор про деньги без инфоцыганских фанфар.</p>
-      </article>
+      {{range .LandingRoadmap}}
+        <article class="poster-stage">
+          <span class="route-index">{{.Index}}</span>
+          <span class="poster-stage-badge">{{.Badge}}</span>
+          <h2>{{.Title}}</h2>
+          <p>{{.Summary}}</p>
+        </article>
+      {{end}}
     </div>
 
     <div class="roadmap-poster-foot">
       <div class="poster-signal">
-        <span>уровень паники</span>
-        <strong>под контролем</strong>
+        <span>главный принцип</span>
+        <strong>сначала понять, потом автоматизировать</strong>
       </div>
       <div class="poster-signal">
-        <span>магические флаги</span>
-        <strong>отключены</strong>
+        <span>главный анти-паттерн</span>
+        <strong>сразу хвататься за k8s</strong>
       </div>
     </div>
   </aside>
@@ -87,24 +113,27 @@
 
 <section class="landing-section landing-roadmap-section">
   <div class="section-copy">
-    <div class="eyebrow">как устроен путь</div>
-    <h2 class="section-title">Четыре этапа, чтобы не учить Terraform раньше, чем ты понял, где вообще лежат логи.</h2>
+    <div class="eyebrow">что внутри продукта</div>
+    <h2 class="section-title">Не список модных слов, а маршрут, который держится на нормальном порядке тем.</h2>
     <p class="section-lead">
-      Это не список модных слов. Это нормальная последовательность, в которой инструменты
-      начинают решать задачи, а не просто копятся в резюме.
+      Здесь каждая тема появляется тогда, когда для нее уже есть опора. Поэтому shell не выглядит скучным,
+      Docker не висит в вакууме, а Kubernetes не превращается в дорогой культ вокруг YAML.
     </p>
 
     <div class="roadmap-section-note">
       <span class="card-kicker">не перепрыгивай</span>
-      <p>Если перескочить базу и сразу кинуться в модный стек, потом придется чинить не путь, а последствия спешки.</p>
+      <p>Если сразу полезть в модный стек, потом придется чинить не карьеру, а последствия спешки.</p>
     </div>
   </div>
 
   <div class="roadmap-stage-shell">
     <article class="roadmap-stage-overview">
       <span class="card-kicker">как этим пользоваться</span>
-      <h3>Не “список технологий”, а карта пути.</h3>
-      <p>Каждый этап отвечает на свой вопрос: что понять, что собрать руками и где реально растет ценность. Не надо глотать все сразу.</p>
+      <h3>Двигаться по этапам, а не жевать весь стек разом.</h3>
+      <p>
+        Каждый этап отвечает на свой вопрос: что понять, что собрать руками и где реально растет ценность.
+        Так маршрут не разваливается на отдельные туториалы и списки must-have tools.
+      </p>
       <div class="roadmap-overview-legend">
         <span>база</span>
         <span>доставка</span>
@@ -131,25 +160,25 @@
 
 <section class="landing-fit">
   <article class="principle-card fit-card fit-card-main">
-    <span class="card-kicker">кому подойдет</span>
+    <span class="card-kicker">кому зайдет</span>
     <h2>Тем, кто хочет видеть путь целиком, а не собирать карьеру из обрывков советов.</h2>
     <ul class="mini-list">
       <li>Junior-разработчику, который хочет зайти в DevOps без культа вокруг инструментов.</li>
-      <li>Backend или frontend-разработчику, который хочет понять инфраструктуру, а не обходить ее стороной.</li>
-      <li>Тем, кто хочет двигаться по этапам и видеть прогресс, а не тонуть в чужих советах.</li>
+      <li>Backend или frontend-разработчику, который устал смотреть на инфраструктуру как на черный ящик.</li>
+      <li>Тем, кто хочет двигаться по этапам и видеть прогресс, а не тонуть в чатах и заметках.</li>
     </ul>
   </article>
 
   <article class="principle-card fit-card">
-    <span class="card-kicker">что внутри продукта</span>
-    <h2>Маршрут, этапы и опорные точки.</h2>
-    <p>Продукт помогает держать перед глазами весь путь: от базы к доставке, от доставки к платформе и дальше к офферу.</p>
+    <span class="card-kicker">что внутри</span>
+    <h2>Маршрут, чекпоинты и нормальный ритм.</h2>
+    <p>Продукт нужен, чтобы держать перед глазами следующую опорную точку и не растворяться в бесконечном “а что еще надо выучить?”.</p>
   </article>
 
   <article class="principle-card fit-card fit-card-alt">
-    <span class="card-kicker">чего не будет</span>
+    <span class="card-kicker">чего тут нет</span>
     <h2>Никакого “учи все подряд”.</h2>
-    <p>Без инфоцыганства, без сакральных must-have tools и без ощущения, что продукт продает не путь, а собственный стек.</p>
+    <p>Без инфоцыганства, без священного списка must-have tools и без обещаний оффера за две субботы и один бесплатный вебинар.</p>
   </article>
 </section>
 
@@ -158,8 +187,8 @@
     <div class="eyebrow">как начать</div>
     <h2 class="section-title">Короткий вход в продукт: заявка, подтверждение, кабинет.</h2>
     <p class="section-lead">
-      Вход в продукт сделан коротким и понятным: оставляешь заявку, подтверждаешь почту
-      и сразу попадаешь в кабинет, где маршрут уже можно держать перед глазами.
+      Доступ открывается коротким маршрутом: оставляешь заявку, подтверждаешь почту
+      и сразу попадаешь в кабинет, где уже можно двигаться по этапам и держать курс перед глазами.
     </p>
   </div>
 
@@ -172,14 +201,14 @@
 
     <article class="access-step-card">
       <span class="access-step-index">02</span>
-      <h3>Подтверждается доступ</h3>
-      <p>После короткой проверки тебе прилетает письмо, которое открывает следующий шаг без ручной возни.</p>
+      <h3>Подтверждаешь доступ</h3>
+      <p>Приходит письмо, которое переводит тебя в следующий шаг без ручной возни и ритуалов.</p>
     </article>
 
     <article class="access-step-card">
       <span class="access-step-index">03</span>
       <h3>Открываешь кабинет</h3>
-      <p>Подтверждаешь почту по ссылке и сразу заходишь внутрь, где уже можно двигаться по этапам пути.</p>
+      <p>Сразу видишь этапы, чекпоинты и маршрут, а не пустой экран после формы.</p>
     </article>
   </div>
 </section>
@@ -187,7 +216,7 @@
 <section class="landing-final">
   <div class="landing-final-copy">
     <div class="eyebrow">дальше уже руками</div>
-    <h2 class="section-title">Подавай заявку, если хочешь пройти этот путь без хранения всего роадмапа в голове и заметках.</h2>
+    <h2 class="section-title">Подай заявку, если хочешь пройти этот путь без склада заметок, паники и сакральных списков технологий.</h2>
   </div>
 
   <div class="cta-row">

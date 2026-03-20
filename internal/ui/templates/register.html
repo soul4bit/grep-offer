@@ -1,20 +1,26 @@
 {{define "title"}}Регистрация{{end}}
 
 {{define "body"}}
-<section class="auth-shell">
+<section class="auth-shell auth-shell-ops">
   <div class="auth-copy auth-copy-rich">
     <div class="eyebrow">старт маршрута</div>
-    <p class="auth-kicker">Короткий вход в продукт, а не ритуал посвящения.</p>
-    <h1 class="auth-title">Оставь заявку, пройди короткое подтверждение и зайди в маршрут без лишнего церемониала.</h1>
+    <p class="auth-kicker">Короткий вход в продукт, а не обряд посвящения в YAML.</p>
+    <h1 class="auth-title">Оставь заявку, пройди подтверждение и зайди в маршрут без лишнего церемониала.</h1>
     <p class="lead auth-lead">
-      Схема простая: оставляешь ник, почту и пароль, проходишь короткое подтверждение доступа
-      и сразу попадаешь в кабинет, где путь уже можно держать перед глазами.
+      Старт должен быть коротким: ник, почта, пароль, подтверждение и сразу внутрь.
+      Дальше уже кабинет, этапы и нормальный путь до оффера, а не коллекция вкладок в браузере.
     </p>
+
+    <div class="auth-signal-row">
+      <span class="auth-signal-chip auth-signal-chip-accent">заявка</span>
+      <span class="auth-signal-chip">подтверждение</span>
+      <span class="auth-signal-chip">сразу в маршрут</span>
+    </div>
 
     <div class="auth-highlights">
       <article class="auth-highlight-card">
         <strong>3 поля</strong>
-        <p>Ник, почта и пароль. Этого хватает, чтобы быстро открыть путь без длинной сцены.</p>
+        <p>Ник, почта и пароль. Этого достаточно, чтобы открыть путь без длинной вступительной драмы.</p>
       </article>
       <article class="auth-highlight-card">
         <strong>Подтвержденный доступ</strong>
@@ -22,19 +28,48 @@
       </article>
       <article class="auth-highlight-card">
         <strong>Сразу в кабинет</strong>
-        <p>После подтверждения почты открывается сессия, и путь сразу оказывается перед глазами.</p>
+        <p>После подтверждения почты маршрут уже перед глазами, без отдельного “ну а теперь залогинься еще раз”.</p>
       </article>
     </div>
 
-    <div class="auth-side-card auth-side-console">
+    <div class="auth-side-card auth-side-console auth-ops-console">
       <div class="auth-console-head">
-        <span class="card-kicker">после доступа</span>
-        <strong>/dashboard</strong>
+        <span class="card-kicker">как идет доступ</span>
+        <strong>request-access.yml</strong>
       </div>
+
+      <div class="auth-console-tape" aria-hidden="true">
+        <div class="auth-console-tape-track">
+          <span>request queued</span>
+          <span>mail incoming</span>
+          <span>session ready</span>
+          <span>panic level: acceptable</span>
+          <span>route unlocked</span>
+          <span>request queued</span>
+          <span>mail incoming</span>
+          <span>session ready</span>
+        </div>
+      </div>
+
+      <div class="auth-pipeline-list" aria-hidden="true">
+        <div class="auth-pipeline-step auth-pipeline-step-live">
+          <strong>01</strong>
+          <span>заявка</span>
+        </div>
+        <div class="auth-pipeline-step">
+          <strong>02</strong>
+          <span>подтверждение</span>
+        </div>
+        <div class="auth-pipeline-step">
+          <strong>03</strong>
+          <span>кабинет</span>
+        </div>
+      </div>
+
       <ul class="auth-console-list">
         <li>
           <span class="auth-console-key">что произойдет</span>
-          <p>После подтверждения почты откроется кабинет, где можно двигаться по этапам и держать курс перед глазами.</p>
+          <p>После подтверждения почты откроется кабинет, где уже можно двигаться по этапам и держать курс перед глазами.</p>
         </li>
         <li>
           <span class="auth-console-key">что будет дальше</span>
