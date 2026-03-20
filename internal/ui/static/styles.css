@@ -1220,9 +1220,62 @@ p {
 }
 
 .auth-shell {
-  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
-  min-height: calc(100vh - 10.5rem);
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  min-height: calc(100vh - 9.75rem);
   align-items: center;
+}
+
+.auth-copy-rich {
+  gap: 1.1rem;
+}
+
+.auth-kicker {
+  margin: 0;
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-title {
+  max-width: 12ch;
+  font-family: var(--font-body);
+  font-size: clamp(2.35rem, 4.8vw, 4rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  text-transform: none;
+}
+
+.auth-lead {
+  max-width: 35rem;
+}
+
+.auth-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.auth-highlight-card {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.auth-highlight-card strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.auth-highlight-card p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.56;
 }
 
 .auth-points {
@@ -1248,9 +1301,39 @@ p {
   gap: 1rem;
 }
 
+.auth-card-form {
+  padding: 1.5rem;
+  gap: 1.1rem;
+}
+
 .auth-card-top {
   display: grid;
   gap: 0.38rem;
+}
+
+.auth-card-top h2 {
+  font-family: var(--font-body);
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.auth-meta-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.auth-meta-chip {
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 255, 97, 0.16);
+  background: rgba(216, 255, 97, 0.07);
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .auth-form {
@@ -1294,14 +1377,78 @@ p {
   transform: translateY(-1px);
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .auth-submit {
   width: 100%;
-  margin-top: 0.1rem;
+  margin-top: 0.25rem;
   cursor: pointer;
+}
+
+.auth-footnote {
+  font-size: 0.95rem;
+  line-height: 1.58;
 }
 
 .auth-footnote a {
   color: var(--accent);
+}
+
+.auth-side-console {
+  gap: 1rem;
+  background:
+    linear-gradient(180deg, rgba(101, 224, 178, 0.05), rgba(255, 255, 255, 0.018)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.auth-console-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.auth-console-head strong {
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+}
+
+.auth-console-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.auth-console-list li {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1rem;
+  background: rgba(10, 15, 12, 0.48);
+}
+
+.auth-console-key {
+  color: var(--accent-3);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-console-list p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .dashboard-hero {
@@ -1420,6 +1567,7 @@ p {
 
   .landing-facts,
   .landing-fit,
+  .auth-highlights,
   .roadmap-stage-grid,
   .landing-rules,
   .landing-principles {
@@ -1427,6 +1575,7 @@ p {
   }
 
   .landing-title,
+  .auth-title,
   .section-title {
     max-width: none;
   }
@@ -1463,6 +1612,7 @@ p {
   .landing-facts,
   .roadmap-poster-grid,
   .landing-fit,
+  .auth-highlights,
   .landing-rules,
   .landing-final {
     grid-template-columns: 1fr;
@@ -1521,8 +1671,13 @@ p {
     font-size: clamp(2rem, 11vw, 3rem);
   }
 
+  .auth-title {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
   .landing-facts,
   .landing-fit,
+  .auth-highlights,
   .roadmap-stage-grid,
   .landing-rules,
   .landing-principles {

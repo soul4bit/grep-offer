@@ -2,31 +2,59 @@
 
 {{define "body"}}
 <section class="auth-shell">
-  <div class="auth-copy">
-    <div class="eyebrow">register</div>
-    <h1>Создай аккаунт и начинай путь к DevOps без ритуалов.</h1>
-    <p class="lead">
-      Пока это первый слой: регистрация, сессия и стартовый кабинет.
-      Дальше сюда положим сам рофл-роадмап.
+  <div class="auth-copy auth-copy-rich">
+    <div class="eyebrow">старт маршрута</div>
+    <p class="auth-kicker">Регистрация как короткий технический шаг, а не как ритуал посвящения.</p>
+    <h1 class="auth-title">Создай аккаунт и собери путь до DevOps без лишнего церемониала.</h1>
+    <p class="lead auth-lead">
+      Сейчас тебе нужен только доступ к личному маршруту. Ник, почта, пароль,
+      и дальше уже можно раскладывать этот беспорядочный стек по нормальным этапам.
     </p>
 
-    <ul class="auth-points">
-      <li><strong>Быстрый старт.</strong> Только ник, почта и пароль, без лишней сцены.</li>
-      <li><strong>Понятная структура.</strong> Сначала доступ, потом дорожная карта и прогресс.</li>
-      <li><strong>Правильный тон.</strong> С юмором, но без ощущения дешевого лендинга.</li>
-    </ul>
+    <div class="auth-highlights">
+      <article class="auth-highlight-card">
+        <strong>3 поля</strong>
+        <p>Ник, почта и пароль. Не нужен OAuth-паровоз и не нужна форма из двадцати вопросов.</p>
+      </article>
+      <article class="auth-highlight-card">
+        <strong>Сессия сразу</strong>
+        <p>После регистрации не придется логиниться заново. Создал аккаунт и поехал дальше.</p>
+      </article>
+      <article class="auth-highlight-card">
+        <strong>Путь под себя</strong>
+        <p>Регистрация нужна затем, чтобы держать этапы, прогресс и заметки в одном месте.</p>
+      </article>
+    </div>
 
-    <div class="auth-side-card">
-      <span class="card-kicker">beta access</span>
-      <p>Регистрация сейчас открывает базовый кабинет. Позже сюда добавим этапы, заметки, прогресс и реальный контент.</p>
+    <div class="auth-side-card auth-side-console">
+      <div class="auth-console-head">
+        <span class="card-kicker">после регистрации</span>
+        <strong>/dashboard?notice=welcome</strong>
+      </div>
+      <ul class="auth-console-list">
+        <li>
+          <span class="auth-console-key">что получишь</span>
+          <p>Базовый кабинет и точку, откуда можно дальше строить сам роадмап по шагам.</p>
+        </li>
+        <li>
+          <span class="auth-console-key">что будет дальше</span>
+          <p>Этапы, чекпоинты, заметки и нормальный трек прогресса вместо хаоса в голове.</p>
+        </li>
+      </ul>
     </div>
   </div>
 
-  <div class="auth-card">
+  <div class="auth-card auth-card-form">
     <div class="auth-card-top">
       <span class="card-kicker">create account</span>
-      <h2>Регистрация</h2>
-      <p class="auth-muted">Ник, почта и пароль. Никаких OAuth-паровозов на первом шаге.</p>
+      <h2>Создать аккаунт</h2>
+      <p class="auth-muted">Только то, что реально нужно на старте. Без сцены, пены и магии.</p>
+    </div>
+
+    <div class="auth-meta-row">
+      <span class="auth-meta-chip">ascii nick</span>
+      <span class="auth-meta-chip">без oauth</span>
+      <span class="auth-meta-chip">вход сразу после signup</span>
     </div>
 
     {{if .Error}}
@@ -37,22 +65,25 @@
       <label class="field">
         <span>Ник</span>
         <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" required>
+        <p class="field-hint">Пока только ASCII: буквы, цифры, точка, дефис и нижнее подчеркивание.</p>
       </label>
 
       <label class="field">
         <span>Email</span>
         <input type="email" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" required>
+        <p class="field-hint">На эту почту потом и будешь заходить в кабинет.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
         <input type="password" name="password" placeholder="Минимум 8 символов" required>
+        <p class="field-hint">Минимум 8 символов. Совсем уж рофлить над безопасностью не будем.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Создать аккаунт</button>
     </form>
 
-    <p class="auth-footnote">Уже зарегистрирован? <a href="/login">Войти</a>.</p>
+    <p class="auth-footnote">Уже зарегистрирован? <a href="/login">Войти</a> и продолжить путь без повторного круга.</p>
   </div>
 </section>
 {{end}}

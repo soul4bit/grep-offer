@@ -2,30 +2,59 @@
 
 {{define "body"}}
 <section class="auth-shell">
-  <div class="auth-copy">
-    <div class="eyebrow">login</div>
-    <h1>Возвращайся в консольную секту.</h1>
-    <p class="lead">
-      Вход должен ощущаться как короткий и внятный шаг, а не как пролог к корпоративной боли.
+  <div class="auth-copy auth-copy-rich">
+    <div class="eyebrow">вход в маршрут</div>
+    <p class="auth-kicker">Быстрый возврат в кабинет без корпоративного лабиринта.</p>
+    <h1 class="auth-title">Войти и продолжить путь, а не заново вспоминать весь роадмап.</h1>
+    <p class="lead auth-lead">
+      Тут вход должен ощущаться как короткое техническое действие: почта, пароль и обратно к маршруту,
+      а не как квест из десяти экранов и странных интеграций.
     </p>
 
-    <ul class="auth-points">
-      <li><strong>Один экран.</strong> Без OAuth-парадов и странных развилок.</li>
-      <li><strong>Нормальный фокус.</strong> Сначала вход, потом контент, а не наоборот.</li>
-      <li><strong>Чистая подача.</strong> Контраст, крупные поля и заметный call to action.</li>
-    </ul>
+    <div class="auth-highlights">
+      <article class="auth-highlight-card">
+        <strong>Один экран</strong>
+        <p>Без OAuth-парадов, без “выберите удобный способ”, без потери фокуса.</p>
+      </article>
+      <article class="auth-highlight-card">
+        <strong>Нормальный ритм</strong>
+        <p>Сначала вход, потом кабинет, а не маркетинговая экскурсия по продукту.</p>
+      </article>
+      <article class="auth-highlight-card">
+        <strong>Контроль</strong>
+        <p>Ты возвращаешься туда, где уже собран маршрут, а не в пустой экран после формы.</p>
+      </article>
+    </div>
 
-    <div class="auth-side-card">
-      <span class="card-kicker">inside beta</span>
-      <p>После логина пользователь попадает в личный кабинет, где дальше можно строить этапы роадмапа и прогресс.</p>
+    <div class="auth-side-card auth-side-console">
+      <div class="auth-console-head">
+        <span class="card-kicker">после входа</span>
+        <strong>/dashboard</strong>
+      </div>
+      <ul class="auth-console-list">
+        <li>
+          <span class="auth-console-key">что увидишь</span>
+          <p>Заготовку кабинета, текущие этапы и точку, с которой можно продолжить путь.</p>
+        </li>
+        <li>
+          <span class="auth-console-key">зачем это нужно</span>
+          <p>Чтобы не держать весь маршрут в голове и не метаться между темами наугад.</p>
+        </li>
+      </ul>
     </div>
   </div>
 
-  <div class="auth-card">
+  <div class="auth-card auth-card-form">
     <div class="auth-card-top">
       <span class="card-kicker">member access</span>
-      <h2>Войти</h2>
-      <p class="auth-muted">Продолжить путь к офферу и посмотреть заготовку кабинета.</p>
+      <h2>Войти в кабинет</h2>
+      <p class="auth-muted">Почта, пароль и дальше уже к этапам, а не к лишней церемонии.</p>
+    </div>
+
+    <div class="auth-meta-row">
+      <span class="auth-meta-chip">без oauth</span>
+      <span class="auth-meta-chip">1 шаг</span>
+      <span class="auth-meta-chip">сессия сразу</span>
     </div>
 
     {{if .Error}}
@@ -36,17 +65,19 @@
       <label class="field">
         <span>Email</span>
         <input type="email" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" required>
+        <p class="field-hint">Тот же email, с которым ты уже заходил в этот хаос.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
         <input type="password" name="password" placeholder="Минимум 8 символов" required>
+        <p class="field-hint">Пароль хранится не в `.txt`, а как положено, так что вспоминай аккуратно.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Войти</button>
     </form>
 
-    <p class="auth-footnote">Еще без аккаунта? <a href="/register">Регистрация здесь</a>.</p>
+    <p class="auth-footnote">Еще без аккаунта? <a href="/register">Зарегистрироваться</a> и начать маршрут с нуля, но без паники.</p>
   </div>
 </section>
 {{end}}
