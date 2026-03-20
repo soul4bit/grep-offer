@@ -4,13 +4,13 @@
 <section class="auth-shell auth-shell-minimal">
   <div class="auth-copy auth-copy-minimal">
     <div class="eyebrow">старт</div>
-    <h1 class="auth-title auth-title-minimal">Открыть доступ к маршруту.</h1>
-    <p class="lead auth-lead auth-lead-minimal">Ник, почта, пароль. Потом подтверждение и сразу в кабинет.</p>
+    <h1 class="auth-title auth-title-minimal">Открыть доступ, пока Kubernetes еще не успел стать религией.</h1>
+    <p class="lead auth-lead auth-lead-minimal">Ник, почта, пароль, подтверждение. Потом письмо и сразу в кабинет.</p>
 
     <div class="auth-signal-row">
-      <span class="auth-signal-chip auth-signal-chip-accent">3 поля</span>
+      <span class="auth-signal-chip auth-signal-chip-accent">4 поля</span>
       <span class="auth-signal-chip">подтверждение почты</span>
-      <span class="auth-signal-chip">без лишнего шума</span>
+      <span class="auth-signal-chip">без rites of YAML</span>
     </div>
 
     <div class="auth-side-card auth-side-card-minimal">
@@ -27,33 +27,42 @@
     <div class="auth-card-top">
       <span class="card-kicker">заявка</span>
       <h2>Оставить заявку</h2>
-      <p class="auth-muted">Короткий старт без ритуалов.</p>
+      <p class="auth-muted">Форма короткая, проверки живые, лишнего enterprise-ритуала нет.</p>
     </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>
     {{end}}
 
-    <form action="/register" method="post" class="auth-form" autocomplete="off">
+    <form action="/register" method="post" class="auth-form auth-form-validated" autocomplete="off" data-auth-form="register" novalidate>
       <div class="autofill-decoy" aria-hidden="true">
         <input type="text" tabindex="-1" autocomplete="username">
         <input type="email" tabindex="-1" autocomplete="email">
         <input type="password" tabindex="-1" autocomplete="current-password">
       </div>
 
-      <label class="field">
+      <label class="field" data-field-name="username">
         <span>Ник</span>
-        <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
+        <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="username" readonly required>
+        <p class="field-status" data-field-status="username" aria-live="polite">3-24 символа, ASCII и без внезапного hostname from hell.</p>
       </label>
 
-      <label class="field">
+      <label class="field" data-field-name="email">
         <span>Email</span>
-        <input type="text" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
+        <input type="text" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="email" readonly required>
+        <p class="field-status" data-field-status="email" aria-live="polite">Почта должна выглядеть так, будто письмо реально дойдет.</p>
       </label>
 
-      <label class="field">
+      <label class="field" data-field-name="password">
         <span>Пароль</span>
-        <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
+        <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="password" readonly required>
+        <p class="field-status" data-field-status="password" aria-live="polite">Минимум 8 символов. Совсем уж не рофлим над безопасностью.</p>
+      </label>
+
+      <label class="field" data-field-name="confirm-password">
+        <span>Повтори пароль</span>
+        <input type="password" name="confirm_password" placeholder="Еще раз, чтобы без сюрпризов" class="anti-autofill-input" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="confirm-password" data-confirm-target="password" readonly required>
+        <p class="field-status" data-field-status="confirm-password" aria-live="polite">Должен совпасть. Иначе даже до письма дойдет драма.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Отправить заявку</button>

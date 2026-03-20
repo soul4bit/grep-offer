@@ -4,13 +4,13 @@
 <section class="auth-shell auth-shell-minimal">
   <div class="auth-copy auth-copy-minimal">
     <div class="eyebrow">вход</div>
-    <h1 class="auth-title auth-title-minimal">Вернуться к маршруту.</h1>
-    <p class="lead auth-lead auth-lead-minimal">Почта, пароль и сразу обратно к этапам и прогрессу.</p>
+    <h1 class="auth-title auth-title-minimal">Вернуться в маршрут, пока YAML опять не придумал себе характер.</h1>
+    <p class="lead auth-lead auth-lead-minimal">Почта, пароль и сразу обратно к этапам, чекпоинтам и прогрессу.</p>
 
     <div class="auth-signal-row">
       <span class="auth-signal-chip auth-signal-chip-accent">1 экран</span>
       <span class="auth-signal-chip">маршрут внутри</span>
-      <span class="auth-signal-chip">без церемонии</span>
+      <span class="auth-signal-chip">паника: low</span>
     </div>
 
     <div class="auth-side-card auth-side-card-minimal">
@@ -27,28 +27,30 @@
     <div class="auth-card-top">
       <span class="card-kicker">доступ</span>
       <h2>Войти в кабинет</h2>
-      <p class="auth-muted">Без лишних экранов.</p>
+      <p class="auth-muted">Почта, пароль и назад к чекпоинтам. Без standup на 40 минут.</p>
     </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>
     {{end}}
 
-    <form action="/login" method="post" class="auth-form" autocomplete="off">
+    <form action="/login" method="post" class="auth-form auth-form-validated" autocomplete="off" data-auth-form="login" novalidate>
       <div class="autofill-decoy" aria-hidden="true">
         <input type="text" tabindex="-1" autocomplete="username">
         <input type="email" tabindex="-1" autocomplete="email">
         <input type="password" tabindex="-1" autocomplete="current-password">
       </div>
 
-      <label class="field">
+      <label class="field" data-field-name="email">
         <span>Email</span>
-        <input type="text" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
+        <input type="text" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="email" readonly required>
+        <p class="field-status" data-field-status="email" aria-live="polite">Почта должна выглядеть как нормальная почта.</p>
       </label>
 
-      <label class="field">
+      <label class="field" data-field-name="password">
         <span>Пароль</span>
-        <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
+        <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-validate="password" readonly required>
+        <p class="field-status" data-field-status="password" aria-live="polite">Минимум 8 символов, без heroic fails.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Войти</button>

@@ -43,9 +43,10 @@ func TestRegistrationApprovalFlow(t *testing.T) {
 	client.Jar = jar
 
 	form := url.Values{
-		"username": {"bash_bandit"},
-		"email":    {"smoke@example.com"},
-		"password": {"supersecret123"},
+		"username":         {"bash_bandit"},
+		"email":            {"smoke@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret123"},
 	}
 
 	registerResponse, err := client.PostForm(server.URL+"/register", form)
@@ -140,9 +141,10 @@ func TestLoginShowsPendingRegistrationMessage(t *testing.T) {
 	client := server.Client()
 
 	registerForm := url.Values{
-		"username": {"bash_bandit"},
-		"email":    {"pending@example.com"},
-		"password": {"supersecret123"},
+		"username":         {"bash_bandit"},
+		"email":            {"pending@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret123"},
 	}
 
 	registerResponse, err := client.PostForm(server.URL+"/register", registerForm)
@@ -168,6 +170,35 @@ func TestLoginShowsPendingRegistrationMessage(t *testing.T) {
 
 	if body := readBody(t, loginResponse.Body); !strings.Contains(body, "ждет апрува в Telegram") {
 		t.Fatalf("pending login message missing: %s", body)
+	}
+}
+
+func TestRegisterRejectsMismatchedPasswords(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	form := url.Values{
+		"username":         {"bash_bandit"},
+		"email":            {"oops@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret321"},
+	}
+
+	response, err := server.Client().PostForm(server.URL+"/register", form)
+	if err != nil {
+		t.Fatalf("register request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("unexpected register status: %d", response.StatusCode)
+	}
+
+	if body := readBody(t, response.Body); !strings.Contains(body, "Пароли не совпали") {
+		t.Fatalf("mismatch password error missing: %s", body)
 	}
 }
 

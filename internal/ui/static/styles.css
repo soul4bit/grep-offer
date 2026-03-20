@@ -1626,6 +1626,16 @@ p {
   transform: none;
 }
 
+.field.is-valid input {
+  border-color: rgba(101, 224, 178, 0.42);
+  box-shadow: 0 0 0 3px rgba(101, 224, 178, 0.08);
+}
+
+.field.is-invalid input {
+  border-color: rgba(255, 132, 90, 0.42);
+  box-shadow: 0 0 0 3px rgba(255, 132, 90, 0.08);
+}
+
 .anti-autofill-input[readonly] {
   caret-color: transparent;
 }
@@ -1649,6 +1659,56 @@ p {
   pointer-events: none;
   position: absolute;
   right: 0;
+}
+
+.field-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  transition: color 180ms ease;
+}
+
+.field-status::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.field.is-idle .field-status {
+  color: var(--muted);
+}
+
+.field.is-valid .field-status {
+  color: #baf2dc;
+}
+
+.field.is-valid .field-status::before {
+  background: var(--accent-3);
+  box-shadow: 0 0 0 6px rgba(101, 224, 178, 0.05);
+  animation: ops-pulse 2.4s ease-in-out infinite;
+}
+
+.field.is-invalid .field-status {
+  color: #ffcabc;
+}
+
+.field.is-invalid .field-status::before {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 6px rgba(255, 132, 90, 0.04);
+  transform: scale(1.05);
+}
+
+.field.is-shaking {
+  animation: field-shake 320ms ease;
 }
 
 .field-hint {
@@ -2222,6 +2282,25 @@ p {
 
   50% {
     box-shadow: 0 0 0 8px rgba(216, 255, 97, 0.02);
+  }
+}
+
+@keyframes field-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  50% {
+    transform: translateX(4px);
+  }
+
+  75% {
+    transform: translateX(-2px);
   }
 }
 

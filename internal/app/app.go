@@ -357,6 +357,7 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirm_password")
 
 	data := ViewData{
 		Form: AuthForm{
@@ -365,7 +366,7 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if validationError := validateRegistration(username, email, password); validationError != "" {
+	if validationError := validateRegistration(username, email, password, confirmPassword); validationError != "" {
 		data.Error = validationError
 		a.render(w, r, http.StatusUnprocessableEntity, "register", data)
 		return
@@ -593,7 +594,7 @@ func loadTemplates() (map[string]*template.Template, error) {
 	return cache, nil
 }
 
-func validateRegistration(username, email, password string) string {
+func validateRegistration(username, email, password, confirmPassword string) string {
 	switch {
 	case len(username) < 3:
 		return "Ник должен быть хотя бы из 3 символов."
@@ -611,6 +612,10 @@ func validateRegistration(username, email, password string) string {
 		return "Пароль короче 8 символов. Так нас даже junior brute-force засмеет."
 	}
 
+	if password != confirmPassword {
+		return "Пароли не совпали. Значит, надо еще раз свериться с реальностью."
+	}
+
 	return ""
 }
 
@@ -621,6 +626,10 @@ func validateLogin(email, password string) string {
 
 	if strings.TrimSpace(password) == "" {
 		return "Пароль не может быть пустым."
+	}
+
+	if len(password) < 8 {
+		return "Пароль короче 8 символов."
 	}
 
 	return ""
