@@ -40,16 +40,25 @@ type App struct {
 }
 
 type ViewData struct {
-	CurrentUser *store.User
-	Error       string
-	Notice      string
-	Form        AuthForm
-	Roadmap     []string
+	CurrentUser    *store.User
+	Error          string
+	Notice         string
+	Form           AuthForm
+	Roadmap        []string
+	LandingRoadmap []LandingStage
 }
 
 type AuthForm struct {
 	Username string
 	Email    string
+}
+
+type LandingStage struct {
+	Index   string
+	Title   string
+	Badge   string
+	Summary string
+	Note    string
 }
 
 func New(st *store.Store) (*App, error) {
@@ -102,6 +111,36 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 			"Доставка: Docker, registry, CI/CD и деплой без классики \"но локально же работало\".",
 			"Платформа: Kubernetes, observability, Terraform и аккуратная работа с облаком.",
 			"Оффер: резюме, собесы и разговор о деньгах без инфоцыганских фанфар.",
+		},
+		LandingRoadmap: []LandingStage{
+			{
+				Index:   "01",
+				Title:   "Фундамент",
+				Badge:   "linux / bash / git",
+				Summary: "Собираешь базу: терминал, сеть, процессы, файлы и привычку не паниковать от логов.",
+				Note:    "Без этого любой модный стек сверху просто ломается дороже и загадочнее.",
+			},
+			{
+				Index:   "02",
+				Title:   "Доставка",
+				Badge:   "docker / ci-cd / deploy",
+				Summary: "Понимаешь, как код едет от коммита до сервера и где по дороге чаще всего все начинает гореть.",
+				Note:    "Именно тут исчезает наивная вера в фразу «у меня локально работало».",
+			},
+			{
+				Index:   "03",
+				Title:   "Платформа",
+				Badge:   "k8s / terraform / observability",
+				Summary: "Подключаешь оркестрацию, инфраструктуру и наблюдаемость без попытки называть магией обычную эксплуатацию.",
+				Note:    "Сначала понимание систем, потом Kubernetes. Иначе получится дорогой квест.",
+			},
+			{
+				Index:   "04",
+				Title:   "Оффер",
+				Badge:   "cv / interviews / money",
+				Summary: "Упаковываешь опыт, проходишь собесы и разговариваешь о деньгах уже с нормальной опорой на практику.",
+				Note:    "Не инфоцыганский финал, а обычный рабочий результат последовательного пути.",
+			},
 		},
 	}
 

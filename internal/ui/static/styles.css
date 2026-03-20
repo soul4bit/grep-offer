@@ -637,6 +637,12 @@ input::placeholder {
   padding-top: 0.75rem;
 }
 
+.landing-roadmap-section {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  gap: 1.2rem;
+}
+
 .section-copy {
   display: grid;
   gap: 0.7rem;
@@ -659,6 +665,67 @@ input::placeholder {
   line-height: 1.64;
 }
 
+.roadmap-section-note {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 30rem;
+  margin-top: 0.15rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.roadmap-stage-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.roadmap-stage-overview {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1.2rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 1.45rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+}
+
+.roadmap-stage-overview h3,
+.roadmap-stage-card h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.16rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.roadmap-stage-overview p {
+  max-width: 42rem;
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.62;
+}
+
+.roadmap-overview-legend {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.roadmap-overview-legend span {
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .roadmap-stage-grid {
   margin: 0;
   padding: 0;
@@ -671,17 +738,25 @@ input::placeholder {
 
 .roadmap-stage-card {
   counter-increment: roadmap;
-  padding: 1.2rem 1.05rem;
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.2rem 1.05rem 1.15rem;
   border: 1px solid var(--line);
   border-radius: 1.4rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
 }
 
-.roadmap-stage-card::before {
-  content: "0" counter(roadmap);
+.roadmap-stage-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.roadmap-stage-index {
   display: inline-flex;
-  margin-bottom: 0.8rem;
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 0.78rem;
@@ -689,10 +764,30 @@ input::placeholder {
   text-transform: uppercase;
 }
 
-.roadmap-stage-card p {
+.roadmap-stage-badge {
+  padding: 0.34rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 255, 97, 0.16);
+  background: rgba(216, 255, 97, 0.07);
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roadmap-stage-summary {
   color: var(--text-soft);
   font-size: 0.98rem;
   line-height: 1.62;
+}
+
+.roadmap-stage-note-copy {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.58;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .landing-rules {
@@ -1244,6 +1339,7 @@ p {
 
 @media (max-width: 1080px) {
   .landing-hero,
+  .landing-roadmap-section,
   .hero-grid,
   .auth-shell,
   .dashboard-hero,

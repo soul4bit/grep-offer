@@ -77,7 +77,7 @@
   </aside>
 </section>
 
-<section class="landing-section">
+<section class="landing-section landing-roadmap-section">
   <div class="section-copy">
     <div class="eyebrow">что внутри</div>
     <h2 class="section-title">Четыре этапа, чтобы не учить Terraform раньше, чем ты понял, где лежат логи.</h2>
@@ -85,15 +85,40 @@
       Это не список модных слов. Это нормальная последовательность, в которой инструменты
       начинают решать задачи, а не просто копятся в резюме.
     </p>
+
+    <div class="roadmap-section-note">
+      <span class="card-kicker">normal flow</span>
+      <p>Если перескочить базу и сразу кинуться в модный стек, потом придется чинить не карьеру, а последствия спешки.</p>
+    </div>
   </div>
 
-  <ol class="roadmap-stage-grid">
-    {{range .Roadmap}}
-      <li class="roadmap-stage-card">
-        <p>{{.}}</p>
-      </li>
-    {{end}}
-  </ol>
+  <div class="roadmap-stage-shell">
+    <article class="roadmap-stage-overview">
+      <span class="card-kicker">как это читать</span>
+      <h3>Не “список технологий”, а карта пути.</h3>
+      <p>Каждый этап отвечает на свой вопрос: что понять, что собрать руками и где реально растет ценность. Не надо глотать все сразу.</p>
+      <div class="roadmap-overview-legend">
+        <span>база</span>
+        <span>доставка</span>
+        <span>платформа</span>
+        <span>оффер</span>
+      </div>
+    </article>
+
+    <ol class="roadmap-stage-grid">
+      {{range .LandingRoadmap}}
+        <li class="roadmap-stage-card">
+          <div class="roadmap-stage-top">
+            <span class="roadmap-stage-index">{{.Index}}</span>
+            <span class="roadmap-stage-badge">{{.Badge}}</span>
+          </div>
+          <h3>{{.Title}}</h3>
+          <p class="roadmap-stage-summary">{{.Summary}}</p>
+          <p class="roadmap-stage-note-copy">{{.Note}}</p>
+        </li>
+      {{end}}
+    </ol>
+  </div>
 </section>
 
 <section class="landing-rules">
