@@ -19,6 +19,7 @@ env:
   GOARCH: amd64
   RELEASE_ROOT: /var/www/grep-offer
   HEALTHCHECK_URL: http://127.0.0.1:8080/healthz
+  SYSTEMCTL_BIN: /usr/bin/systemctl
 
 jobs:
   test:
@@ -65,6 +66,7 @@ jobs:
           set -euo pipefail
 
           RELEASE_DIR="$RELEASE_ROOT/releases/${GITHUB_SHA}"
+          PREVIOUS_RELEASE="$(readlink -f "$RELEASE_ROOT/current" 2>/dev/null || true)"
           mkdir -p "$RELEASE_ROOT/releases" "$RELEASE_ROOT/shared/data"
           rm -rf "$RELEASE_DIR"
           mkdir -p "$RELEASE_DIR"
@@ -72,22 +74,34 @@ jobs:
           install -m 755 "dist/$APP_NAME" "$RELEASE_DIR/$APP_NAME"
           ln -sfn "$RELEASE_DIR" "$RELEASE_ROOT/current"
 
-          ls -1dt "$RELEASE_ROOT"/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+          rollback() {
+            if [ -n "$PREVIOUS_RELEASE" ]; then
+              ln -sfn "$PREVIOUS_RELEASE" "$RELEASE_ROOT/current"
+              sudo -n "$SYSTEMCTL_BIN" restart "$APP_NAME" || true
+            fi
+          }
 
-          sudo systemctl restart "$APP_NAME"
-          sudo systemctl is-active --quiet "$APP_NAME"
+          if ! sudo -n "$SYSTEMCTL_BIN" restart "$APP_NAME"; then
+            rollback
+            echo "restart failed for $APP_NAME" >&2
+            exit 1
+          fi
 
-      - name: Verify healthcheck
-        run: |
-          set -euo pipefail
+          if ! sudo -n "$SYSTEMCTL_BIN" is-active --quiet "$APP_NAME"; then
+            rollback
+            echo "service is not active after restart: $APP_NAME" >&2
+            exit 1
+          fi
 
           for attempt in $(seq 1 20); do
             if curl --fail --silent "$HEALTHCHECK_URL" >/dev/null; then
+              ls -1dt "$RELEASE_ROOT"/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
               exit 0
             fi
 
             sleep 1
           done
 
+          rollback
           echo "healthcheck failed: $HEALTHCHECK_URL" >&2
           exit 1

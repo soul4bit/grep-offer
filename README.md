@@ -109,14 +109,14 @@ sudo ./svc.sh start
 Пользователь, под которым работает runner, должен уметь без пароля выполнять:
 
 ```bash
-sudo systemctl restart grep-offer
-sudo systemctl is-active grep-offer
+sudo /usr/bin/systemctl restart grep-offer
+sudo /usr/bin/systemctl is-active grep-offer
 ```
 
 Пример для `visudo`, если runner крутится от пользователя `deploy`:
 
 ```sudoers
-deploy ALL=NOPASSWD: /bin/systemctl restart grep-offer, /bin/systemctl is-active grep-offer
+deploy ALL=NOPASSWD: /usr/bin/systemctl restart grep-offer, /usr/bin/systemctl is-active grep-offer
 ```
 
 ### Что еще важно
@@ -125,3 +125,4 @@ deploy ALL=NOPASSWD: /bin/systemctl restart grep-offer, /bin/systemctl is-active
 - Runner должен быть установлен на том же Ubuntu-сервере, где лежит `/var/www/grep-offer`.
 - Автодеплой срабатывает на `push` в `main`, а не на локальный `git commit`. Без `git push` GitHub Actions не стартует.
 - Для проверки после рестарта добавлен endpoint `/healthz`.
+- В `/var/www/grep-offer` должны лежать только `current`, `releases` и `shared`. Клон репозитория лучше хранить отдельно, например в `/home/deploy/grep-offer`.

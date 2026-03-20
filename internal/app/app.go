@@ -98,10 +98,10 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	data := ViewData{
 		Notice: noticeFromRequest(r),
 		Roadmap: []string{
-			"Linux, bash и сеть без магических заклинаний в комментариях.",
-			"Docker, CI/CD и деплой без классики \"но локально же работало\".",
-			"Kubernetes, Terraform и облака без вступления в YAML-секту.",
-			"Собесы, резюме и реальный путь к офферу, а не к очередному вебинару.",
+			"Фундамент: Linux, bash, git, сеть и привычка читать логи, а не гадать.",
+			"Доставка: Docker, registry, CI/CD и деплой без классики \"но локально же работало\".",
+			"Платформа: Kubernetes, observability, Terraform и аккуратная работа с облаком.",
+			"Оффер: резюме, собесы и разговор о деньгах без инфоцыганских фанфар.",
 		},
 	}
 

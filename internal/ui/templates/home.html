@@ -1,115 +1,100 @@
 {{define "title"}}Рофл-роадмап в DevOps{{end}}
 
 {{define "body"}}
-<section class="hero-grid">
-  <div class="hero-copy">
-    <div class="eyebrow">terminal roadmap beta</div>
-    <p class="hero-kicker">Не школа для девопсов. Карта местности до первого оффера.</p>
-    <h1>Из bash-тыка в DevOps, где меньше магии и больше ясности.</h1>
-    <p class="lead">
-      grep-offer.ru будет собирать нормальный путь к офферу:
-      с Linux, CI/CD, Terraform и собесами, но в слегка издевательском тоне и без культа «успешного успеха».
+<section class="landing-hero">
+  <div class="landing-copy">
+    <div class="eyebrow">devops roadmap beta</div>
+    <p class="landing-kicker">Рофл-стиль, но маршрут настоящий.</p>
+    <h1 class="landing-title">Роадмап до DevOps без сектантства, дыма и лишней магии.</h1>
+    <p class="landing-lead">
+      Сначала фундамент, потом доставка, потом платформа и только после этого разговор
+      про оффер. Не наоборот. И без сказок про «войти в IT за две субботы».
     </p>
 
     <div class="cta-row">
-      <a class="primary-button" href="/register">Залететь в бета-логин</a>
+      <a class="primary-button" href="/register">Открыть маршрут</a>
       <a class="secondary-button" href="/login">У меня уже есть аккаунт</a>
     </div>
 
-    <ul class="chip-row">
-      <li>кислотный лайм</li>
-      <li>графитовый фон</li>
-      <li>коралловый акцент</li>
-      <li>терминальный вайб</li>
-    </ul>
-
-    <div class="hero-stats">
-      <article class="stat-card">
-        <span class="stat-value">4</span>
-        <span class="stat-label">больших этапа до внятной базы</span>
-      </article>
-
-      <article class="stat-card">
-        <span class="stat-value">0</span>
-        <span class="stat-label">обещаний «стань senior за выходные»</span>
-      </article>
-
-      <article class="stat-card">
-        <span class="stat-value">Go</span>
-        <span class="stat-label">серверная база без жирного фреймворка</span>
-      </article>
+    <div class="landing-strip">
+      <span>4 этапа</span>
+      <span>от Linux до оффера</span>
+      <span>без карго-культа</span>
     </div>
   </div>
 
-  <aside class="hero-panel">
-    <div class="terminal-card">
-      <div class="terminal-head">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-      <div class="terminal-body">
-        <p><span class="prompt">$</span> whoami</p>
-        <p>junior-devops-in-progress</p>
-        <p><span class="prompt">$</span> cat roadmap.txt</p>
-        <ol class="terminal-list">
-          {{range .Roadmap}}
-            <li>{{.}}</li>
-          {{end}}
-        </ol>
-      </div>
+  <aside class="roadmap-hero-card">
+    <div class="roadmap-hero-top">
+      <span class="card-kicker">roadmap preview</span>
+      <strong>от терминала до собеса</strong>
     </div>
 
-    <article class="aside-note">
-      <span class="card-kicker">tone of voice</span>
-      <h2>Сайт будет язвить, но не врать.</h2>
-      <p>
-        Тут нужен не курс с конфетти, а понятная карта: что учить, в каком порядке,
-        и где заканчивается полезный инструмент, а начинается карго-культ.
-      </p>
-      <ul class="mini-list">
-        <li>без обещаний «оопс и ты девопс»</li>
-        <li>с акцентом на практику и порядок тем</li>
-        <li>с нормальной подачей, а не унылой методичкой</li>
-      </ul>
-    </article>
+    <div class="roadmap-visual">
+      <div class="route-line" aria-hidden="true"></div>
+
+      <article class="route-stop route-stop-1">
+        <span class="route-index">01</span>
+        <h2>Фундамент</h2>
+        <p>Linux, bash, git, tcp/ip и чтение логов без паники.</p>
+      </article>
+
+      <article class="route-stop route-stop-2">
+        <span class="route-index">02</span>
+        <h2>Доставка</h2>
+        <p>Docker, registry, CI/CD и путь от коммита до деплоя.</p>
+      </article>
+
+      <article class="route-stop route-stop-3">
+        <span class="route-index">03</span>
+        <h2>Платформа</h2>
+        <p>Kubernetes, observability, Terraform и облачная гигиена.</p>
+      </article>
+
+      <article class="route-stop route-stop-4">
+        <span class="route-index">04</span>
+        <h2>Оффер</h2>
+        <p>Резюме, собесы и нормальный разговор про деньги.</p>
+      </article>
+    </div>
   </aside>
 </section>
 
-<section class="feature-grid">
-  <article class="feature-card">
-    <span class="card-kicker">01</span>
-    <h2>Старт без фальши</h2>
-    <p>Соберем минимальную систему входа, а потом поверх нее нормальный роадмап и прогресс.</p>
-  </article>
+<section class="landing-section">
+  <div class="section-copy">
+    <div class="eyebrow">маршрут по этапам</div>
+    <h2 class="section-title">Нормальный порядок тем, чтобы не начать с Kubernetes и не закончить нервным тиком.</h2>
+    <p class="section-lead">
+      Ниже черновой скелет пути. Его задача простая: показать, что учить, в каком порядке,
+      и где реально растет ценность, а где просто красиво шумят словами.
+    </p>
+  </div>
 
-  <article class="feature-card">
-    <span class="card-kicker">02</span>
-    <h2>Ясная палитра</h2>
-    <p>Темный графит, кислотный лайм, теплый молочный и коралл. Не очередной фиолетовый SaaS-клон.</p>
-  </article>
-
-  <article class="feature-card">
-    <span class="card-kicker">03</span>
-    <h2>Go без лишнего</h2>
-    <p>Серверный рендер, SQLite и аккуратный auth-flow. Дальше можно наращивать фичи без боли.</p>
-  </article>
+  <ol class="roadmap-stage-grid">
+    {{range .Roadmap}}
+      <li class="roadmap-stage-card">
+        <p>{{.}}</p>
+      </li>
+    {{end}}
+  </ol>
 </section>
 
-<section class="split-grid">
-  <article class="feature-card feature-large">
-    <span class="card-kicker">ux direction</span>
-    <h2>Интерфейс должен выглядеть как инструмент, а не как очередная CRM для вебинаров.</h2>
-    <p>
-      Поэтому оставляем темный терминальный нерв, но делаем типографику чище,
-      акценты умнее, а экраны собраннее. Сайт должен читатьcя быстро и не утомлять.
-    </p>
+<section class="landing-principles">
+  <article class="principle-card">
+    <span class="card-kicker">что тут важно</span>
+    <h2>Не «что модно», а что реально строит базу.</h2>
+    <p>Если у тебя не собран фундамент, то модный стек сверху просто красивее ломается.</p>
   </article>
 
-  <article class="feature-card">
-    <span class="card-kicker">what next</span>
-    <h2>Следующий слой</h2>
-    <p>Этапы роадмапа, личный прогресс, короткие пояснения и нормальная навигация по темам.</p>
+  <article class="principle-card">
+    <span class="card-kicker">чего не будет</span>
+    <h2>Никаких «топ-12 must-have tools» без контекста.</h2>
+    <p>Сначала понимание задач, потом инструменты. Иначе получаешь коллекцию слов, а не профессию.</p>
+  </article>
+
+  <article class="principle-card">
+    <span class="card-kicker">зачем регаться</span>
+    <h2>Чтобы дальше сохранить путь и собрать личный прогресс.</h2>
+    <p>Регистрация нужна не ради ceremony, а чтобы потом разложить сам roadmap по шагам и чекпоинтам.</p>
   </article>
 </section>
 {{end}}

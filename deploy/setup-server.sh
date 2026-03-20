@@ -47,7 +47,7 @@ Next steps:
 1. Edit /etc/${APP_NAME}.env if your port or DB path should differ.
 2. Allow ${RUNNER_USER} to restart the service without a password:
    sudo visudo -f /etc/sudoers.d/${APP_NAME}
-   ${RUNNER_USER} ALL=NOPASSWD: /bin/systemctl restart ${APP_NAME}, /bin/systemctl is-active ${APP_NAME}
+   ${RUNNER_USER} ALL=NOPASSWD: /usr/bin/systemctl restart ${APP_NAME}, /usr/bin/systemctl is-active ${APP_NAME}
 3. Install and register a GitHub self-hosted runner on this Ubuntu server.
 4. Make sure the runner labels include self-hosted, Linux and X64.
 5. Push to main or run the deploy workflow manually.

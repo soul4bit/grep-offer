@@ -284,6 +284,282 @@ input::placeholder {
   margin-top: 1.2rem;
 }
 
+.landing-hero,
+.landing-section,
+.landing-principles {
+  display: grid;
+  gap: 1rem;
+}
+
+.landing-hero {
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+  align-items: center;
+  padding: 1.65rem 0 0.5rem;
+}
+
+.landing-copy {
+  display: grid;
+  gap: 0.95rem;
+  align-content: start;
+}
+
+.landing-kicker {
+  margin: 0;
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.landing-title {
+  max-width: 9.5ch;
+  font-size: clamp(2.6rem, 6.1vw, 4.7rem);
+  line-height: 0.96;
+}
+
+.landing-lead {
+  max-width: 34rem;
+  color: var(--muted);
+  font-size: 1.03rem;
+  line-height: 1.72;
+}
+
+.landing-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.landing-strip span {
+  padding: 0.48rem 0.76rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.77rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roadmap-hero-card,
+.principle-card {
+  border: 1px solid var(--line);
+  border-radius: 1.6rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 22px 60px var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.roadmap-hero-card {
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.roadmap-hero-card::before {
+  content: "";
+  position: absolute;
+  inset: -15% auto auto 55%;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(216, 255, 97, 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.roadmap-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.roadmap-hero-top strong {
+  color: var(--text-soft);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.roadmap-visual {
+  position: relative;
+  min-height: 28rem;
+  padding: 0.4rem;
+}
+
+.route-line {
+  position: absolute;
+  inset: 2rem auto 2rem 50%;
+  width: 4px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(101, 224, 178, 0.2), rgba(216, 255, 97, 0.95) 35%, rgba(255, 132, 90, 0.85));
+  box-shadow: 0 0 0 10px rgba(216, 255, 97, 0.035);
+}
+
+.route-stop {
+  position: relative;
+  width: min(18.5rem, calc(100% - 2.25rem));
+  padding: 1rem 1rem 1rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: rgba(15, 20, 17, 0.86);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.route-stop::before {
+  content: "";
+  position: absolute;
+  top: 1.3rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 7px rgba(216, 255, 97, 0.08);
+}
+
+.route-stop h2 {
+  font-size: 1.02rem;
+  line-height: 1.1;
+}
+
+.route-stop p {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.93rem;
+  line-height: 1.55;
+}
+
+.route-stop-1,
+.route-stop-3 {
+  margin-right: auto;
+}
+
+.route-stop-2,
+.route-stop-4 {
+  margin-left: auto;
+}
+
+.route-stop-1 {
+  margin-top: 0.3rem;
+}
+
+.route-stop-2 {
+  margin-top: 1rem;
+}
+
+.route-stop-3 {
+  margin-top: 1rem;
+}
+
+.route-stop-4 {
+  margin-top: 1rem;
+}
+
+.route-stop-1::before,
+.route-stop-3::before {
+  right: -1.45rem;
+}
+
+.route-stop-2::before,
+.route-stop-4::before {
+  left: -1.45rem;
+}
+
+.route-index {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  color: var(--accent-3);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.landing-section {
+  padding-top: 0.75rem;
+}
+
+.section-copy {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 50rem;
+}
+
+.section-title {
+  max-width: 17ch;
+  font-size: clamp(1.45rem, 4vw, 2.7rem);
+  line-height: 1.04;
+}
+
+.section-lead {
+  max-width: 44rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.68;
+}
+
+.roadmap-stage-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  counter-reset: roadmap;
+}
+
+.roadmap-stage-card {
+  counter-increment: roadmap;
+  padding: 1.2rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+}
+
+.roadmap-stage-card::before {
+  content: "0" counter(roadmap);
+  display: inline-flex;
+  margin-bottom: 0.8rem;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.roadmap-stage-card p {
+  color: var(--text-soft);
+  font-size: 0.98rem;
+  line-height: 1.62;
+}
+
+.landing-principles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.principle-card {
+  padding: 1.2rem 1.1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.principle-card h2 {
+  font-size: 1.18rem;
+  line-height: 1.14;
+}
+
+.principle-card p {
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
 .notice,
 .form-alert {
   padding: 0.95rem 1rem;
@@ -767,6 +1043,9 @@ p {
 }
 
 @media (max-width: 1080px) {
+  .landing-hero,
+  .roadmap-stage-grid,
+  .landing-principles,
   .hero-grid,
   .auth-shell,
   .dashboard-hero,
@@ -783,6 +1062,16 @@ p {
 
   .hero-stats {
     grid-template-columns: 1fr;
+  }
+
+  .roadmap-stage-grid,
+  .landing-principles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .landing-title,
+  .section-title {
+    max-width: none;
   }
 }
 
@@ -812,6 +1101,36 @@ p {
 
   .brand {
     width: 100%;
+  }
+
+  .roadmap-visual {
+    min-height: auto;
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .route-line {
+    left: 1.05rem;
+    transform: none;
+    width: 3px;
+  }
+
+  .route-stop,
+  .route-stop-1,
+  .route-stop-2,
+  .route-stop-3,
+  .route-stop-4 {
+    width: calc(100% - 2rem);
+    margin: 0 0 0 auto;
+  }
+
+  .route-stop::before,
+  .route-stop-1::before,
+  .route-stop-2::before,
+  .route-stop-3::before,
+  .route-stop-4::before {
+    left: -1.05rem;
+    right: auto;
   }
 }
 
@@ -852,5 +1171,14 @@ p {
 
   h2 {
     font-size: 1.3rem;
+  }
+
+  .landing-title {
+    font-size: clamp(2.2rem, 13vw, 3.2rem);
+  }
+
+  .roadmap-stage-grid,
+  .landing-principles {
+    grid-template-columns: 1fr;
   }
 }
