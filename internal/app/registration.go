@@ -232,6 +232,7 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 	case "approve":
 		request, approveErr := a.registration.Approve(r.Context(), requestID, requestBaseURL(r))
 		if approveErr != nil {
+			log.Printf("approve registration request %d: %v", requestID, approveErr)
 			_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, telegramCallbackErrorText(approveErr))
 			w.WriteHeader(http.StatusOK)
 			return
@@ -252,6 +253,7 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 	case "reject":
 		request, rejectErr := a.registration.Reject(r.Context(), requestID)
 		if rejectErr != nil {
+			log.Printf("reject registration request %d: %v", requestID, rejectErr)
 			_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, telegramCallbackErrorText(rejectErr))
 			w.WriteHeader(http.StatusOK)
 			return
@@ -328,6 +330,12 @@ func telegramCallbackErrorText(err error) string {
 		return "Заявка уже исчезла."
 	case errors.Is(err, store.ErrRegistrationAlreadyApproved):
 		return "Эту заявку уже апрувнули."
+	case errors.Is(err, store.ErrEmailTaken):
+		return "Такой email уже занят."
+	case strings.Contains(strings.ToLower(err.Error()), "base url"):
+		return "Не настроен APP_BASE_URL."
+	case strings.Contains(strings.ToLower(err.Error()), "smtp"):
+		return "Письмо не отправилось. Проверь SMTP."
 	default:
 		return "Что-то сломалось на сервере."
 	}
