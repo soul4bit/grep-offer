@@ -53,14 +53,24 @@ func main() {
 	if err := st.DeleteExpiredSessions(ctx); err != nil {
 		log.Printf("cleanup sessions: %v", err)
 	}
+	if err := st.DeleteExpiredPasswordResetTokens(ctx); err != nil {
+		log.Printf("cleanup password reset tokens: %v", err)
+	}
 
 	appConfig := app.Config{}
-	if registration, webhookSecret, err := buildRegistrationConfig(st); err != nil {
+	mailer, err := buildSMTPMailer()
+	if err != nil {
+		log.Fatalf("build smtp mailer: %v", err)
+	}
+
+	if registration, webhookSecret, err := buildRegistrationConfig(st, mailer); err != nil {
 		log.Fatalf("build registration config: %v", err)
 	} else {
 		appConfig.Registration = registration
 		appConfig.TelegramWebhookSecret = webhookSecret
 	}
+
+	appConfig.PasswordReset = buildPasswordResetConfig(st, mailer)
 
 	application, err := app.New(st, appConfig)
 	if err != nil {
@@ -113,58 +123,66 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-func buildRegistrationConfig(st *store.Store) (*app.RegistrationCoordinator, string, error) {
+func buildSMTPMailer() (*notify.SMTPMailer, error) {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpUsername := os.Getenv("SMTP_USERNAME")
 	smtpPassword := os.Getenv("SMTP_PASSWORD")
-	telegramToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	telegramAdminChatID := os.Getenv("TELEGRAM_ADMIN_CHAT_ID")
-	telegramWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
-
-	registrationConfigEnabled := smtpHost != "" || smtpUsername != "" || smtpPassword != "" || telegramToken != "" || telegramAdminChatID != "" || telegramWebhookSecret != ""
-	if !registrationConfigEnabled {
-		log.Printf("registration approval workflow disabled: SMTP and Telegram env vars are not configured")
-		return nil, "", nil
+	if smtpHost == "" && smtpUsername == "" && smtpPassword == "" {
+		log.Printf("smtp mailer disabled: SMTP env vars are not configured")
+		return nil, nil
 	}
 
-	requiredEnv := []string{
-		"SMTP_HOST",
-		"SMTP_USERNAME",
-		"SMTP_PASSWORD",
-		"TELEGRAM_BOT_TOKEN",
-		"TELEGRAM_ADMIN_CHAT_ID",
-		"TELEGRAM_WEBHOOK_SECRET",
-	}
-
-	for _, key := range requiredEnv {
+	for _, key := range []string{"SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD"} {
 		if os.Getenv(key) == "" {
-			return nil, "", errors.New(key + " is required when registration approval workflow is enabled")
+			return nil, errors.New(key + " is required when SMTP mailer is enabled")
 		}
 	}
 
 	smtpPort, err := strconv.Atoi(envOrDefault("SMTP_PORT", "465"))
 	if err != nil {
-		return nil, "", err
-	}
-
-	telegramChatID, err := strconv.ParseInt(telegramAdminChatID, 10, 64)
-	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	smtpSecure, err := strconv.ParseBool(envOrDefault("SMTP_SECURE", "true"))
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	mailer := notify.NewSMTPMailer(
+	return notify.NewSMTPMailer(
 		smtpHost,
 		smtpPort,
 		smtpSecure,
 		smtpUsername,
 		smtpPassword,
 		envOrDefault("MAIL_FROM", smtpUsername),
-	)
+	), nil
+}
+
+func buildRegistrationConfig(st *store.Store, mailer *notify.SMTPMailer) (*app.RegistrationCoordinator, string, error) {
+	telegramToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	telegramAdminChatID := os.Getenv("TELEGRAM_ADMIN_CHAT_ID")
+	telegramWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
+
+	registrationConfigEnabled := telegramToken != "" || telegramAdminChatID != "" || telegramWebhookSecret != ""
+	if !registrationConfigEnabled {
+		log.Printf("registration approval workflow disabled: Telegram env vars are not configured")
+		return nil, "", nil
+	}
+
+	for _, key := range []string{"TELEGRAM_BOT_TOKEN", "TELEGRAM_ADMIN_CHAT_ID", "TELEGRAM_WEBHOOK_SECRET"} {
+		if os.Getenv(key) == "" {
+			return nil, "", errors.New(key + " is required when registration approval workflow is enabled")
+		}
+	}
+
+	if mailer == nil {
+		return nil, "", errors.New("SMTP mailer is required when registration approval workflow is enabled")
+	}
+
+	telegramChatID, err := strconv.ParseInt(telegramAdminChatID, 10, 64)
+	if err != nil {
+		return nil, "", err
+	}
 
 	bot := notify.NewTelegramBot(telegramToken, telegramChatID)
 
@@ -174,4 +192,17 @@ func buildRegistrationConfig(st *store.Store) (*app.RegistrationCoordinator, str
 		Notifier: bot,
 		BaseURL:  os.Getenv("APP_BASE_URL"),
 	}), telegramWebhookSecret, nil
+}
+
+func buildPasswordResetConfig(st *store.Store, mailer *notify.SMTPMailer) *app.PasswordResetCoordinator {
+	if mailer == nil {
+		log.Printf("password reset disabled: SMTP env vars are not configured")
+		return nil
+	}
+
+	return app.NewPasswordResetCoordinator(app.PasswordResetCoordinatorConfig{
+		Store:   st,
+		Mailer:  mailer,
+		BaseURL: os.Getenv("APP_BASE_URL"),
+	})
 }

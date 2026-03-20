@@ -18,6 +18,7 @@ import (
 
 	"grep-offer/internal/store"
 
+	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 )
 
@@ -202,6 +203,106 @@ func TestRegisterRejectsMismatchedPasswords(t *testing.T) {
 	}
 }
 
+func TestForgotPasswordFlow(t *testing.T) {
+	t.Parallel()
+
+	fakeMailer := &fakeConfirmationMailer{}
+	testApp, st := newTestApp(t, testAppOptions{
+		mailer: fakeMailer,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("oldsecret123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+
+	user, err := st.CreateUser(context.Background(), "bash_bandit", "reset@example.com", string(passwordHash))
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("create cookie jar: %v", err)
+	}
+
+	client := server.Client()
+	client.Jar = jar
+
+	requestResponse, err := client.PostForm(server.URL+"/password/forgot", url.Values{
+		"email": {"reset@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("forgot password request: %v", err)
+	}
+	defer requestResponse.Body.Close()
+
+	if requestResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected forgot password status: %d", requestResponse.StatusCode)
+	}
+
+	requestBody := readBody(t, requestResponse.Body)
+	if !strings.Contains(requestBody, "ссылка на сброс уже улетела") {
+		t.Fatalf("forgot password notice missing: %s", requestBody)
+	}
+
+	if len(fakeMailer.resetSent) != 1 {
+		t.Fatalf("unexpected reset emails: %#v", fakeMailer.resetSent)
+	}
+
+	resetURL, err := url.Parse(fakeMailer.resetSent[0].ResetURL)
+	if err != nil {
+		t.Fatalf("parse reset url: %v", err)
+	}
+
+	token := resetURL.Query().Get("token")
+	if token == "" {
+		t.Fatalf("reset token missing from url: %s", fakeMailer.resetSent[0].ResetURL)
+	}
+
+	resetFormResponse, err := client.Get(fakeMailer.resetSent[0].ResetURL)
+	if err != nil {
+		t.Fatalf("open reset form: %v", err)
+	}
+	defer resetFormResponse.Body.Close()
+
+	if resetFormResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected reset form status: %d", resetFormResponse.StatusCode)
+	}
+
+	resetResponse, err := client.PostForm(server.URL+"/password/reset", url.Values{
+		"token":            {token},
+		"password":         {"newsecret123"},
+		"confirm_password": {"newsecret123"},
+	})
+	if err != nil {
+		t.Fatalf("submit password reset: %v", err)
+	}
+	defer resetResponse.Body.Close()
+
+	if resetResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected password reset status: %d", resetResponse.StatusCode)
+	}
+
+	resetBody := readBody(t, resetResponse.Body)
+	if !strings.Contains(resetBody, "Привет, bash_bandit") {
+		t.Fatalf("dashboard greeting missing after password reset: %s", resetBody)
+	}
+
+	updatedUser, err := st.UserByEmail(context.Background(), "reset@example.com")
+	if err != nil {
+		t.Fatalf("load updated user: %v", err)
+	}
+	if updatedUser.ID != user.ID {
+		t.Fatalf("unexpected user id after reset: %d", updatedUser.ID)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(updatedUser.PasswordHash), []byte("newsecret123")); err != nil {
+		t.Fatalf("password was not updated: %v", err)
+	}
+}
+
 func TestHealthz(t *testing.T) {
 	t.Parallel()
 
@@ -366,8 +467,18 @@ func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 		})
 	}
 
+	var passwordReset *PasswordResetCoordinator
+	if options.mailer != nil {
+		passwordReset = NewPasswordResetCoordinator(PasswordResetCoordinatorConfig{
+			Store:   st,
+			Mailer:  options.mailer,
+			BaseURL: "",
+		})
+	}
+
 	app, err := New(st, Config{
 		Registration:          registration,
+		PasswordReset:         passwordReset,
 		TelegramWebhookSecret: options.webhookSecret,
 	})
 	if err != nil {
@@ -389,7 +500,8 @@ func readBody(t *testing.T, body io.Reader) string {
 }
 
 type fakeConfirmationMailer struct {
-	sent []sentConfirmation
+	sent      []sentConfirmation
+	resetSent []sentPasswordReset
 }
 
 type sentConfirmation struct {
@@ -398,11 +510,26 @@ type sentConfirmation struct {
 	ConfirmURL string
 }
 
+type sentPasswordReset struct {
+	Email    string
+	Username string
+	ResetURL string
+}
+
 func (f *fakeConfirmationMailer) SendRegistrationConfirmation(_ context.Context, email, username, confirmURL string) error {
 	f.sent = append(f.sent, sentConfirmation{
 		Email:      email,
 		Username:   username,
 		ConfirmURL: confirmURL,
+	})
+	return nil
+}
+
+func (f *fakeConfirmationMailer) SendPasswordReset(_ context.Context, email, username, resetURL string) error {
+	f.resetSent = append(f.resetSent, sentPasswordReset{
+		Email:    email,
+		Username: username,
+		ResetURL: resetURL,
 	})
 	return nil
 }

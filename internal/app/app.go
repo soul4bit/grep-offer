@@ -38,23 +38,26 @@ type App struct {
 	templates             map[string]*template.Template
 	static                http.Handler
 	registration          *RegistrationCoordinator
+	passwordReset         *PasswordResetCoordinator
 	telegramWebhookSecret string
 }
 
 type Config struct {
 	Registration          *RegistrationCoordinator
+	PasswordReset         *PasswordResetCoordinator
 	TelegramWebhookSecret string
 }
 
 type ViewData struct {
-	CurrentUser     *store.User
-	Error           string
-	Notice          string
-	Form            AuthForm
-	LandingRoadmap  []LandingStage
-	DashboardStats  []DashboardStat
-	DashboardStages []DashboardStage
-	DashboardFocus  DashboardFocus
+	CurrentUser        *store.User
+	Error              string
+	Notice             string
+	Form               AuthForm
+	PasswordResetToken string
+	LandingRoadmap     []LandingStage
+	DashboardStats     []DashboardStat
+	DashboardStages    []DashboardStage
+	DashboardFocus     DashboardFocus
 }
 
 type AuthForm struct {
@@ -121,6 +124,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		templates:             templates,
 		static:                http.FileServer(http.FS(staticFS)),
 		registration:          cfg.Registration,
+		passwordReset:         cfg.PasswordReset,
 		telegramWebhookSecret: cfg.TelegramWebhookSecret,
 	}, nil
 }
@@ -137,6 +141,10 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /register/confirm", a.handleRegisterConfirm)
 	mux.HandleFunc("GET /login", a.handleLoginForm)
 	mux.HandleFunc("POST /login", a.handleLoginSubmit)
+	mux.HandleFunc("GET /password/forgot", a.handleForgotPasswordForm)
+	mux.HandleFunc("POST /password/forgot", a.handleForgotPasswordSubmit)
+	mux.HandleFunc("GET /password/reset", a.handlePasswordResetForm)
+	mux.HandleFunc("POST /password/reset", a.handlePasswordResetSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
 	return a.withCurrentUser(mux)
@@ -576,7 +584,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 
 func loadTemplates() (map[string]*template.Template, error) {
 	cache := make(map[string]*template.Template)
-	pages := []string{"home", "login", "register", "dashboard"}
+	pages := []string{"home", "login", "register", "forgot_password", "reset_password", "dashboard"}
 
 	for _, page := range pages {
 		tmpl, err := template.ParseFS(
@@ -635,6 +643,26 @@ func validateLogin(email, password string) string {
 	return ""
 }
 
+func validatePasswordResetRequest(email string) string {
+	if err := validateEmail(email); err != nil {
+		return "Нужен валидный email. Иначе письмо уйдет в /dev/null."
+	}
+
+	return ""
+}
+
+func validatePasswordReset(password, confirmPassword string) string {
+	if len(password) < 8 {
+		return "Новый пароль короче 8 символов. Так не пойдет."
+	}
+
+	if password != confirmPassword {
+		return "Пароли не совпали. Сверь их еще раз без heroic fail."
+	}
+
+	return ""
+}
+
 func validateEmail(email string) error {
 	address, err := mail.ParseAddress(strings.TrimSpace(email))
 	if err != nil {
@@ -675,6 +703,12 @@ func noticeFromRequest(r *http.Request) string {
 		return "Прогресс обновлен. Теперь это уже твоя карта пути, а не демо-заготовка."
 	case "logged-out":
 		return "Сессия завершена. Никаких хвостов в проде."
+	case "password-reset-sent":
+		return "Если такая почта есть в системе, ссылка на сброс уже улетела."
+	case "password-reset-invalid":
+		return "Ссылка на сброс устарела или уже была использована."
+	case "password-reset-complete":
+		return "Пароль обновлен. Можно снова идти к офферу без старых секретов."
 	default:
 		return ""
 	}

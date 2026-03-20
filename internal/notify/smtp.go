@@ -92,6 +92,61 @@ func (m *SMTPMailer) SendRegistrationConfirmation(ctx context.Context, email, us
 	return client.Quit()
 }
 
+func (m *SMTPMailer) SendPasswordReset(ctx context.Context, email, username, resetURL string) error {
+	if m == nil {
+		return fmt.Errorf("smtp mailer is nil")
+	}
+
+	subject := mime.BEncoding.Encode("UTF-8", "Сброс пароля на grep-offer.ru")
+	body, err := buildPasswordResetBody(username, resetURL)
+	if err != nil {
+		return err
+	}
+
+	messageHeaders := strings.Join([]string{
+		fmt.Sprintf("From: %s", m.from),
+		fmt.Sprintf("To: %s", strings.TrimSpace(email)),
+		fmt.Sprintf("Subject: %s", subject),
+		body.headers,
+	}, "\r\n")
+	message := []byte(messageHeaders + "\r\n\r\n" + body.content)
+
+	client, err := m.newClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if m.username != "" {
+		if err := m.authenticate(client); err != nil {
+			return err
+		}
+	}
+
+	if err := client.Mail(m.from); err != nil {
+		return err
+	}
+	if err := client.Rcpt(strings.TrimSpace(email)); err != nil {
+		return err
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return err
+	}
+
+	if _, err := writer.Write(message); err != nil {
+		_ = writer.Close()
+		return err
+	}
+
+	if err := writer.Close(); err != nil {
+		return err
+	}
+
+	return client.Quit()
+}
+
 func (m *SMTPMailer) newClient(ctx context.Context) (*smtp.Client, error) {
 	address := fmt.Sprintf("%s:%d", m.host, m.port)
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
@@ -243,6 +298,61 @@ func buildRegistrationConfirmationBody(username, confirmURL string) (emailBody, 
 	}, nil
 }
 
+func buildPasswordResetBody(username, resetURL string) (emailBody, error) {
+	plain := strings.Join([]string{
+		fmt.Sprintf("Привет, %s.", username),
+		"",
+		"Кто-то попросил сбросить пароль на grep-offer.ru.",
+		"Если это был ты, открой ссылку ниже и задай новый пароль:",
+		"",
+		resetURL,
+		"",
+		"Если это был не ты, просто проигнорируй письмо. Ничего не сломается.",
+	}, "\r\n")
+
+	htmlBody, err := renderPasswordResetHTML(username, resetURL)
+	if err != nil {
+		return emailBody{}, err
+	}
+
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+
+	plainHeader := textproto.MIMEHeader{}
+	plainHeader.Set("Content-Type", "text/plain; charset=UTF-8")
+	plainHeader.Set("Content-Transfer-Encoding", "quoted-printable")
+	plainPart, err := writer.CreatePart(plainHeader)
+	if err != nil {
+		return emailBody{}, err
+	}
+	if err := writeQuotedPrintable(plainPart, plain); err != nil {
+		return emailBody{}, err
+	}
+
+	htmlHeader := textproto.MIMEHeader{}
+	htmlHeader.Set("Content-Type", "text/html; charset=UTF-8")
+	htmlHeader.Set("Content-Transfer-Encoding", "quoted-printable")
+	htmlPart, err := writer.CreatePart(htmlHeader)
+	if err != nil {
+		return emailBody{}, err
+	}
+	if err := writeQuotedPrintable(htmlPart, htmlBody); err != nil {
+		return emailBody{}, err
+	}
+
+	if err := writer.Close(); err != nil {
+		return emailBody{}, err
+	}
+
+	return emailBody{
+		headers: strings.Join([]string{
+			"MIME-Version: 1.0",
+			fmt.Sprintf("Content-Type: multipart/alternative; boundary=%q", writer.Boundary()),
+		}, "\r\n"),
+		content: buffer.String(),
+	}, nil
+}
+
 func renderRegistrationConfirmationHTML(username, confirmURL string) (string, error) {
 	const templateSource = `<!doctype html>
 <html lang="ru">
@@ -291,6 +401,66 @@ func renderRegistrationConfirmationHTML(username, confirmURL string) (string, er
 	}
 
 	tmpl, err := htemplate.New("registration-email").Parse(templateSource)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+	if err := tmpl.Execute(&buffer, data); err != nil {
+		return "", err
+	}
+
+	return buffer.String(), nil
+}
+
+func renderPasswordResetHTML(username, resetURL string) (string, error) {
+	const templateSource = `<!doctype html>
+<html lang="ru">
+<body style="margin:0;padding:0;background:#0b100d;color:#f6f2e8;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="padding:32px 16px;background:radial-gradient(circle at top left, rgba(255,132,90,0.12), transparent 35%),linear-gradient(180deg,#090c0a 0%,#101512 100%);">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;border-collapse:collapse;">
+      <tr>
+        <td style="padding:0 0 18px 0;color:#ff845a;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;font-family:Consolas,monospace;">
+          grep-offer.ru / reset password
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid rgba(255,255,255,0.1);border-radius:24px;background:rgba(16,21,18,0.92);box-shadow:0 18px 48px rgba(0,0,0,0.28);padding:28px 28px 24px;">
+          <p style="margin:0 0 12px 0;color:#ff845a;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;font-family:Consolas,monospace;">сброс пароля</p>
+          <h1 style="margin:0 0 16px 0;font-size:32px;line-height:1.05;color:#f6f2e8;font-weight:800;">Привет, {{.Username}}.</h1>
+          <p style="margin:0 0 14px 0;font-size:16px;line-height:1.7;color:#d8d2c2;">
+            Кто-то попросил сбросить пароль на <strong style="color:#f6f2e8;">grep-offer.ru</strong>.
+            Если это был ты, открой ссылку ниже и задай новый пароль без очередного похода в support-level-hell.
+          </p>
+
+          <div style="margin:24px 0 24px 0;">
+            <a href="{{.ResetURL}}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#ff845a 0%,#ffc0a8 100%);color:#10140f;text-decoration:none;font-weight:800;">Задать новый пароль</a>
+          </div>
+
+          <div style="margin:0 0 20px 0;padding:14px 16px;border:1px solid rgba(255,132,90,0.16);border-radius:18px;background:rgba(255,255,255,0.025);">
+            <p style="margin:0 0 8px 0;color:#ff845a;font-size:12px;letter-spacing:1.3px;text-transform:uppercase;font-family:Consolas,monospace;">если кнопка не сработала</p>
+            <p style="margin:0;color:#a0ab9e;font-size:14px;line-height:1.7;word-break:break-word;">{{.ResetURL}}</p>
+          </div>
+
+          <p style="margin:0;color:#a0ab9e;font-size:14px;line-height:1.7;">
+            Если это был не ты, просто проигнорируй письмо. Пароль сам по себе не поменяется.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>`
+
+	data := struct {
+		Username string
+		ResetURL string
+	}{
+		Username: username,
+		ResetURL: resetURL,
+	}
+
+	tmpl, err := htemplate.New("password-reset-email").Parse(templateSource)
 	if err != nil {
 		return "", err
 	}

@@ -18,6 +18,7 @@ const defaultRegistrationConfirmationTTL = 72 * time.Hour
 
 type ConfirmationMailer interface {
 	SendRegistrationConfirmation(ctx context.Context, email, username, confirmURL string) error
+	SendPasswordReset(ctx context.Context, email, username, resetURL string) error
 }
 
 type AdminApprovalNotifier interface {
