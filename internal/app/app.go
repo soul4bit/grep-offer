@@ -394,6 +394,9 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.registration.Submit(r.Context(), username, email, string(passwordHash)); err != nil {
 		switch {
+		case errors.Is(err, store.ErrUsernameTaken):
+			data.Error = "Такой ник уже занят. Придется придумать другой alias для похода за оффером."
+			a.render(w, r, http.StatusConflict, "register", data)
 		case errors.Is(err, store.ErrEmailTaken):
 			data.Error = "Такой email уже занят. Значит, кто-то уже пошел грести оффер."
 			a.render(w, r, http.StatusConflict, "register", data)

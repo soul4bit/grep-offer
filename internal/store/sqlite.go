@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrEmailTaken                  = errors.New("email already taken")
+	ErrUsernameTaken               = errors.New("username already taken")
 	ErrSessionNotFound             = errors.New("session not found")
 	ErrUserNotFound                = errors.New("user not found")
 	ErrRegistrationPending         = errors.New("registration pending")
@@ -108,6 +109,12 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 	username = strings.TrimSpace(username)
 	email = normalizeEmail(email)
 
+	if _, err := s.UserByUsername(ctx, username); err == nil {
+		return nil, ErrUsernameTaken
+	} else if err != nil && !errors.Is(err, ErrUserNotFound) {
+		return nil, err
+	}
+
 	result, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)`,
@@ -142,6 +149,24 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (*User, error) {
 		ctx,
 		`SELECT id, username, email, password_hash, created_at FROM users WHERE email = ?`,
 		normalizeEmail(email),
+	)
+
+	user, err := scanUser(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *Store) UserByUsername(ctx context.Context, username string) (*User, error) {
+	row := s.db.QueryRowContext(
+		ctx,
+		`SELECT id, username, email, password_hash, created_at FROM users WHERE lower(username) = ?`,
+		normalizeUsername(username),
 	)
 
 	user, err := scanUser(row)
@@ -228,6 +253,10 @@ func scanUser(row scanner) (*User, error) {
 
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func normalizeUsername(username string) string {
+	return strings.ToLower(strings.TrimSpace(username))
 }
 
 func hashToken(rawToken string) string {

@@ -203,6 +203,95 @@ func TestRegisterRejectsMismatchedPasswords(t *testing.T) {
 	}
 }
 
+func TestRegisterRejectsTakenUsernameFromExistingUser(t *testing.T) {
+	t.Parallel()
+
+	fakeMailer := &fakeConfirmationMailer{}
+	fakeNotifier := &fakeApprovalNotifier{}
+	testApp, st := newTestApp(t, testAppOptions{
+		mailer:   fakeMailer,
+		notifier: fakeNotifier,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	if _, err := st.CreateUser(context.Background(), "Bash_Bandit", "taken@example.com", "hash"); err != nil {
+		t.Fatalf("create existing user: %v", err)
+	}
+
+	form := url.Values{
+		"username":         {"bash_bandit"},
+		"email":            {"new@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret123"},
+	}
+
+	response, err := server.Client().PostForm(server.URL+"/register", form)
+	if err != nil {
+		t.Fatalf("register request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusConflict {
+		t.Fatalf("unexpected register status: %d", response.StatusCode)
+	}
+
+	if body := readBody(t, response.Body); !strings.Contains(strings.ToLower(body), "alias") {
+		t.Fatalf("taken username error missing: %s", body)
+	}
+}
+
+func TestRegisterRejectsTakenUsernameFromPendingRequest(t *testing.T) {
+	t.Parallel()
+
+	fakeMailer := &fakeConfirmationMailer{}
+	fakeNotifier := &fakeApprovalNotifier{}
+	testApp, _ := newTestApp(t, testAppOptions{
+		mailer:   fakeMailer,
+		notifier: fakeNotifier,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	firstForm := url.Values{
+		"username":         {"bash_bandit"},
+		"email":            {"first@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret123"},
+	}
+
+	firstResponse, err := server.Client().PostForm(server.URL+"/register", firstForm)
+	if err != nil {
+		t.Fatalf("first register request: %v", err)
+	}
+	defer firstResponse.Body.Close()
+
+	if firstResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected first register status: %d", firstResponse.StatusCode)
+	}
+
+	secondForm := url.Values{
+		"username":         {"BASH_BANDIT"},
+		"email":            {"second@example.com"},
+		"password":         {"supersecret123"},
+		"confirm_password": {"supersecret123"},
+	}
+
+	secondResponse, err := server.Client().PostForm(server.URL+"/register", secondForm)
+	if err != nil {
+		t.Fatalf("second register request: %v", err)
+	}
+	defer secondResponse.Body.Close()
+
+	if secondResponse.StatusCode != http.StatusConflict {
+		t.Fatalf("unexpected second register status: %d", secondResponse.StatusCode)
+	}
+
+	if body := readBody(t, secondResponse.Body); !strings.Contains(strings.ToLower(body), "alias") {
+		t.Fatalf("pending username error missing: %s", body)
+	}
+}
+
 func TestForgotPasswordFlow(t *testing.T) {
 	t.Parallel()
 

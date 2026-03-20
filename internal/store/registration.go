@@ -33,6 +33,18 @@ func (s *Store) CreateRegistrationRequest(ctx context.Context, username, email, 
 	username = strings.TrimSpace(username)
 	email = normalizeEmail(email)
 
+	if _, err := s.UserByUsername(ctx, username); err == nil {
+		return nil, ErrUsernameTaken
+	} else if err != nil && !errors.Is(err, ErrUserNotFound) {
+		return nil, err
+	}
+
+	if _, err := s.RegistrationRequestByUsername(ctx, username); err == nil {
+		return nil, ErrUsernameTaken
+	} else if err != nil && !errors.Is(err, ErrRegistrationNotFound) {
+		return nil, err
+	}
+
 	result, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO registration_requests (username, email, password_hash, created_at, updated_at)
@@ -72,6 +84,26 @@ func (s *Store) RegistrationRequestByEmail(ctx context.Context, email string) (*
 		FROM registration_requests
 		WHERE email = ?`,
 		normalizeEmail(email),
+	)
+
+	request, err := scanRegistrationRequest(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRegistrationNotFound
+		}
+		return nil, err
+	}
+
+	return request, nil
+}
+
+func (s *Store) RegistrationRequestByUsername(ctx context.Context, username string) (*RegistrationRequest, error) {
+	row := s.db.QueryRowContext(
+		ctx,
+		`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
+		FROM registration_requests
+		WHERE lower(username) = ?`,
+		normalizeUsername(username),
 	)
 
 	request, err := scanRegistrationRequest(row)
@@ -204,6 +236,14 @@ func (s *Store) ConsumeRegistrationRequest(ctx context.Context, rawVerificationT
 	}
 
 	userCreatedAt := time.Now().UTC()
+	if existingUser, lookupErr := s.userByUsernameTx(ctx, tx, request.Username); lookupErr == nil && existingUser != nil {
+		err = ErrUsernameTaken
+		return nil, err
+	} else if lookupErr != nil && !errors.Is(lookupErr, ErrUserNotFound) {
+		err = lookupErr
+		return nil, err
+	}
+
 	result, execErr := tx.ExecContext(
 		ctx,
 		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)`,
@@ -287,4 +327,22 @@ func scanRegistrationRequest(row scanner) (*RegistrationRequest, error) {
 	}
 
 	return &request, nil
+}
+
+func (s *Store) userByUsernameTx(ctx context.Context, tx *sql.Tx, username string) (*User, error) {
+	row := tx.QueryRowContext(
+		ctx,
+		`SELECT id, username, email, password_hash, created_at FROM users WHERE lower(username) = ?`,
+		normalizeUsername(username),
+	)
+
+	user, err := scanUser(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return user, nil
 }
