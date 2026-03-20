@@ -341,9 +341,12 @@ input::placeholder {
   display: grid;
   gap: 0.35rem;
   padding: 0.9rem 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(101, 224, 178, 0.12);
   border-radius: 1.15rem;
-  background: rgba(255, 255, 255, 0.025);
+  background:
+    linear-gradient(180deg, rgba(13, 18, 15, 0.94), rgba(11, 16, 13, 0.84)),
+    rgba(255, 255, 255, 0.01);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
 }
 
 .landing-fact strong {
@@ -370,7 +373,10 @@ input::placeholder {
   padding: 1rem 1.05rem;
   border: 1px solid rgba(101, 224, 178, 0.14);
   border-radius: 1.3rem;
-  background: rgba(255, 255, 255, 0.025);
+  background:
+    linear-gradient(180deg, rgba(10, 16, 13, 0.95), rgba(10, 15, 12, 0.84)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
 }
 
 .landing-note-command {
@@ -403,8 +409,10 @@ input::placeholder {
 .principle-card {
   border: 1px solid var(--line);
   border-radius: 1.6rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 22px 60px var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(16, 22, 18, 0.96), rgba(11, 16, 13, 0.88)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(18px);
 }
 
@@ -549,7 +557,7 @@ input::placeholder {
   padding: 0.78rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: linear-gradient(180deg, rgba(15, 20, 17, 0.92), rgba(12, 17, 14, 0.82));
 }
 
 .poster-signal span {
@@ -699,9 +707,11 @@ input::placeholder {
   max-width: 30rem;
   margin-top: 0.15rem;
   padding: 1rem 1.05rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 132, 90, 0.14);
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.025);
+  background:
+    linear-gradient(180deg, rgba(20, 15, 14, 0.92), rgba(14, 12, 11, 0.84)),
+    rgba(255, 255, 255, 0.012);
 }
 
 .roadmap-stage-shell {
@@ -713,10 +723,12 @@ input::placeholder {
   display: grid;
   gap: 0.65rem;
   padding: 1.2rem 1.15rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(101, 224, 178, 0.16);
   border-radius: 1.45rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  background:
+    linear-gradient(180deg, rgba(11, 17, 14, 0.96), rgba(10, 15, 12, 0.88)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
 }
 
 .roadmap-stage-overview h3,
@@ -745,8 +757,8 @@ input::placeholder {
 .roadmap-overview-legend span {
   padding: 0.42rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 19, 16, 0.9);
   color: var(--muted-strong);
   font-family: var(--font-mono);
   font-size: 0.74rem;
@@ -769,10 +781,12 @@ input::placeholder {
   display: grid;
   gap: 0.7rem;
   padding: 1.2rem 1.05rem 1.15rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 1.4rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  background:
+    linear-gradient(180deg, rgba(15, 20, 17, 0.94), rgba(12, 17, 14, 0.86)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26);
 }
 
 .roadmap-stage-top {
@@ -843,11 +857,15 @@ input::placeholder {
 }
 
 .fit-card-main {
-  background: linear-gradient(180deg, rgba(216, 255, 97, 0.05), rgba(255, 255, 255, 0.018));
+  background:
+    linear-gradient(180deg, rgba(216, 255, 97, 0.05), rgba(14, 19, 16, 0.92)),
+    rgba(255, 255, 255, 0.012);
 }
 
 .fit-card-alt {
-  background: linear-gradient(180deg, rgba(255, 132, 90, 0.06), rgba(255, 255, 255, 0.018));
+  background:
+    linear-gradient(180deg, rgba(255, 132, 90, 0.05), rgba(14, 19, 16, 0.92)),
+    rgba(255, 255, 255, 0.012);
 }
 
 .landing-access {
@@ -866,10 +884,12 @@ input::placeholder {
   display: grid;
   gap: 0.6rem;
   padding: 1.15rem 1.05rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 1.4rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  background:
+    linear-gradient(180deg, rgba(14, 19, 16, 0.95), rgba(11, 15, 13, 0.86)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
 .access-step-card h3 {
@@ -927,10 +947,12 @@ input::placeholder {
   align-items: center;
   gap: 1rem;
   padding: 1.25rem 1.2rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(216, 255, 97, 0.14);
   border-radius: 1.6rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 22px 60px var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(12, 18, 14, 0.96), rgba(10, 15, 12, 0.88)),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(18px);
 }
 
