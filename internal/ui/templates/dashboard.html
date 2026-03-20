@@ -76,18 +76,13 @@
 
       <div class="dashboard-checkpoint-pills">
         {{range .Checkpoints}}
-          <form method="post" action="/dashboard/checkpoints" class="dashboard-checkpoint-form">
-            <input type="hidden" name="checkpoint" value="{{.Key}}">
-            <input type="hidden" name="done" value="{{if .Done}}0{{else}}1{{end}}">
-            <button
-              type="submit"
-              class="dashboard-checkpoint-pill {{if .Done}}is-done{{else}}is-pending{{end}}"
-              title="{{.Note}}"
-            >
-              <span class="dashboard-checkpoint-mark">{{if .Done}}done{{else}}todo{{end}}</span>
-              {{.Title}}
-            </button>
-          </form>
+          <div
+            class="dashboard-checkpoint-pill {{if .Done}}is-done{{else}}is-pending{{end}}"
+            title="{{.Note}}"
+          >
+            <span class="dashboard-checkpoint-mark">{{if .Done}}done{{else}}todo{{end}}</span>
+            {{.Title}}
+          </div>
         {{end}}
       </div>
     </article>

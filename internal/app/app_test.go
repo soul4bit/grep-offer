@@ -650,27 +650,46 @@ published: true
 
 Начинаем с базы.`
 	lessonTwo := `---
-title: "Файловая иерархия"
-slug: "linux-filesystem"
-summary: "Разбираем /etc, /var и компанию."
-badge: "linux"
+title: "Проверка Linux"
+slug: "linux-quiz"
+summary: "Короткий тест по блоку."
+badge: "test"
 stage: "Фундамент"
 module: "Фундамент"
 module_order: 1
 block_order: 2
-kind: "practice"
+kind: "test"
 published: true
 ---
 
-# Файловая иерархия
+# Проверка Linux
 
-Практика по структуре системы.`
+Отвечай без гугла.`
+	lessonThree := `---
+title: "Следующий блок"
+slug: "linux-next"
+summary: "Этот блок открывается только после теста."
+badge: "linux"
+stage: "Фундамент"
+module: "Фундамент"
+module_order: 1
+block_order: 3
+kind: "theory"
+published: true
+---
+
+# Следующий блок
+
+Продолжаем маршрут.`
 
 	if err := os.WriteFile(filepath.Join(contentDir, "01-history.md"), []byte(lessonOne), 0o644); err != nil {
 		t.Fatalf("write first lesson: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(contentDir, "02-filesystem.md"), []byte(lessonTwo), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(contentDir, "02-quiz.md"), []byte(lessonTwo), 0o644); err != nil {
 		t.Fatalf("write second lesson: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "03-next.md"), []byte(lessonThree), 0o644); err != nil {
+		t.Fatalf("write third lesson: %v", err)
 	}
 
 	testApp, st := newTestApp(t, testAppOptions{
@@ -690,53 +709,54 @@ published: true
 		t.Fatalf("create session: %v", err)
 	}
 
+	for i := 1; i <= 4; i++ {
+		if _, err := st.CreateLessonTestQuestion(
+			ctx,
+			"linux-quiz",
+			"Вопрос "+strconv.Itoa(i),
+			[]string{"правильный", "неправильный"},
+			0,
+			"",
+		); err != nil {
+			t.Fatalf("create lesson test question %d: %v", i, err)
+		}
+	}
+
 	client := server.Client()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 
-	indexRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn", nil)
+	lockedRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn/linux-next", nil)
 	if err != nil {
-		t.Fatalf("build learn request: %v", err)
+		t.Fatalf("build locked lesson request: %v", err)
 	}
-	indexRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	lockedRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
 
-	indexResponse, err := client.Do(indexRequest)
+	lockedResponse, err := client.Do(lockedRequest)
 	if err != nil {
-		t.Fatalf("learn request: %v", err)
+		t.Fatalf("locked lesson request: %v", err)
 	}
-	defer indexResponse.Body.Close()
+	defer lockedResponse.Body.Close()
 
-	if indexResponse.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected learn status: %d", indexResponse.StatusCode)
-	}
-
-	initialBody := readBody(t, indexResponse.Body)
-	if !strings.Contains(initialBody, "0 / 2") {
-		t.Fatalf("expected empty lesson progress: %s", initialBody)
+	if lockedResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected locked lesson status: %d", lockedResponse.StatusCode)
 	}
 
-	form := url.Values{
-		"lesson":    {"linux-history"},
-		"done":      {"1"},
-		"return_to": {"/learn/linux-history"},
-	}
-
-	progressRequest, err := http.NewRequest(http.MethodPost, server.URL+"/learn/progress", strings.NewReader(form.Encode()))
+	firstLessonRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn/linux-history", nil)
 	if err != nil {
-		t.Fatalf("build lesson progress request: %v", err)
+		t.Fatalf("build first lesson request: %v", err)
 	}
-	progressRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	progressRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	firstLessonRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
 
-	progressResponse, err := client.Do(progressRequest)
+	firstLessonResponse, err := client.Do(firstLessonRequest)
 	if err != nil {
-		t.Fatalf("lesson progress request: %v", err)
+		t.Fatalf("first lesson request: %v", err)
 	}
-	defer progressResponse.Body.Close()
+	defer firstLessonResponse.Body.Close()
 
-	if progressResponse.StatusCode != http.StatusSeeOther {
-		t.Fatalf("unexpected lesson progress status: %d", progressResponse.StatusCode)
+	if firstLessonResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected first lesson status: %d", firstLessonResponse.StatusCode)
 	}
 
 	progress, err := st.LessonProgress(ctx, user.ID)
@@ -744,7 +764,111 @@ published: true
 		t.Fatalf("load lesson progress: %v", err)
 	}
 	if !progress["linux-history"] {
-		t.Fatalf("expected lesson progress to persist")
+		t.Fatalf("expected first lesson to become read automatically")
+	}
+
+	quizRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn/linux-quiz", nil)
+	if err != nil {
+		t.Fatalf("build quiz request: %v", err)
+	}
+	quizRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	quizResponse, err := client.Do(quizRequest)
+	if err != nil {
+		t.Fatalf("quiz request: %v", err)
+	}
+	defer quizResponse.Body.Close()
+
+	if quizResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected quiz status: %d", quizResponse.StatusCode)
+	}
+
+	failForm := url.Values{
+		"question_1": {"1"},
+		"question_2": {"1"},
+		"question_3": {"1"},
+		"question_4": {"1"},
+	}
+
+	failRequest, err := http.NewRequest(http.MethodPost, server.URL+"/learn/tests/linux-quiz", strings.NewReader(failForm.Encode()))
+	if err != nil {
+		t.Fatalf("build fail test request: %v", err)
+	}
+	failRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	failRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	failResponse, err := client.Do(failRequest)
+	if err != nil {
+		t.Fatalf("fail test request: %v", err)
+	}
+	defer failResponse.Body.Close()
+
+	if failResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected fail test status: %d", failResponse.StatusCode)
+	}
+
+	secondLockedRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn/linux-next", nil)
+	if err != nil {
+		t.Fatalf("build second locked request: %v", err)
+	}
+	secondLockedRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	secondLockedResponse, err := client.Do(secondLockedRequest)
+	if err != nil {
+		t.Fatalf("second locked request: %v", err)
+	}
+	defer secondLockedResponse.Body.Close()
+
+	if secondLockedResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected next lesson to stay locked after failed test: %d", secondLockedResponse.StatusCode)
+	}
+
+	passForm := url.Values{
+		"question_1": {"0"},
+		"question_2": {"0"},
+		"question_3": {"0"},
+		"question_4": {"0"},
+	}
+
+	passRequest, err := http.NewRequest(http.MethodPost, server.URL+"/learn/tests/linux-quiz", strings.NewReader(passForm.Encode()))
+	if err != nil {
+		t.Fatalf("build pass test request: %v", err)
+	}
+	passRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	passRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	passResponse, err := client.Do(passRequest)
+	if err != nil {
+		t.Fatalf("pass test request: %v", err)
+	}
+	defer passResponse.Body.Close()
+
+	if passResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected pass test status: %d", passResponse.StatusCode)
+	}
+
+	testResults, err := st.LessonTestResults(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("load lesson test results: %v", err)
+	}
+	if !testResults["linux-quiz"].Passed {
+		t.Fatalf("expected quiz to become passed")
+	}
+
+	nextLessonRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn/linux-next", nil)
+	if err != nil {
+		t.Fatalf("build next lesson request: %v", err)
+	}
+	nextLessonRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	nextLessonResponse, err := client.Do(nextLessonRequest)
+	if err != nil {
+		t.Fatalf("next lesson request: %v", err)
+	}
+	defer nextLessonResponse.Body.Close()
+
+	if nextLessonResponse.StatusCode != http.StatusOK {
+		t.Fatalf("expected next lesson to unlock after passing test: %d", nextLessonResponse.StatusCode)
 	}
 
 	indexReloadRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn", nil)
@@ -760,11 +884,8 @@ published: true
 	defer indexReloadResponse.Body.Close()
 
 	reloadedBody := readBody(t, indexReloadResponse.Body)
-	if !strings.Contains(reloadedBody, "1 / 2") {
-		t.Fatalf("expected updated lesson progress on learn page: %s", reloadedBody)
-	}
-	if !strings.Contains(reloadedBody, "done") {
-		t.Fatalf("expected done state on learn page: %s", reloadedBody)
+	if !strings.Contains(reloadedBody, "1 / 1 тестов passed") {
+		t.Fatalf("expected test-based progress on learn page: %s", reloadedBody)
 	}
 
 	dashboardRequest, err := http.NewRequest(http.MethodGet, server.URL+"/dashboard", nil)
@@ -780,11 +901,102 @@ published: true
 	defer dashboardResponse.Body.Close()
 
 	dashboardBody := readBody(t, dashboardResponse.Body)
-	if !strings.Contains(dashboardBody, "1/2") {
-		t.Fatalf("expected lesson progress on dashboard: %s", dashboardBody)
+	if !strings.Contains(dashboardBody, "1/1") {
+		t.Fatalf("expected test progress on dashboard: %s", dashboardBody)
 	}
-	if !strings.Contains(dashboardBody, "Следующий блок") {
-		t.Fatalf("expected dashboard continue CTA for next lesson: %s", dashboardBody)
+	if !strings.Contains(dashboardBody, "Продолжить Linux") {
+		t.Fatalf("expected dashboard continue CTA: %s", dashboardBody)
+	}
+}
+
+func TestAdminCanCreateLessonTestQuestion(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	testLesson := `---
+title: "Проверка Linux"
+slug: "linux-quiz"
+summary: "Тест по базе."
+badge: "test"
+stage: "Фундамент"
+module: "Фундамент"
+module_order: 1
+block_order: 2
+kind: "test"
+published: true
+---
+
+# Проверка Linux
+
+Отвечай честно.`
+
+	if err := os.WriteFile(filepath.Join(contentDir, "quiz.md"), []byte(testLesson), 0o644); err != nil {
+		t.Fatalf("write test lesson: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-test-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	form := url.Values{
+		"lesson_slug":    {"linux-quiz"},
+		"prompt":         {"Где лежат системные логи?"},
+		"options":        {"/var/log\n/tmp\n/home"},
+		"correct_option": {"1"},
+		"explanation":    {"Потому что это стандартное место для логов."},
+	}
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/admin/tests/questions", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build admin test request: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("admin test request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected create test question status: %d", response.StatusCode)
+	}
+
+	questions, err := st.LessonTestQuestions(ctx, "linux-quiz")
+	if err != nil {
+		t.Fatalf("load created questions: %v", err)
+	}
+	if len(questions) != 1 {
+		t.Fatalf("unexpected question count: %d", len(questions))
+	}
+	if questions[0].Prompt != "Где лежат системные логи?" {
+		t.Fatalf("unexpected question prompt: %#v", questions[0])
 	}
 }
 

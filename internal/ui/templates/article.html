@@ -11,11 +11,11 @@
 
       <div class="lesson-sidebar-list">
         {{range .ModuleItems}}
-          <a class="lesson-sidebar-item {{if eq .Slug $.Article.Slug}}is-current{{end}} {{if .Done}}is-done{{end}}" href="/learn/{{.Slug}}">
+          <a class="lesson-sidebar-item {{if eq .Slug $.Article.Slug}}is-current{{end}} {{if .Read}}is-read{{end}} {{if .Locked}}is-locked{{end}}" href="{{if .Locked}}#{{else}}/learn/{{.Slug}}{{end}}">
             <span>{{.Index}}</span>
             <div>
               <strong>{{.Title}}</strong>
-              <small>{{.Kind}} {{if .Done}}• done{{end}}</small>
+              <small>{{.Kind}} {{if .Locked}}· locked{{else if .Complete}}· passed{{else if .Read}}· read{{end}}</small>
             </div>
           </a>
         {{end}}
@@ -34,26 +34,58 @@
 
         <div class="lesson-progress-row">
           <div class="lesson-progress-meta">
-            <span>{{.ModuleDoneCount}} / {{.ModuleTotalCount}} блоков модуля closed</span>
+            <span>{{.ModuleReadCount}} / {{.ModuleTotalCount}} блоков модуля уже прочитано</span>
             <div class="course-module-meter lesson-module-meter" aria-hidden="true">
               <span style="width: {{.ModulePercent}}%;"></span>
             </div>
           </div>
 
-          <form method="post" action="/learn/progress" class="lesson-progress-form">
-            <input type="hidden" name="lesson" value="{{.Slug}}">
-            <input type="hidden" name="done" value="{{if .Done}}0{{else}}1{{end}}">
-            <input type="hidden" name="return_to" value="/learn/{{.Slug}}">
-            <button type="submit" class="{{if .Done}}secondary-button{{else}}primary-button{{end}} lesson-progress-button">
-              {{if .Done}}Вернуть в work{{else}}Отметить блок done{{end}}
-            </button>
-          </form>
+          <div class="lesson-status-stack">
+            <span class="lesson-state-chip {{if .Passed}}is-done{{else if .Read}}is-read{{else}}is-pending{{end}}">
+              {{if .Passed}}passed{{else if .Read}}read{{else}}new{{end}}
+            </span>
+            {{if and .IsTest .TestResult}}
+              <small>{{.TestResult.AttemptsCount}} попыток · {{.TestResult.LastWrongAnswers}} ошибок в последнем прогоне</small>
+            {{end}}
+          </div>
         </div>
       </header>
 
       <div class="article-body prose">
         {{.HTML}}
       </div>
+
+      {{if .IsTest}}
+        <section class="lesson-quiz-card">
+          <div class="lesson-quiz-head">
+            <strong>Проверка блока</strong>
+            <span>Если ошибок больше 3, тест придется пройти заново.</span>
+          </div>
+
+          {{if .Quiz}}
+            <form method="post" action="/learn/tests/{{.Slug}}" class="lesson-quiz-form">
+              {{range .Quiz.Questions}}
+                {{$question := .}}
+                <fieldset class="lesson-quiz-question">
+                  <legend>{{.Prompt}}</legend>
+                  <div class="lesson-quiz-options">
+                    {{range .Options}}
+                      <label class="lesson-quiz-option">
+                        <input type="radio" name="question_{{$question.ID}}" value="{{.Index}}">
+                        <span>{{.Text}}</span>
+                      </label>
+                    {{end}}
+                  </div>
+                </fieldset>
+              {{end}}
+
+              <button class="primary-button" type="submit">Сдать тест</button>
+            </form>
+          {{else}}
+            <p class="lead">Вопросы сюда админ еще не загрузил.</p>
+          {{end}}
+        </section>
+      {{end}}
 
       <footer class="lesson-footer-nav">
         {{if .Prev}}

@@ -68,6 +68,8 @@ type ViewData struct {
 	Articles           []ArticleCard
 	Article            *ArticlePage
 	AdminUsers         []AdminUserRow
+	AdminTestLessons   []AdminLessonOption
+	AdminTestQuestions []AdminTestQuestionRow
 	DashboardStats     []DashboardStat
 	DashboardStages    []DashboardStage
 	DashboardFocus     DashboardFocus
@@ -93,24 +95,31 @@ type ArticleCard struct {
 	Badge       string
 	Stage       string
 	Module      string
+	KindKey     string
 	Kind        string
 	Index       string
 	ReadingTime string
-	Done        bool
+	Read        bool
+	Complete    bool
+	Locked      bool
 }
 
 type CourseModule struct {
-	Index      string
-	Title      string
-	Lessons    []ArticleCard
-	DoneCount  int
-	TotalCount int
-	Percent    int
+	Index       string
+	Title       string
+	Lessons     []ArticleCard
+	ReadCount   int
+	TotalCount  int
+	Percent     int
+	PassedCount int
+	TotalTests  int
 }
 
 type CourseProgressView struct {
-	DoneCount    int
-	TotalCount   int
+	ReadCount    int
+	TotalLessons int
+	PassedCount  int
+	TotalTests   int
 	Percent      int
 	NextSlug     string
 	NextTitle    string
@@ -130,6 +139,7 @@ type ArticlePage struct {
 	Badge            string
 	Stage            string
 	Module           string
+	KindKey          string
 	Kind             string
 	Index            string
 	ReadingTime      string
@@ -137,10 +147,15 @@ type ArticlePage struct {
 	Next             *ArticleNav
 	ModuleItems      []ArticleCard
 	HTML             template.HTML
-	Done             bool
-	ModuleDoneCount  int
+	Read             bool
+	Passed           bool
+	Locked           bool
+	ModuleReadCount  int
 	ModuleTotalCount int
 	ModulePercent    int
+	IsTest           bool
+	Quiz             *LessonQuizView
+	TestResult       *LessonTestResultView
 }
 
 type AdminUserRow struct {
@@ -151,6 +166,20 @@ type AdminUserRow struct {
 	IsBanned      bool
 	IsCurrentUser bool
 	CreatedLabel  string
+}
+
+type AdminLessonOption struct {
+	Slug  string
+	Title string
+}
+
+type AdminTestQuestionRow struct {
+	ID          int64
+	LessonSlug  string
+	LessonTitle string
+	Prompt      string
+	Options     []string
+	AnswerLabel string
 }
 
 type DashboardStat struct {
@@ -186,6 +215,27 @@ type DashboardFocus struct {
 	Percent        int
 	DoneCount      int
 	TotalCount     int
+}
+
+type LessonQuizView struct {
+	Questions []LessonQuizQuestionView
+}
+
+type LessonQuizQuestionView struct {
+	ID      int64
+	Prompt  string
+	Options []LessonQuizOptionView
+}
+
+type LessonQuizOptionView struct {
+	Index int
+	Text  string
+}
+
+type LessonTestResultView struct {
+	AttemptsCount    int
+	LastWrongAnswers int
+	Passed           bool
 }
 
 func New(st *store.Store, cfg Config) (*App, error) {
@@ -228,7 +278,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /", a.handleHome)
 	mux.HandleFunc("GET /learn", a.handleArticlesIndex)
 	mux.HandleFunc("GET /learn/{slug}", a.handleArticleShow)
-	mux.HandleFunc("POST /learn/progress", a.handleLessonProgressToggle)
+	mux.HandleFunc("POST /learn/tests/{slug}", a.handleLessonTestSubmit)
 	mux.HandleFunc("GET /articles", a.handleArticlesIndex)
 	mux.HandleFunc("GET /articles/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
@@ -237,6 +287,8 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
 	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
+	mux.HandleFunc("POST /admin/tests/questions", a.handleAdminTestQuestionCreate)
+	mux.HandleFunc("POST /admin/tests/questions/{id}/delete", a.handleAdminTestQuestionDelete)
 	mux.HandleFunc("GET /register", a.handleRegisterForm)
 	mux.HandleFunc("POST /register", a.handleRegisterSubmit)
 	mux.HandleFunc("GET /register/confirm", a.handleRegisterConfirm)
@@ -335,11 +387,26 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load course progress failed", http.StatusInternalServerError)
 		return
 	}
-	if courseProgress.TotalCount > 0 {
-		stats = append(stats, DashboardStat{
-			Value: formatProgress(courseProgress.DoneCount, courseProgress.TotalCount),
-			Label: "блоков Linux",
-		})
+	if courseProgress.TotalLessons > 0 {
+		stats = []DashboardStat{
+			{
+				Value: formatProgress(courseProgress.PassedCount, courseProgress.TotalTests),
+				Label: "тестов Linux",
+			},
+			{
+				Value: formatProgress(courseProgress.ReadCount, courseProgress.TotalLessons),
+				Label: "прочитано блоков",
+			},
+			{
+				Value: currentValueOrFallback(courseProgress.NextTitle, "маршрут закрыт"),
+				Label: "следующий блок",
+			},
+			{
+				Value: formatPercent(courseProgress.Percent),
+				Label: "прогресс Linux",
+			},
+		}
+		focus.Percent = courseProgress.Percent
 	}
 
 	data := ViewData{
@@ -885,6 +952,18 @@ func noticeFromRequest(r *http.Request) string {
 		return "Ссылка на сброс устарела или уже была использована."
 	case "password-reset-complete":
 		return "Пароль обновлен. Можно снова идти к офферу без старых секретов."
+	case "lesson-locked":
+		return "Сначала закрой предыдущий блок. Маршрут дальше не пускает."
+	case "test-missing":
+		return "Для этого теста пока не добавили вопросы. Админке пора проснуться."
+	case "test-passed":
+		return "Тест пройден. Следующий блок уже открыт."
+	case "test-retry":
+		return "Ошибок больше трех. Пересобирай фундамент и проходи тест заново."
+	case "test-question-created":
+		return "Вопрос для test-блока добавлен."
+	case "test-question-deleted":
+		return "Вопрос удален из test-блока."
 	default:
 		return ""
 	}
@@ -909,4 +988,13 @@ func normalizeAdminEmails(values []string) map[string]struct{} {
 	}
 
 	return index
+}
+
+func currentValueOrFallback(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value != "" {
+		return value
+	}
+
+	return fallback
 }

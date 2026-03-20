@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"grep-offer/internal/content"
 	"grep-offer/internal/store"
 )
 
@@ -36,9 +37,17 @@ func (a *App) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
+	if err != nil {
+		http.Error(w, "load tests failed", http.StatusInternalServerError)
+		return
+	}
+
 	a.render(w, r, http.StatusOK, "admin", ViewData{
-		Notice:     noticeFromRequest(r),
-		AdminUsers: rows,
+		Notice:             noticeFromRequest(r),
+		AdminUsers:         rows,
+		AdminTestLessons:   testLessons,
+		AdminTestQuestions: testQuestions,
 	})
 }
 
@@ -122,6 +131,82 @@ func (a *App) handleAdminUserDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
+func (a *App) handleAdminTestQuestionCreate(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	lessonSlug := strings.TrimSpace(r.FormValue("lesson_slug"))
+	prompt := strings.TrimSpace(r.FormValue("prompt"))
+	options := splitAdminOptions(r.FormValue("options"))
+	correctValue := strings.TrimSpace(r.FormValue("correct_option"))
+	explanation := strings.TrimSpace(r.FormValue("explanation"))
+
+	if lessonSlug == "" || prompt == "" {
+		http.Error(w, "lesson and prompt are required", http.StatusBadRequest)
+		return
+	}
+	if len(options) < 2 {
+		http.Error(w, "at least two answer options are required", http.StatusBadRequest)
+		return
+	}
+
+	correctOption, err := strconv.Atoi(correctValue)
+	if err != nil || correctOption < 1 || correctOption > len(options) {
+		http.Error(w, "invalid correct option", http.StatusBadRequest)
+		return
+	}
+
+	lesson, err := a.adminTestLessonBySlug(r.Context(), lessonSlug)
+	if err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "load lesson failed", http.StatusInternalServerError)
+		return
+	}
+	if lesson.Kind != "test" {
+		http.Error(w, "questions can only be added to test lessons", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := a.store.CreateLessonTestQuestion(r.Context(), lessonSlug, prompt, options, correctOption-1, explanation); err != nil {
+		http.Error(w, "create test question failed", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?notice=test-question-created", http.StatusSeeOther)
+}
+
+func (a *App) handleAdminTestQuestionDelete(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	questionID, err := strconv.ParseInt(strings.TrimSpace(r.PathValue("id")), 10, 64)
+	if err != nil || questionID <= 0 {
+		http.Error(w, "invalid question id", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.store.DeleteLessonTestQuestion(r.Context(), questionID); err != nil {
+		if errors.Is(err, store.ErrLessonTestQuestionNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "delete test question failed", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?notice=test-question-deleted", http.StatusSeeOther)
+}
+
 func (a *App) requireAdmin(w http.ResponseWriter, r *http.Request) *store.User {
 	user := a.currentUser(r)
 	if user == nil {
@@ -184,4 +269,100 @@ func parseAdminBool(value string) (bool, bool) {
 	default:
 		return false, false
 	}
+}
+
+func (a *App) loadAdminTests(ctx context.Context) ([]AdminLessonOption, []AdminTestQuestionRow, error) {
+	lessonMap, testLessons, err := a.adminTestLessons(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	questions, err := a.store.ListLessonTestQuestions(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rows := make([]AdminTestQuestionRow, 0, len(questions))
+	for _, question := range questions {
+		lessonTitle := question.LessonSlug
+		if lesson, ok := lessonMap[question.LessonSlug]; ok {
+			lessonTitle = formatLessonIndex(lesson.ModuleOrder, lesson.BlockOrder) + " " + lesson.Title
+		}
+
+		answerLabel := ""
+		if question.CorrectOption >= 0 && question.CorrectOption < len(question.Options) {
+			answerLabel = strconv.Itoa(question.CorrectOption+1) + ". " + question.Options[question.CorrectOption]
+		}
+
+		rows = append(rows, AdminTestQuestionRow{
+			ID:          question.ID,
+			LessonSlug:  question.LessonSlug,
+			LessonTitle: strings.TrimSpace(lessonTitle),
+			Prompt:      question.Prompt,
+			Options:     question.Options,
+			AnswerLabel: answerLabel,
+		})
+	}
+
+	return testLessons, rows, nil
+}
+
+func (a *App) adminTestLessons(ctx context.Context) (map[string]content.ArticleMeta, []AdminLessonOption, error) {
+	lessonMap := make(map[string]content.ArticleMeta)
+	if a.articles == nil {
+		return lessonMap, nil, nil
+	}
+
+	articles, err := a.articles.List()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	options := make([]AdminLessonOption, 0, len(articles))
+	for _, article := range articles {
+		if article.Kind != "test" {
+			continue
+		}
+
+		lessonMap[article.Slug] = article
+		options = append(options, AdminLessonOption{
+			Slug:  article.Slug,
+			Title: formatLessonIndex(article.ModuleOrder, article.BlockOrder) + " " + article.Title,
+		})
+	}
+
+	return lessonMap, options, nil
+}
+
+func (a *App) adminTestLessonBySlug(ctx context.Context, slug string) (*content.ArticleMeta, error) {
+	if a.articles == nil {
+		return nil, content.ErrArticleNotFound
+	}
+
+	articles, err := a.articles.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, article := range articles {
+		if article.Slug == strings.TrimSpace(slug) {
+			return &article, nil
+		}
+	}
+
+	return nil, content.ErrArticleNotFound
+}
+
+func splitAdminOptions(raw string) []string {
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	options := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		options = append(options, trimmed)
+	}
+
+	return options
 }

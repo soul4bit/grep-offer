@@ -4,14 +4,15 @@
 <section class="content-hero course-hero course-hero-split">
   <div>
     <div class="eyebrow">linux base</div>
-    <h1 class="section-title">Стартуем с Linux-базы и идем по блокам, а не по хаосу вкладок.</h1>
-    <p class="lead">Здесь теория, практика и домашки собраны в один маршрут. Открыл урок, сделал руками, пошел дальше.</p>
+    <h1 class="section-title">Идем по маршруту последовательно: прочитал блок, закрыл тест, открыл следующий.</h1>
+    <p class="lead">Статьи отмечаются как прочитанные сами. Процент растет только за пройденные test-блоки.</p>
   </div>
 
   <aside class="course-progress-summary">
     <div class="course-progress-summary-head">
       <span class="card-kicker">progress</span>
-      <strong>{{.CourseProgress.DoneCount}} / {{.CourseProgress.TotalCount}} блоков closed</strong>
+      <strong>{{.CourseProgress.PassedCount}} / {{.CourseProgress.TotalTests}} тестов passed</strong>
+      <small>{{.CourseProgress.ReadCount}} / {{.CourseProgress.TotalLessons}} блоков уже прочитано</small>
     </div>
 
     <div class="dashboard-progress-track course-progress-track" aria-hidden="true">
@@ -20,7 +21,7 @@
 
     {{if .CourseProgress.NextSlug}}
       <a class="secondary-button" href="{{.CourseProgress.ContinueHref}}">Продолжить: {{.CourseProgress.NextTitle}}</a>
-    {{else if gt .CourseProgress.TotalCount 0}}
+    {{else if gt .CourseProgress.TotalLessons 0}}
       <a class="secondary-button" href="/learn">Маршрут закрыт, можно повторить</a>
     {{end}}
   </aside>
@@ -34,7 +35,7 @@
           <span class="course-module-index">{{.Index}}</span>
           <div>
             <h2>{{.Title}}</h2>
-            <p>{{.DoneCount}} / {{.TotalCount}} блоков closed</p>
+            <p>{{.ReadCount}} / {{.TotalCount}} прочитано{{if gt .TotalTests 0}} · {{.PassedCount}} / {{.TotalTests}} тестов passed{{end}}</p>
           </div>
         </div>
 
@@ -48,12 +49,14 @@
 
       <div class="course-lesson-list">
         {{range .Lessons}}
-          <a class="course-lesson-card {{if .Done}}is-done{{end}}" href="/learn/{{.Slug}}">
+          <a class="course-lesson-card {{if .Read}}is-read{{end}} {{if .Locked}}is-locked{{end}}" href="{{if .Locked}}#{{else}}/learn/{{.Slug}}{{end}}">
             <div class="course-lesson-top">
               <span class="course-lesson-index">{{.Index}}</span>
               <div class="course-lesson-badges">
                 <span class="roadmap-stage-badge">{{.Kind}}</span>
-                <span class="lesson-state-chip {{if .Done}}is-done{{else}}is-pending{{end}}">{{if .Done}}done{{else}}todo{{end}}</span>
+                <span class="lesson-state-chip {{if .Locked}}is-locked{{else if .Complete}}is-done{{else if .Read}}is-read{{else}}is-pending{{end}}">
+                  {{if .Locked}}locked{{else if .Complete}}passed{{else if .Read}}read{{else}}new{{end}}
+                </span>
               </div>
             </div>
             <strong>{{.Title}}</strong>

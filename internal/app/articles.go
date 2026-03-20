@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"grep-offer/internal/content"
 	"grep-offer/internal/store"
 )
+
+const lessonTestMaxWrongAnswers = 3
 
 func (a *App) handleArticlesIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/articles" {
@@ -22,29 +25,16 @@ func (a *App) handleArticlesIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if a.articles == nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	modules, err := a.articles.Curriculum()
+	state, err := a.loadCourseState(r.Context(), user.ID)
 	if err != nil {
 		http.Error(w, "load curriculum failed", http.StatusInternalServerError)
 		return
 	}
 
-	progress, err := a.loadLessonProgress(r.Context(), user.ID)
-	if err != nil {
-		http.Error(w, "load lesson progress failed", http.StatusInternalServerError)
-		return
-	}
-
-	viewModules, courseProgress := mapCourseModules(modules, progress)
-
 	a.render(w, r, http.StatusOK, "articles", ViewData{
 		Notice:         noticeFromRequest(r),
-		CourseModules:  viewModules,
-		CourseProgress: courseProgress,
+		CourseModules:  state.Modules,
+		CourseProgress: state.Progress,
 	})
 }
 
@@ -63,15 +53,8 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login?notice=login-required", http.StatusSeeOther)
 		return
 	}
-
 	if a.articles == nil {
 		http.NotFound(w, r)
-		return
-	}
-
-	progress, err := a.loadLessonProgress(r.Context(), user.ID)
-	if err != nil {
-		http.Error(w, "load lesson progress failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -86,32 +69,80 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := &ArticlePage{
-		Title:       lesson.Title,
-		Slug:        lesson.Slug,
-		Summary:     lesson.Summary,
-		Badge:       lesson.Badge,
-		Stage:       lesson.Stage,
-		Module:      lesson.Module.Title,
-		Kind:        lesson.Kind,
-		Index:       formatLessonIndex(lesson.ModuleOrder, lesson.BlockOrder),
-		ReadingTime: lesson.ReadingTime,
-		HTML:        lesson.HTML,
-		ModuleItems: make([]ArticleCard, 0, len(lesson.ModuleItems)),
-		Done:        progress[lesson.Slug],
+	state, err := a.loadCourseState(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load course state failed", http.StatusInternalServerError)
+		return
 	}
 
-	for _, item := range lesson.ModuleItems {
-		done := progress[item.Slug]
-		page.ModuleItems = append(page.ModuleItems, mapArticleCard(item, done))
-		page.ModuleTotalCount++
-		if done {
-			page.ModuleDoneCount++
+	lessonState, ok := state.LessonIndex[lesson.Slug]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if lessonState.Locked {
+		http.Redirect(w, r, state.Progress.ContinueHref+"?notice=lesson-locked", http.StatusSeeOther)
+		return
+	}
+
+	if !lessonState.Read {
+		if err := a.store.SetLessonProgress(r.Context(), user.ID, lesson.Slug, true); err != nil {
+			http.Error(w, "save lesson read state failed", http.StatusInternalServerError)
+			return
 		}
+
+		state, err = a.loadCourseState(r.Context(), user.ID)
+		if err != nil {
+			http.Error(w, "reload course state failed", http.StatusInternalServerError)
+			return
+		}
+		lessonState = state.LessonIndex[lesson.Slug]
 	}
-	if page.ModuleTotalCount > 0 {
-		page.ModulePercent = page.ModuleDoneCount * 100 / page.ModuleTotalCount
+
+	var quizView *LessonQuizView
+	if lesson.Kind == "test" {
+		questions, err := a.store.LessonTestQuestions(r.Context(), lesson.Slug)
+		if err != nil {
+			http.Error(w, "load lesson quiz failed", http.StatusInternalServerError)
+			return
+		}
+		quizView = buildLessonQuizView(questions)
 	}
+
+	page := &ArticlePage{
+		Title:            lesson.Title,
+		Slug:             lesson.Slug,
+		Summary:          lesson.Summary,
+		Badge:            lesson.Badge,
+		Stage:            lesson.Stage,
+		Module:           lesson.Module.Title,
+		KindKey:          lesson.Kind,
+		Kind:             lessonKindLabel(lesson.Kind),
+		Index:            formatLessonIndex(lesson.ModuleOrder, lesson.BlockOrder),
+		ReadingTime:      lesson.ReadingTime,
+		HTML:             lesson.HTML,
+		ModuleItems:      make([]ArticleCard, 0, len(lesson.ModuleItems)),
+		Read:             lessonState.Read,
+		Passed:           lessonState.Passed,
+		ModuleTotalCount: len(lesson.ModuleItems),
+		IsTest:           lesson.Kind == "test",
+		Quiz:             quizView,
+		TestResult: &LessonTestResultView{
+			AttemptsCount:    lessonState.TestResult.AttemptsCount,
+			LastWrongAnswers: lessonState.TestResult.LastWrongAnswers,
+			Passed:           lessonState.TestResult.Passed,
+		},
+	}
+
+	moduleState := findModuleState(state.Modules, lesson.Module.Title)
+	page.ModuleReadCount = moduleState.ReadCount
+	page.ModulePercent = moduleState.Percent
+
+	for _, item := range lesson.ModuleItems {
+		cardState := state.LessonIndex[item.Slug]
+		page.ModuleItems = append(page.ModuleItems, mapCourseArticleCard(item, cardState))
+	}
+
 	if lesson.Prev != nil {
 		page.Prev = &ArticleNav{
 			Title: lesson.Prev.Title,
@@ -120,10 +151,13 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if lesson.Next != nil {
-		page.Next = &ArticleNav{
-			Title: lesson.Next.Title,
-			Slug:  lesson.Next.Slug,
-			Index: formatLessonIndex(lesson.Next.ModuleOrder, lesson.Next.BlockOrder),
+		nextState := state.LessonIndex[lesson.Next.Slug]
+		if !nextState.Locked {
+			page.Next = &ArticleNav{
+				Title: lesson.Next.Title,
+				Slug:  lesson.Next.Slug,
+				Index: formatLessonIndex(lesson.Next.ModuleOrder, lesson.Next.BlockOrder),
+			}
 		}
 	}
 
@@ -133,29 +167,18 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *App) handleLessonProgressToggle(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleLessonTestSubmit(w http.ResponseWriter, r *http.Request) {
 	user := a.requireSignedInUser(w, r)
 	if user == nil {
 		return
 	}
-
 	if a.articles == nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
-		return
-	}
-
-	lessonSlug := strings.TrimSpace(r.FormValue("lesson"))
-	if lessonSlug == "" {
-		http.Error(w, "lesson is required", http.StatusBadRequest)
-		return
-	}
-
-	if _, err := a.articles.LessonBySlug(lessonSlug); err != nil {
+	lesson, err := a.articles.LessonBySlug(r.PathValue("slug"))
+	if err != nil {
 		if errors.Is(err, content.ErrArticleNotFound) {
 			http.NotFound(w, r)
 			return
@@ -164,25 +187,66 @@ func (a *App) handleLessonProgressToggle(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "load lesson failed", http.StatusInternalServerError)
 		return
 	}
-
-	doneValue := r.FormValue("done")
-	var done bool
-	switch doneValue {
-	case "1":
-		done = true
-	case "0":
-		done = false
-	default:
-		http.Error(w, "invalid lesson state", http.StatusBadRequest)
+	if lesson.Kind != "test" {
+		http.Error(w, "lesson has no test", http.StatusBadRequest)
 		return
 	}
 
-	if err := a.store.SetLessonProgress(r.Context(), user.ID, lessonSlug, done); err != nil {
-		http.Error(w, "save lesson progress failed", http.StatusInternalServerError)
+	state, err := a.loadCourseState(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load course state failed", http.StatusInternalServerError)
+		return
+	}
+	lessonState, ok := state.LessonIndex[lesson.Slug]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if lessonState.Locked {
+		http.Redirect(w, r, state.Progress.ContinueHref+"?notice=lesson-locked", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, safeLearnRedirect(r.FormValue("return_to"), lessonSlug), http.StatusSeeOther)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	questions, err := a.store.LessonTestQuestions(r.Context(), lesson.Slug)
+	if err != nil {
+		http.Error(w, "load lesson quiz failed", http.StatusInternalServerError)
+		return
+	}
+	if len(questions) == 0 {
+		http.Redirect(w, r, "/learn/"+lesson.Slug+"?notice=test-missing", http.StatusSeeOther)
+		return
+	}
+
+	wrongAnswers := 0
+	for _, question := range questions {
+		answerValue := strings.TrimSpace(r.FormValue(testAnswerFieldName(question.ID)))
+		answerIndex, err := strconv.Atoi(answerValue)
+		if err != nil || answerIndex != question.CorrectOption {
+			wrongAnswers++
+		}
+	}
+
+	passed := wrongAnswers <= lessonTestMaxWrongAnswers
+	if err := a.store.SetLessonProgress(r.Context(), user.ID, lesson.Slug, true); err != nil {
+		http.Error(w, "save lesson read state failed", http.StatusInternalServerError)
+		return
+	}
+	if err := a.store.UpsertLessonTestResult(r.Context(), user.ID, lesson.Slug, wrongAnswers, passed); err != nil {
+		http.Error(w, "save lesson test result failed", http.StatusInternalServerError)
+		return
+	}
+
+	if passed {
+		http.Redirect(w, r, "/learn/"+lesson.Slug+"?notice=test-passed", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/learn/"+lesson.Slug+"?notice=test-retry", http.StatusSeeOther)
 }
 
 func (a *App) loadFeaturedArticles(limit int) ([]ArticleCard, error) {
@@ -201,7 +265,18 @@ func (a *App) loadFeaturedArticles(limit int) ([]ArticleCard, error) {
 
 	cards := make([]ArticleCard, 0, len(articles))
 	for _, article := range articles {
-		cards = append(cards, mapArticleCard(article, false))
+		cards = append(cards, ArticleCard{
+			Title:       article.Title,
+			Slug:        article.Slug,
+			Summary:     article.Summary,
+			Badge:       article.Badge,
+			Stage:       article.Stage,
+			Module:      article.Module,
+			KindKey:     article.Kind,
+			Kind:        lessonKindLabel(article.Kind),
+			Index:       formatLessonIndex(article.ModuleOrder, article.BlockOrder),
+			ReadingTime: article.ReadingTime,
+		})
 	}
 
 	return cards, nil
@@ -216,87 +291,15 @@ func (a *App) loadLessonProgress(ctx context.Context, userID int64) (map[string]
 }
 
 func (a *App) loadCourseOverview(ctx context.Context, userID int64) (CourseProgressView, error) {
-	summary := CourseProgressView{
-		ContinueHref: "/learn",
-	}
-	if a.articles == nil {
-		return summary, nil
-	}
-
-	modules, err := a.articles.Curriculum()
+	state, err := a.loadCourseState(ctx, userID)
 	if err != nil {
-		return summary, err
+		return CourseProgressView{}, err
 	}
 
-	progress, err := a.loadLessonProgress(ctx, userID)
-	if err != nil {
-		return summary, err
-	}
-
-	_, summary = mapCourseModules(modules, progress)
-	return summary, nil
+	return state.Progress, nil
 }
 
-func mapCourseModules(modules []content.Module, progress map[string]bool) ([]CourseModule, CourseProgressView) {
-	viewModules := make([]CourseModule, 0, len(modules))
-	summary := CourseProgressView{
-		ContinueHref: "/learn",
-	}
-
-	for _, module := range modules {
-		viewModule := mapCourseModule(module, progress)
-		viewModules = append(viewModules, viewModule)
-
-		summary.DoneCount += viewModule.DoneCount
-		summary.TotalCount += viewModule.TotalCount
-
-		if summary.NextSlug != "" {
-			continue
-		}
-
-		for _, lesson := range viewModule.Lessons {
-			if lesson.Done {
-				continue
-			}
-
-			summary.NextSlug = lesson.Slug
-			summary.NextTitle = lesson.Title
-			summary.ContinueHref = "/learn/" + lesson.Slug
-			break
-		}
-	}
-
-	if summary.TotalCount > 0 {
-		summary.Percent = summary.DoneCount * 100 / summary.TotalCount
-	}
-
-	return viewModules, summary
-}
-
-func mapCourseModule(module content.Module, progress map[string]bool) CourseModule {
-	viewModule := CourseModule{
-		Index:   module.Index,
-		Title:   module.Title,
-		Lessons: make([]ArticleCard, 0, len(module.Lessons)),
-	}
-
-	for _, lesson := range module.Lessons {
-		done := progress[lesson.Slug]
-		viewModule.Lessons = append(viewModule.Lessons, mapArticleCard(lesson, done))
-		viewModule.TotalCount++
-		if done {
-			viewModule.DoneCount++
-		}
-	}
-
-	if viewModule.TotalCount > 0 {
-		viewModule.Percent = viewModule.DoneCount * 100 / viewModule.TotalCount
-	}
-
-	return viewModule
-}
-
-func mapArticleCard(article content.ArticleMeta, done bool) ArticleCard {
+func mapCourseArticleCard(article content.ArticleMeta, state courseLessonState) ArticleCard {
 	return ArticleCard{
 		Title:       article.Title,
 		Slug:        article.Slug,
@@ -304,24 +307,54 @@ func mapArticleCard(article content.ArticleMeta, done bool) ArticleCard {
 		Badge:       article.Badge,
 		Stage:       article.Stage,
 		Module:      article.Module,
+		KindKey:     article.Kind,
 		Kind:        lessonKindLabel(article.Kind),
 		Index:       formatLessonIndex(article.ModuleOrder, article.BlockOrder),
 		ReadingTime: article.ReadingTime,
-		Done:        done,
+		Read:        state.Read,
+		Complete:    state.Complete,
+		Locked:      state.Locked,
 	}
 }
 
-func safeLearnRedirect(value, lessonSlug string) string {
-	value = strings.TrimSpace(value)
-	if strings.HasPrefix(value, "/learn") && !strings.HasPrefix(value, "//") {
-		return value
+func findModuleState(modules []CourseModule, title string) CourseModule {
+	for _, module := range modules {
+		if module.Title == title {
+			return module
+		}
 	}
 
-	if lessonSlug != "" {
-		return "/learn/" + lessonSlug
+	return CourseModule{}
+}
+
+func buildLessonQuizView(questions []store.LessonTestQuestion) *LessonQuizView {
+	if len(questions) == 0 {
+		return nil
 	}
 
-	return "/learn"
+	view := &LessonQuizView{
+		Questions: make([]LessonQuizQuestionView, 0, len(questions)),
+	}
+	for _, question := range questions {
+		item := LessonQuizQuestionView{
+			ID:      question.ID,
+			Prompt:  question.Prompt,
+			Options: make([]LessonQuizOptionView, 0, len(question.Options)),
+		}
+		for index, option := range question.Options {
+			item.Options = append(item.Options, LessonQuizOptionView{
+				Index: index,
+				Text:  option,
+			})
+		}
+		view.Questions = append(view.Questions, item)
+	}
+
+	return view
+}
+
+func testAnswerFieldName(questionID int64) string {
+	return "question_" + strconv.FormatInt(questionID, 10)
 }
 
 func formatLessonIndex(moduleOrder, blockOrder int) string {

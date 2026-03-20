@@ -109,6 +109,28 @@ func (s *Store) Init(ctx context.Context) error {
 			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id);`,
+		`CREATE TABLE IF NOT EXISTS lesson_test_questions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			lesson_slug TEXT NOT NULL,
+			prompt TEXT NOT NULL,
+			options_json TEXT NOT NULL,
+			correct_option INTEGER NOT NULL,
+			explanation TEXT NOT NULL DEFAULT '',
+			order_index INTEGER NOT NULL DEFAULT 0,
+			created_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_lesson_test_questions_lesson_slug ON lesson_test_questions(lesson_slug, order_index, id);`,
+		`CREATE TABLE IF NOT EXISTS user_lesson_test_results (
+			user_id INTEGER NOT NULL,
+			lesson_slug TEXT NOT NULL,
+			attempts_count INTEGER NOT NULL DEFAULT 0,
+			last_wrong_answers INTEGER NOT NULL DEFAULT 0,
+			passed INTEGER NOT NULL DEFAULT 0,
+			updated_at INTEGER NOT NULL,
+			PRIMARY KEY (user_id, lesson_slug),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_lesson_test_results_user_id ON user_lesson_test_results(user_id);`,
 	}
 
 	for _, statement := range statements {

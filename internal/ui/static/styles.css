@@ -3298,6 +3298,11 @@ button.dashboard-checkpoint-pill {
   line-height: 1.35;
 }
 
+.course-progress-summary-head small {
+  color: rgba(243, 239, 227, 0.66);
+  font-size: 0.9rem;
+}
+
 .course-progress-track {
   min-height: 0.8rem;
 }
@@ -3407,11 +3412,18 @@ button.dashboard-checkpoint-pill {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
-.course-lesson-card.is-done {
+.course-lesson-card.is-read {
   border-color: rgba(215, 255, 100, 0.24);
   background:
     linear-gradient(180deg, rgba(215, 255, 100, 0.055), rgba(255, 255, 255, 0.015)),
     rgba(6, 10, 8, 0.92);
+}
+
+.course-lesson-card.is-locked,
+.lesson-sidebar-item.is-locked {
+  opacity: 0.54;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .course-lesson-card:hover,
@@ -3469,9 +3481,20 @@ button.dashboard-checkpoint-pill {
   color: var(--accent);
 }
 
+.lesson-state-chip.is-read {
+  border-color: rgba(243, 239, 227, 0.12);
+  background: rgba(243, 239, 227, 0.06);
+  color: var(--text);
+}
+
 .lesson-state-chip.is-pending {
   border-color: rgba(255, 122, 89, 0.18);
   color: rgba(243, 239, 227, 0.72);
+}
+
+.lesson-state-chip.is-locked {
+  border-color: rgba(243, 239, 227, 0.08);
+  color: rgba(243, 239, 227, 0.5);
 }
 
 .lesson-layout {
@@ -3514,7 +3537,7 @@ button.dashboard-checkpoint-pill {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
-.lesson-sidebar-item.is-done {
+.lesson-sidebar-item.is-read {
   border-color: rgba(215, 255, 100, 0.18);
 }
 
@@ -3560,6 +3583,140 @@ button.dashboard-checkpoint-pill {
   min-width: 220px;
 }
 
+.lesson-status-stack {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.lesson-status-stack small {
+  color: rgba(243, 239, 227, 0.66);
+  font-size: 0.82rem;
+}
+
+.lesson-quiz-card {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.35rem;
+  border: 1px solid rgba(215, 255, 100, 0.12);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.01)),
+    rgba(7, 11, 9, 0.94);
+}
+
+.lesson-quiz-head {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.lesson-quiz-head span {
+  color: rgba(243, 239, 227, 0.66);
+  font-size: 0.92rem;
+}
+
+.lesson-quiz-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.lesson-quiz-question {
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 18px;
+}
+
+.lesson-quiz-question legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lesson-quiz-options {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+}
+
+.lesson-quiz-option {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+  color: rgba(243, 239, 227, 0.88);
+}
+
+.lesson-quiz-option input {
+  margin-top: 0.18rem;
+}
+
+.admin-test-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.admin-test-form-card,
+.admin-test-question-card {
+  padding: 1.2rem;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 24px;
+  background: rgba(8, 12, 10, 0.92);
+}
+
+.admin-test-form-card h2,
+.admin-test-question-card p,
+.admin-test-question-card strong {
+  margin-top: 0;
+}
+
+.admin-test-form {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.admin-test-form .field {
+  gap: 0.45rem;
+}
+
+.admin-test-form select,
+.admin-test-form textarea,
+.admin-test-form input {
+  width: 100%;
+}
+
+.admin-test-question-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-test-question-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.admin-test-question-head span,
+.admin-test-answer {
+  color: rgba(243, 239, 227, 0.66);
+  font-size: 0.9rem;
+}
+
+.admin-test-question-prompt {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.admin-test-option-list {
+  margin: 0 0 0.8rem;
+  padding-left: 1.2rem;
+  color: rgba(243, 239, 227, 0.82);
+}
+
 .lesson-footer-nav {
   display: flex;
   justify-content: space-between;
@@ -3589,10 +3746,12 @@ button.dashboard-checkpoint-pill {
     grid-template-columns: 1fr;
   }
 
+  .admin-test-grid,
   .course-module-head-rich,
   .course-module-title-group,
   .lesson-progress-row {
     align-items: stretch;
+    grid-template-columns: 1fr;
     flex-direction: column;
   }
 

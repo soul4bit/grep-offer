@@ -4,8 +4,8 @@
 <section class="admin-hero">
   <div>
     <div class="eyebrow">админка</div>
-    <h1 class="section-title">Пользователи и доступы без цирка.</h1>
-    <p class="lead">Список пользователей, бан, выдача админки и удаление аккаунта.</p>
+    <h1 class="section-title">Пользователи, тесты и контроль без цирка.</h1>
+    <p class="lead">Здесь живут бан, выдача админки и вопросы для test-блоков.</p>
   </div>
 </section>
 
@@ -59,6 +59,83 @@
         <p>Как только появятся пользователи, они будут здесь.</p>
       </article>
     {{end}}
+  </div>
+</section>
+
+<section class="admin-table-shell">
+  <div class="admin-table-head">
+    <strong>Вопросы для test-блоков</strong>
+    <span>{{len .AdminTestQuestions}} вопросов</span>
+  </div>
+
+  <div class="admin-test-grid">
+    <article class="admin-test-form-card">
+      <h2>Добавить вопрос</h2>
+      <form method="post" action="/admin/tests/questions" class="admin-test-form">
+        <label class="field">
+          <span>Тестовый урок</span>
+          <select name="lesson_slug" required>
+            <option value="">Выбери test-блок</option>
+            {{range .AdminTestLessons}}
+              <option value="{{.Slug}}">{{.Title}}</option>
+            {{end}}
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Вопрос</span>
+          <textarea name="prompt" rows="4" required placeholder="Например: Где смотреть логи текущего boot?"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Варианты ответа</span>
+          <textarea name="options" rows="6" required placeholder="Один вариант на строку"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Номер правильного ответа</span>
+          <input type="number" name="correct_option" min="1" required placeholder="1">
+        </label>
+
+        <label class="field">
+          <span>Пояснение</span>
+          <textarea name="explanation" rows="3" placeholder="Опционально: почему этот ответ правильный"></textarea>
+        </label>
+
+        <button class="primary-button" type="submit">Добавить вопрос</button>
+      </form>
+    </article>
+
+    <div class="admin-test-question-list">
+      {{range .AdminTestQuestions}}
+        <article class="admin-test-question-card">
+          <div class="admin-test-question-head">
+            <div>
+              <strong>{{.LessonTitle}}</strong>
+              <span>{{.LessonSlug}}</span>
+            </div>
+            <form method="post" action="/admin/tests/questions/{{.ID}}/delete">
+              <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
+            </form>
+          </div>
+
+          <p class="admin-test-question-prompt">{{.Prompt}}</p>
+
+          <ul class="admin-test-option-list">
+            {{range .Options}}
+              <li>{{.}}</li>
+            {{end}}
+          </ul>
+
+          <div class="admin-test-answer">Правильный ответ: {{.AnswerLabel}}</div>
+        </article>
+      {{else}}
+        <article class="article-card article-card-empty">
+          <h2>Пока без вопросов</h2>
+          <p>Добавь первый набор ответов для test-блока, и уроки начнут реально пропускать дальше.</p>
+        </article>
+      {{end}}
+    </div>
   </div>
 </section>
 {{end}}
