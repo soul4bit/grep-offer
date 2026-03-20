@@ -87,7 +87,7 @@ jobs:
             exit 1
           fi
 
-          if ! sudo -n "$SYSTEMCTL_BIN" is-active --quiet "$APP_NAME"; then
+          if ! sudo -n "$SYSTEMCTL_BIN" is-active "$APP_NAME" >/dev/null; then
             rollback
             echo "service is not active after restart: $APP_NAME" >&2
             exit 1
