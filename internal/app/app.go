@@ -89,6 +89,7 @@ type DashboardStage struct {
 }
 
 type DashboardCheckpoint struct {
+	Key   string
 	Title string
 	Note  string
 	Done  bool
@@ -130,6 +131,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /", a.handleHome)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
+	mux.HandleFunc("POST /dashboard/checkpoints", a.handleDashboardCheckpointToggle)
 	mux.HandleFunc("GET /register", a.handleRegisterForm)
 	mux.HandleFunc("POST /register", a.handleRegisterSubmit)
 	mux.HandleFunc("GET /register/confirm", a.handleRegisterConfirm)
@@ -195,7 +197,12 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, focus, stages := buildDashboardView()
+	stats, focus, stages, err := a.loadDashboardView(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load dashboard failed", http.StatusInternalServerError)
+		return
+	}
+
 	data := ViewData{
 		CurrentUser:     user,
 		Notice:          noticeFromRequest(r),
@@ -655,6 +662,8 @@ func noticeFromRequest(r *http.Request) string {
 		return "Ссылка подтверждения устарела или уже недействительна."
 	case "logged-in":
 		return "Сессия активна. Продолжаем путь к офферу."
+	case "progress-saved":
+		return "Прогресс обновлен. Теперь это уже твоя карта пути, а не демо-заготовка."
 	case "logged-out":
 		return "Сессия завершена. Никаких хвостов в проде."
 	default:

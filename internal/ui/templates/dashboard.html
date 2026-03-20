@@ -1,26 +1,11 @@
 {{define "title"}}Кабинет{{end}}
 
 {{define "body"}}
-<section class="dashboard-hero dashboard-hero--compact">
+<section class="dashboard-hero dashboard-hero-minimal">
   <div class="dashboard-copy">
     <div class="eyebrow">твой маршрут</div>
     <h1>Привет, {{.CurrentUser.Username}}.</h1>
-    <p class="lead">
-      Сейчас в работе {{.DashboardFocus.Title}}. Ниже только карта пути, реальный прогресс и следующий шаг без простыни текста.
-    </p>
-
-    <div class="dashboard-ops-strip" aria-hidden="true">
-      <div class="dashboard-ops-track">
-        <span>grep logs</span>
-        <span>ship deploy</span>
-        <span>watch metrics</span>
-        <span>patch yaml</span>
-        <span>survive interview</span>
-        <span>grep logs</span>
-        <span>ship deploy</span>
-        <span>watch metrics</span>
-      </div>
-    </div>
+    <p class="lead">Сейчас в работе {{.DashboardFocus.Title}}.</p>
 
     <div class="dashboard-stat-row">
       {{range .DashboardStats}}
@@ -32,24 +17,10 @@
     </div>
   </div>
 
-  <aside class="status-card dashboard-focus-card dashboard-focus-card--compact">
-    <span class="card-kicker">текущий фокус</span>
-    <h2>{{.DashboardFocus.Title}}</h2>
-    <p>{{.DashboardFocus.Summary}}</p>
-
-    <div class="dashboard-focus-meta">
-      <article class="dashboard-focus-meta-card">
-        <span>{{.DashboardFocus.StageLabel}}</span>
-        <strong>{{.DashboardFocus.DoneCount}} / {{.DashboardFocus.TotalCount}}</strong>
-      </article>
-      <article class="dashboard-focus-meta-card dashboard-focus-meta-card--wide">
-        <span>следующий шаг</span>
-        <strong>{{.DashboardFocus.NextCheckpoint}}</strong>
-      </article>
-      <article class="dashboard-focus-meta-card">
-        <span>email</span>
-        <strong>{{.CurrentUser.Email}}</strong>
-      </article>
+  <aside class="status-card dashboard-focus-card dashboard-focus-card-minimal">
+    <div class="dashboard-focus-line">
+      <span class="card-kicker">{{.DashboardFocus.StageLabel}}</span>
+      <strong>{{.DashboardFocus.NextCheckpoint}}</strong>
     </div>
 
     <div class="dashboard-route" aria-hidden="true">
@@ -74,7 +45,7 @@
   </aside>
 </section>
 
-<section class="dashboard-stage-grid-compact">
+<section class="dashboard-stage-grid-compact dashboard-stage-grid-clean">
   {{range .DashboardStages}}
     <article class="dashboard-stage-card dashboard-stage-card--{{.StatusTone}}">
       <div class="dashboard-stage-head-compact">
@@ -88,8 +59,6 @@
         <span class="dashboard-stage-status">{{.Status}}</span>
       </div>
 
-      <p class="dashboard-stage-summary">{{.Summary}}</p>
-
       <div class="dashboard-stage-progress-row">
         <span>{{.DoneCount}} / {{.TotalCount}} закрыто</span>
         <strong>{{.Percent}}%</strong>
@@ -101,7 +70,18 @@
 
       <div class="dashboard-checkpoint-pills">
         {{range .Checkpoints}}
-          <span class="dashboard-checkpoint-pill {{if .Done}}is-done{{else}}is-pending{{end}}">{{.Title}}</span>
+          <form method="post" action="/dashboard/checkpoints" class="dashboard-checkpoint-form">
+            <input type="hidden" name="checkpoint" value="{{.Key}}">
+            <input type="hidden" name="done" value="{{if .Done}}0{{else}}1{{end}}">
+            <button
+              type="submit"
+              class="dashboard-checkpoint-pill {{if .Done}}is-done{{else}}is-pending{{end}}"
+              title="{{.Note}}"
+            >
+              <span class="dashboard-checkpoint-mark">{{if .Done}}done{{else}}todo{{end}}</span>
+              {{.Title}}
+            </button>
+          </form>
         {{end}}
       </div>
     </article>

@@ -1,80 +1,33 @@
 {{define "title"}}Вход{{end}}
 
 {{define "body"}}
-<section class="auth-shell auth-shell-ops">
-  <div class="auth-copy auth-copy-rich">
-    <div class="eyebrow">вход в маршрут</div>
-    <p class="auth-kicker">Быстрый возврат в продукт без лишней сцены.</p>
-    <h1 class="auth-title">Войти и продолжить путь, а не собирать карьерный lore по чатам заново.</h1>
-    <p class="lead auth-lead">
-      Вход нужен для одного: быстро вернуть тебя к маршруту, текущему этапу и следующему чекпоинту,
-      а не открывать еще один корпоративный лабиринт до того, как ты увидишь продукт.
-    </p>
+<section class="auth-shell auth-shell-minimal">
+  <div class="auth-copy auth-copy-minimal">
+    <div class="eyebrow">вход</div>
+    <h1 class="auth-title auth-title-minimal">Вернуться к маршруту.</h1>
+    <p class="lead auth-lead auth-lead-minimal">Почта, пароль и сразу обратно к этапам и прогрессу.</p>
 
     <div class="auth-signal-row">
-      <span class="auth-signal-chip auth-signal-chip-accent">маршрут внутри</span>
-      <span class="auth-signal-chip">следующий чекпоинт виден</span>
-      <span class="auth-signal-chip">никакой церемонии</span>
+      <span class="auth-signal-chip auth-signal-chip-accent">1 экран</span>
+      <span class="auth-signal-chip">маршрут внутри</span>
+      <span class="auth-signal-chip">без церемонии</span>
     </div>
 
-    <div class="auth-highlights">
-      <article class="auth-highlight-card">
-        <strong>Один экран</strong>
-        <p>Почта, пароль и обратно к этапам. Не OAuth-ярмарка и не квест на полчаса.</p>
-      </article>
-      <article class="auth-highlight-card">
-        <strong>Маршрут под рукой</strong>
-        <p>После входа открывается не пустота, а путь с нормальным порядком тем и чекпоинтами.</p>
-      </article>
-      <article class="auth-highlight-card">
-        <strong>Рофл, но по делу</strong>
-        <p>Да, YAML все еще опасен, но хотя бы теперь он не сваливается на тебя раньше времени.</p>
-      </article>
-    </div>
-
-    <div class="auth-side-card auth-side-console auth-ops-console">
-      <div class="auth-console-head">
-        <span class="card-kicker">после входа</span>
-        <strong>resume-session.sh</strong>
+    <div class="auth-side-card auth-side-card-minimal">
+      <span class="card-kicker">после входа</span>
+      <div class="auth-mini-list">
+        <span>текущий этап</span>
+        <span>следующий чекпоинт</span>
+        <span>прогресс по шагам</span>
       </div>
-
-      <div class="auth-console-tape" aria-hidden="true">
-        <div class="auth-console-tape-track">
-          <span>load roadmap</span>
-          <span>restore checkpoint</span>
-          <span>panic level: low</span>
-          <span>bash first</span>
-          <span>k8s later</span>
-          <span>load roadmap</span>
-          <span>restore checkpoint</span>
-          <span>panic level: low</span>
-        </div>
-      </div>
-
-      <ul class="auth-console-list">
-        <li>
-          <span class="auth-console-key">что увидишь</span>
-          <p>Маршрут, текущие этапы и опорную точку, с которой можно продолжить движение без гадания.</p>
-        </li>
-        <li>
-          <span class="auth-console-key">зачем это нужно</span>
-          <p>Чтобы не держать весь путь в голове и не метаться между темами без системы.</p>
-        </li>
-      </ul>
     </div>
   </div>
 
-  <div class="auth-card auth-card-form">
+  <div class="auth-card auth-card-form auth-card-form-minimal">
     <div class="auth-card-top">
       <span class="card-kicker">доступ</span>
       <h2>Войти в кабинет</h2>
-      <p class="auth-muted">Почта, пароль и дальше уже к маршруту, этапам и прогрессу.</p>
-    </div>
-
-    <div class="auth-meta-row">
-      <span class="auth-meta-chip">1 шаг</span>
-      <span class="auth-meta-chip">маршрут внутри</span>
-      <span class="auth-meta-chip">прогресс под рукой</span>
+      <p class="auth-muted">Без лишних экранов.</p>
     </div>
 
     {{if .Error}}
@@ -91,19 +44,17 @@
       <label class="field">
         <span>Email</span>
         <input type="text" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
-        <p class="field-hint">Тот же email, на который привязан твой доступ к маршруту.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
         <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
-        <p class="field-hint">Вспоминай спокойно: дальше сразу попадешь туда, где остановился.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Войти</button>
     </form>
 
-    <p class="auth-footnote">Еще без доступа? <a href="/register">Подать заявку</a> и начать маршрут с нуля, но без паники.</p>
+    <p class="auth-footnote">Еще без доступа? <a href="/register">Подать заявку</a>.</p>
   </div>
 </section>
 {{end}}

@@ -1,226 +1,87 @@
 {{define "title"}}Рофл-роадмап в DevOps{{end}}
 
 {{define "body"}}
-<section class="landing-hero landing-hero-product">
-  <div class="landing-copy">
+<section class="landing-hero landing-hero-minimal">
+  <div class="landing-copy landing-copy-minimal">
     <div class="eyebrow">маршрут до devops</div>
-    <p class="landing-kicker">Рофл-стиль, но без карьерного шаманства.</p>
-    <h1 class="landing-title">Собери путь до DevOps без культа вокруг Kubernetes.</h1>
-    <p class="landing-lead">
-      grep-offer.ru это продукт про маршрут до оффера: в каком порядке двигаться,
-      какие чекпоинты закрывать руками и как не перепутать реальный рост с коллекцией громких слов в резюме.
+    <h1 class="landing-title landing-title-minimal">Путь до DevOps без культа вокруг Kubernetes.</h1>
+    <p class="landing-lead landing-lead-minimal">
+      grep-offer.ru собирает маршрут до оффера в нормальном порядке: база, доставка, платформа, рынок.
     </p>
 
     <div class="landing-signal-row">
       <span class="landing-signal-chip landing-signal-chip-accent">4 этапа</span>
-      <span class="landing-signal-chip">чекпоинты по делу</span>
-      <span class="landing-signal-chip">прогресс без тумана</span>
+      <span class="landing-signal-chip">12 чекпоинтов</span>
+      <span class="landing-signal-chip">прогресс по делу</span>
     </div>
 
     <div class="cta-row">
       <a class="primary-button" href="/register">Подать заявку</a>
       <a class="secondary-button" href="/login">Войти</a>
     </div>
-
-    <div class="landing-facts">
-      <article class="landing-fact">
-        <strong>Маршрут</strong>
-        <span>От shell и логов до платформы и собесов, без прыжков через базу.</span>
-      </article>
-      <article class="landing-fact">
-        <strong>Чекпоинты</strong>
-        <span>Каждый этап показывает, что именно стоит понять и собрать руками.</span>
-      </article>
-      <article class="landing-fact">
-        <strong>Финиш</strong>
-        <span>Дойти до оффера без инфоцыганской магии и “учи все подряд”.</span>
-      </article>
-    </div>
-
-    <div class="landing-note landing-note-product">
-      <span class="landing-note-command">$ grep -R "магия" ./career</span>
-      <p>Ничего не найдено. Только shell, delivery, observability и привычка не катить в прод с закрытыми глазами.</p>
-    </div>
   </div>
 
-  <aside class="roadmap-hero-card roadmap-poster">
-    <div class="roadmap-hero-top roadmap-poster-head">
-      <div>
-        <span class="card-kicker">что делает продукт</span>
-        <strong>превращает хаос советов в нормальный маршрут</strong>
-      </div>
-      <span class="poster-badge">devops pipeline</span>
+  <aside class="roadmap-hero-card roadmap-hero-card-minimal">
+    <div class="roadmap-mini-head">
+      <span class="card-kicker">что внутри</span>
+      <strong>маршрут, а не свалка советов</strong>
     </div>
 
-    <div class="poster-ops-strip" aria-hidden="true">
-      <div class="poster-ops-track">
-        <span>ci: green</span>
-        <span>yaml: suspicious</span>
-        <span>logs: readable</span>
-        <span>panic: low</span>
-        <span>deploy: controlled</span>
-        <span>offer: pending</span>
-        <span>ci: green</span>
-        <span>yaml: suspicious</span>
-        <span>logs: readable</span>
-        <span>panic: low</span>
-      </div>
-    </div>
-
-    <div class="poster-pipeline" aria-hidden="true">
-      <article class="poster-pipeline-node poster-pipeline-node-active">
-        <strong>shell</strong>
-        <span>понять систему</span>
-      </article>
-      <article class="poster-pipeline-node">
-        <strong>deliver</strong>
-        <span>довезти код</span>
-      </article>
-      <article class="poster-pipeline-node">
-        <strong>platform</strong>
-        <span>держать нагрузку</span>
-      </article>
-      <article class="poster-pipeline-node">
-        <strong>offer</strong>
-        <span>дойти до рынка</span>
-      </article>
-      <span class="pipeline-packet"></span>
-    </div>
-
-    <div class="roadmap-poster-grid">
+    <div class="roadmap-mini-grid">
       {{range .LandingRoadmap}}
-        <article class="poster-stage">
-          <span class="route-index">{{.Index}}</span>
-          <span class="poster-stage-badge">{{.Badge}}</span>
+        <article class="roadmap-mini-card">
+          <span class="roadmap-stage-index">{{.Index}}</span>
+          <span class="roadmap-stage-badge">{{.Badge}}</span>
           <h2>{{.Title}}</h2>
-          <p>{{.Summary}}</p>
         </article>
       {{end}}
-    </div>
-
-    <div class="roadmap-poster-foot">
-      <div class="poster-signal">
-        <span>главный принцип</span>
-        <strong>сначала понять, потом автоматизировать</strong>
-      </div>
-      <div class="poster-signal">
-        <span>главный анти-паттерн</span>
-        <strong>сразу хвататься за k8s</strong>
-      </div>
     </div>
   </aside>
 </section>
 
-<section class="landing-section landing-roadmap-section">
-  <div class="section-copy">
-    <div class="eyebrow">что внутри продукта</div>
-    <h2 class="section-title">Не список модных слов, а маршрут, который держится на нормальном порядке тем.</h2>
-    <p class="section-lead">
-      Здесь каждая тема появляется тогда, когда для нее уже есть опора. Поэтому shell не выглядит скучным,
-      Docker не висит в вакууме, а Kubernetes не превращается в дорогой культ вокруг YAML.
-    </p>
-
-    <div class="roadmap-section-note">
-      <span class="card-kicker">не перепрыгивай</span>
-      <p>Если сразу полезть в модный стек, потом придется чинить не карьеру, а последствия спешки.</p>
-    </div>
-  </div>
-
-  <div class="roadmap-stage-shell">
-    <article class="roadmap-stage-overview">
-      <span class="card-kicker">как этим пользоваться</span>
-      <h3>Двигаться по этапам, а не жевать весь стек разом.</h3>
-      <p>
-        Каждый этап отвечает на свой вопрос: что понять, что собрать руками и где реально растет ценность.
-        Так маршрут не разваливается на отдельные туториалы и списки must-have tools.
-      </p>
-      <div class="roadmap-overview-legend">
-        <span>база</span>
-        <span>доставка</span>
-        <span>платформа</span>
-        <span>оффер</span>
-      </div>
-    </article>
-
-    <ol class="roadmap-stage-grid">
-      {{range .LandingRoadmap}}
-        <li class="roadmap-stage-card">
-          <div class="roadmap-stage-top">
-            <span class="roadmap-stage-index">{{.Index}}</span>
-            <span class="roadmap-stage-badge">{{.Badge}}</span>
-          </div>
-          <h3>{{.Title}}</h3>
-          <p class="roadmap-stage-summary">{{.Summary}}</p>
-          <p class="roadmap-stage-note-copy">{{.Note}}</p>
-        </li>
-      {{end}}
-    </ol>
-  </div>
-</section>
-
-<section class="landing-fit">
-  <article class="principle-card fit-card fit-card-main">
-    <span class="card-kicker">кому зайдет</span>
-    <h2>Тем, кто хочет видеть путь целиком, а не собирать карьеру из обрывков советов.</h2>
-    <ul class="mini-list">
-      <li>Junior-разработчику, который хочет зайти в DevOps без культа вокруг инструментов.</li>
-      <li>Backend или frontend-разработчику, который устал смотреть на инфраструктуру как на черный ящик.</li>
-      <li>Тем, кто хочет двигаться по этапам и видеть прогресс, а не тонуть в чатах и заметках.</li>
-    </ul>
+<section class="landing-mini-summary">
+  <article class="landing-mini-summary-card">
+    <span class="card-kicker">что получаешь</span>
+    <p>Этапы, чекпоинты и понятный следующий шаг.</p>
   </article>
-
-  <article class="principle-card fit-card">
-    <span class="card-kicker">что внутри</span>
-    <h2>Маршрут, чекпоинты и нормальный ритм.</h2>
-    <p>Продукт нужен, чтобы держать перед глазами следующую опорную точку и не растворяться в бесконечном “а что еще надо выучить?”.</p>
+  <article class="landing-mini-summary-card">
+    <span class="card-kicker">чего нет</span>
+    <p>Никакого “учи все подряд” и сакральных списков инструментов.</p>
   </article>
-
-  <article class="principle-card fit-card fit-card-alt">
-    <span class="card-kicker">чего тут нет</span>
-    <h2>Никакого “учи все подряд”.</h2>
-    <p>Без инфоцыганства, без священного списка must-have tools и без обещаний оффера за две субботы и один бесплатный вебинар.</p>
+  <article class="landing-mini-summary-card">
+    <span class="card-kicker">как зайти</span>
+    <p>Заявка, подтверждение почты и сразу в кабинет.</p>
   </article>
 </section>
 
-<section class="landing-access">
-  <div class="section-copy">
-    <div class="eyebrow">как начать</div>
-    <h2 class="section-title">Короткий вход в продукт: заявка, подтверждение, кабинет.</h2>
-    <p class="section-lead">
-      Доступ открывается коротким маршрутом: оставляешь заявку, подтверждаешь почту
-      и сразу попадаешь в кабинет, где уже можно двигаться по этапам и держать курс перед глазами.
-    </p>
+<section class="landing-section landing-roadmap-section landing-roadmap-section-minimal">
+  <div class="section-copy section-copy-minimal">
+    <div class="eyebrow">этапы пути</div>
+    <h2 class="section-title">Сначала понять систему, потом автоматизировать.</h2>
   </div>
 
-  <div class="access-flow-grid">
-    <article class="access-step-card">
-      <span class="access-step-index">01</span>
-      <h3>Оставляешь заявку</h3>
-      <p>Ник, почта и пароль. Без лишнего шума и без длинной сцены на старте.</p>
-    </article>
-
-    <article class="access-step-card">
-      <span class="access-step-index">02</span>
-      <h3>Подтверждаешь доступ</h3>
-      <p>Приходит письмо, которое переводит тебя в следующий шаг без ручной возни и ритуалов.</p>
-    </article>
-
-    <article class="access-step-card">
-      <span class="access-step-index">03</span>
-      <h3>Открываешь кабинет</h3>
-      <p>Сразу видишь этапы, чекпоинты и маршрут, а не пустой экран после формы.</p>
-    </article>
-  </div>
+  <ol class="roadmap-stage-grid roadmap-stage-grid-minimal">
+    {{range .LandingRoadmap}}
+      <li class="roadmap-stage-card roadmap-stage-card-minimal">
+        <div class="roadmap-stage-top">
+          <span class="roadmap-stage-index">{{.Index}}</span>
+          <span class="roadmap-stage-badge">{{.Badge}}</span>
+        </div>
+        <h3>{{.Title}}</h3>
+        <p class="roadmap-stage-summary">{{.Summary}}</p>
+      </li>
+    {{end}}
+  </ol>
 </section>
 
-<section class="landing-final">
+<section class="landing-final landing-final-minimal">
   <div class="landing-final-copy">
-    <div class="eyebrow">дальше уже руками</div>
-    <h2 class="section-title">Подай заявку, если хочешь пройти этот путь без склада заметок, паники и сакральных списков технологий.</h2>
+    <div class="eyebrow">дальше руками</div>
+    <h2 class="section-title">Заходишь и двигаешься по маршруту, а не по хаосу вкладок.</h2>
   </div>
 
   <div class="cta-row">
-    <a class="primary-button" href="/register">Отправить заявку</a>
+    <a class="primary-button" href="/register">Открыть доступ</a>
     <a class="secondary-button" href="/login">У меня уже есть доступ</a>
   </div>
 </section>

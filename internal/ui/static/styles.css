@@ -2408,6 +2408,258 @@ p {
   }
 }
 
+.landing-hero-minimal {
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
+  padding-top: 1rem;
+}
+
+.landing-copy-minimal {
+  gap: 1rem;
+}
+
+.landing-title-minimal {
+  max-width: 10ch;
+  font-size: clamp(2.6rem, 6vw, 4.5rem);
+  line-height: 0.96;
+}
+
+.landing-lead-minimal {
+  max-width: 34rem;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.roadmap-hero-card-minimal {
+  padding: 1.3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.roadmap-mini-head {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.roadmap-mini-head strong {
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.roadmap-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.roadmap-mini-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.roadmap-mini-card h2 {
+  font-family: var(--font-body);
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+
+.landing-mini-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.landing-mini-summary-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.05rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.3rem;
+  background:
+    linear-gradient(180deg, rgba(14, 19, 16, 0.95), rgba(11, 15, 13, 0.84)),
+    rgba(255, 255, 255, 0.012);
+}
+
+.landing-mini-summary-card p {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.58;
+}
+
+.landing-roadmap-section-minimal {
+  gap: 1rem;
+}
+
+.section-copy-minimal {
+  gap: 0.55rem;
+}
+
+.section-copy-minimal .section-title {
+  max-width: 18ch;
+}
+
+.roadmap-stage-grid-minimal {
+  gap: 0.9rem;
+}
+
+.roadmap-stage-card-minimal {
+  gap: 0.65rem;
+}
+
+.roadmap-stage-card-minimal h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.landing-final-minimal {
+  padding: 1.1rem 1.1rem;
+}
+
+.landing-final-minimal .section-title {
+  max-width: 20ch;
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+}
+
+.auth-shell-minimal {
+  grid-template-columns: minmax(0, 0.96fr) minmax(360px, 0.84fr);
+  min-height: calc(100vh - 9.75rem);
+  align-items: center;
+}
+
+.auth-copy-minimal {
+  gap: 1rem;
+  max-width: 34rem;
+}
+
+.auth-title-minimal {
+  max-width: 10ch;
+  font-size: clamp(2.1rem, 4.3vw, 3.4rem);
+  line-height: 1;
+}
+
+.auth-lead-minimal {
+  max-width: 28rem;
+  font-size: 0.98rem;
+  line-height: 1.62;
+}
+
+.auth-side-card-minimal {
+  max-width: 30rem;
+  padding: 1rem 1.05rem;
+  background:
+    linear-gradient(180deg, rgba(101, 224, 178, 0.05), rgba(13, 18, 15, 0.92)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.auth-mini-list,
+.auth-mini-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.auth-mini-list span,
+.auth-mini-steps span {
+  padding: 0.44rem 0.68rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.auth-card-form-minimal {
+  padding: 1.35rem;
+  gap: 1rem;
+}
+
+.auth-card-form-minimal .auth-card-top h2 {
+  font-size: 1.55rem;
+}
+
+.auth-card-form-minimal .auth-muted {
+  font-size: 0.92rem;
+}
+
+.dashboard-hero-minimal {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.94fr);
+  padding-top: 0.8rem;
+}
+
+.dashboard-hero-minimal .lead {
+  max-width: 28rem;
+  font-size: 1rem;
+}
+
+.dashboard-focus-card-minimal {
+  gap: 0.9rem;
+}
+
+.dashboard-focus-line {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.dashboard-focus-line strong {
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.dashboard-stage-grid-clean {
+  margin-top: 0.9rem;
+}
+
+.dashboard-stage-grid-clean .dashboard-stage-card {
+  gap: 0.85rem;
+}
+
+.dashboard-stage-grid-clean .dashboard-stage-badge {
+  margin-top: 0.18rem;
+}
+
+.dashboard-stage-grid-clean .dashboard-checkpoint-pills {
+  gap: 0.5rem;
+}
+
+@media (max-width: 1040px) {
+  .landing-hero-minimal,
+  .auth-shell-minimal,
+  .dashboard-hero-minimal {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-mini-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .roadmap-mini-grid,
+  .landing-mini-summary,
+  .roadmap-stage-grid-minimal,
+  .dashboard-stage-grid-clean {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-title-minimal,
+  .auth-title-minimal {
+    max-width: none;
+  }
+}
+
 .dashboard-hero--compact {
   gap: 1rem;
   align-items: stretch;
@@ -2620,9 +2872,14 @@ p {
   gap: 0.55rem;
 }
 
+.dashboard-checkpoint-form {
+  margin: 0;
+}
+
 .dashboard-checkpoint-pill {
   display: inline-flex;
   align-items: center;
+  gap: 0.5rem;
   min-height: 2rem;
   padding: 0.45rem 0.72rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2631,6 +2888,32 @@ p {
   color: var(--muted-strong);
   font-size: 0.83rem;
   line-height: 1.35;
+}
+
+button.dashboard-checkpoint-pill {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.dashboard-checkpoint-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(216, 255, 97, 0.24);
+}
+
+.dashboard-checkpoint-pill:focus-visible {
+  outline: none;
+  border-color: rgba(216, 255, 97, 0.36);
+  box-shadow: 0 0 0 3px rgba(216, 255, 97, 0.08);
+}
+
+.dashboard-checkpoint-mark {
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .dashboard-checkpoint-pill.is-done {

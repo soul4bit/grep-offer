@@ -193,6 +193,109 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestDashboardCheckpointTogglePersists(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	user, err := st.CreateUser(ctx, "bash_bandit", "progress@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	const sessionToken = "test-session-token"
+	if err := st.CreateSession(ctx, user.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	dashboardRequest, err := http.NewRequest(http.MethodGet, server.URL+"/dashboard", nil)
+	if err != nil {
+		t.Fatalf("build dashboard request: %v", err)
+	}
+	dashboardRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	dashboardResponse, err := client.Do(dashboardRequest)
+	if err != nil {
+		t.Fatalf("dashboard request: %v", err)
+	}
+	defer dashboardResponse.Body.Close()
+
+	if dashboardResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected dashboard status: %d", dashboardResponse.StatusCode)
+	}
+
+	initialBody := readBody(t, dashboardResponse.Body)
+	if !strings.Contains(initialBody, "0/12") {
+		t.Fatalf("expected initial progress in dashboard body: %s", initialBody)
+	}
+
+	initialProgress, err := st.RoadmapProgress(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("load initial roadmap progress: %v", err)
+	}
+	if len(initialProgress) != 12 {
+		t.Fatalf("unexpected seeded checkpoint count: %d", len(initialProgress))
+	}
+	if initialProgress["foundation-linux"] {
+		t.Fatalf("expected checkpoint to start pending")
+	}
+
+	form := url.Values{
+		"checkpoint": {"foundation-linux"},
+		"done":       {"1"},
+	}
+
+	toggleRequest, err := http.NewRequest(http.MethodPost, server.URL+"/dashboard/checkpoints", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build toggle request: %v", err)
+	}
+	toggleRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	toggleRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	toggleResponse, err := client.Do(toggleRequest)
+	if err != nil {
+		t.Fatalf("toggle request: %v", err)
+	}
+	defer toggleResponse.Body.Close()
+
+	if toggleResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected toggle status: %d", toggleResponse.StatusCode)
+	}
+
+	progress, err := st.RoadmapProgress(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("load updated roadmap progress: %v", err)
+	}
+	if !progress["foundation-linux"] {
+		t.Fatalf("expected checkpoint progress to persist")
+	}
+
+	reloadRequest, err := http.NewRequest(http.MethodGet, server.URL+"/dashboard", nil)
+	if err != nil {
+		t.Fatalf("build reload request: %v", err)
+	}
+	reloadRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	reloadResponse, err := client.Do(reloadRequest)
+	if err != nil {
+		t.Fatalf("reload dashboard request: %v", err)
+	}
+	defer reloadResponse.Body.Close()
+
+	reloadBody := readBody(t, reloadResponse.Body)
+	if !strings.Contains(reloadBody, "1/12") {
+		t.Fatalf("expected updated progress in dashboard body: %s", reloadBody)
+	}
+}
+
 type testAppOptions struct {
 	mailer        ConfirmationMailer
 	notifier      AdminApprovalNotifier

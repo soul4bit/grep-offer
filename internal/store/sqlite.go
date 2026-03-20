@@ -73,6 +73,15 @@ func (s *Store) Init(ctx context.Context) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_registration_requests_email ON registration_requests(email);`,
 		`CREATE INDEX IF NOT EXISTS idx_registration_requests_verification_token_hash ON registration_requests(verification_token_hash);`,
+		`CREATE TABLE IF NOT EXISTS user_roadmap_progress (
+			user_id INTEGER NOT NULL,
+			checkpoint_key TEXT NOT NULL,
+			done INTEGER NOT NULL DEFAULT 0,
+			updated_at INTEGER NOT NULL,
+			PRIMARY KEY (user_id, checkpoint_key),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_roadmap_progress_user_id ON user_roadmap_progress(user_id);`,
 	}
 
 	for _, statement := range statements {
