@@ -1,21 +1,54 @@
-{{define "title"}}{{if .Article}}{{.Article.Title}}{{else}}Статья{{end}}{{end}}
+{{define "title"}}{{if .Article}}{{.Article.Title}}{{else}}Урок{{end}}{{end}}
 
 {{define "body"}}
 {{with .Article}}
-  <article class="article-shell">
-    <header class="article-head">
-      <div class="article-meta-row">
-        <span class="roadmap-stage-badge">{{.Badge}}</span>
-        <span class="article-reading-time">{{.ReadingTime}}</span>
-        <span class="article-stage">{{.Stage}}</span>
+  <section class="lesson-layout">
+    <aside class="lesson-sidebar">
+      <div class="lesson-sidebar-head">
+        <span class="course-module-index">{{.Module}}</span>
+        <strong>Linux-маршрут</strong>
       </div>
-      <h1 class="section-title">{{.Title}}</h1>
-      <p class="lead">{{.Summary}}</p>
-    </header>
 
-    <div class="article-body prose">
-      {{.HTML}}
-    </div>
-  </article>
+      <div class="lesson-sidebar-list">
+        {{range .ModuleItems}}
+          <a class="lesson-sidebar-item {{if eq .Slug $.Article.Slug}}is-current{{end}}" href="/learn/{{.Slug}}">
+            <span>{{.Index}}</span>
+            <div>
+              <strong>{{.Title}}</strong>
+              <small>{{.Kind}}</small>
+            </div>
+          </a>
+        {{end}}
+      </div>
+    </aside>
+
+    <article class="article-shell lesson-shell">
+      <header class="article-head">
+        <div class="article-meta-row">
+          <span class="course-lesson-index">{{.Index}}</span>
+          <span class="roadmap-stage-badge">{{.Kind}}</span>
+          <span class="article-reading-time">{{.ReadingTime}}</span>
+        </div>
+        <h1 class="section-title">{{.Title}}</h1>
+        <p class="lead">{{.Summary}}</p>
+      </header>
+
+      <div class="article-body prose">
+        {{.HTML}}
+      </div>
+
+      <footer class="lesson-footer-nav">
+        {{if .Prev}}
+          <a class="secondary-button lesson-nav-button" href="/learn/{{.Prev.Slug}}">← {{.Prev.Index}} {{.Prev.Title}}</a>
+        {{else}}
+          <span></span>
+        {{end}}
+
+        {{if .Next}}
+          <a class="primary-button lesson-nav-button" href="/learn/{{.Next.Slug}}">{{.Next.Index}} {{.Next.Title}} →</a>
+        {{end}}
+      </footer>
+    </article>
+  </section>
 {{end}}
 {{end}}

@@ -1,32 +1,42 @@
-{{define "title"}}Статьи{{end}}
+{{define "title"}}Маршрут Linux{{end}}
 
 {{define "body"}}
-<section class="content-hero">
+<section class="content-hero course-hero">
   <div>
-    <div class="eyebrow">база по маршруту</div>
-    <h1 class="section-title">Статьи по этапам, а не свалка из 200 вкладок.</h1>
-    <p class="lead">Короткие конспекты по фундаменту, доставке и платформе. Читаешь, делаешь руками, идешь дальше.</p>
+    <div class="eyebrow">linux base</div>
+    <h1 class="section-title">Стартуем с Linux-базы и идем по блокам, а не по хаосу вкладок.</h1>
+    <p class="lead">Здесь теория, практика и домашки собраны в один маршрут. Открыл урок, сделал руками, пошел дальше.</p>
   </div>
 </section>
 
-<section class="content-grid">
-  {{range .Articles}}
-    <article class="article-card">
-      <div class="article-card-top">
-        <span class="roadmap-stage-badge">{{.Badge}}</span>
-        <span class="article-reading-time">{{.ReadingTime}}</span>
-      </div>
-      <h2><a href="/articles/{{.Slug}}">{{.Title}}</a></h2>
-      <p>{{.Summary}}</p>
-      <div class="article-card-footer">
-        <span>{{.Stage}}</span>
-        <a href="/articles/{{.Slug}}">Открыть</a>
+<section class="course-module-list">
+  {{range .CourseModules}}
+    <article class="course-module-card">
+      <header class="course-module-head">
+        <span class="course-module-index">{{.Index}}</span>
+        <div>
+          <h2>{{.Title}}</h2>
+          <p>{{len .Lessons}} блоков</p>
+        </div>
+      </header>
+
+      <div class="course-lesson-list">
+        {{range .Lessons}}
+          <a class="course-lesson-card" href="/learn/{{.Slug}}">
+            <div class="course-lesson-top">
+              <span class="course-lesson-index">{{.Index}}</span>
+              <span class="roadmap-stage-badge">{{.Kind}}</span>
+            </div>
+            <strong>{{.Title}}</strong>
+            <p>{{.Summary}}</p>
+          </a>
+        {{end}}
       </div>
     </article>
   {{else}}
     <article class="article-card article-card-empty">
       <h2>Пока пусто</h2>
-      <p>Контент еще не разложили по этапам. Но папка `content/articles` уже на месте.</p>
+      <p>Наполни `content/articles` уроками, и маршрут появится здесь.</p>
     </article>
   {{end}}
 </section>

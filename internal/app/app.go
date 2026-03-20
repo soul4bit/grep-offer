@@ -63,6 +63,7 @@ type ViewData struct {
 	PasswordResetToken string
 	LandingRoadmap     []LandingStage
 	FeaturedArticles   []ArticleCard
+	CourseModules      []CourseModule
 	Articles           []ArticleCard
 	Article            *ArticlePage
 	AdminUsers         []AdminUserRow
@@ -90,7 +91,22 @@ type ArticleCard struct {
 	Summary     string
 	Badge       string
 	Stage       string
+	Module      string
+	Kind        string
+	Index       string
 	ReadingTime string
+}
+
+type CourseModule struct {
+	Index   string
+	Title   string
+	Lessons []ArticleCard
+}
+
+type ArticleNav struct {
+	Title string
+	Slug  string
+	Index string
 }
 
 type ArticlePage struct {
@@ -99,7 +115,13 @@ type ArticlePage struct {
 	Summary     string
 	Badge       string
 	Stage       string
+	Module      string
+	Kind        string
+	Index       string
 	ReadingTime string
+	Prev        *ArticleNav
+	Next        *ArticleNav
+	ModuleItems []ArticleCard
 	HTML        template.HTML
 }
 
@@ -182,10 +204,12 @@ func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", a.static))
 	if a.uploads != nil {
-		mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", a.uploads))
+		mux.Handle("GET /uploads/", a.requireAuthenticatedHandler(http.StripPrefix("/uploads/", a.uploads)))
 	}
 	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /", a.handleHome)
+	mux.HandleFunc("GET /learn", a.handleArticlesIndex)
+	mux.HandleFunc("GET /learn/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /articles", a.handleArticlesIndex)
 	mux.HandleFunc("GET /articles/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
@@ -206,6 +230,17 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
 	return a.withCurrentUser(mux)
+}
+
+func (a *App) requireAuthenticatedHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a.currentUser(r) == nil {
+			http.Redirect(w, r, "/login?notice=login-required", http.StatusSeeOther)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {

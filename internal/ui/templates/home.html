@@ -12,12 +12,12 @@
     <div class="landing-signal-row">
       <span class="landing-signal-chip landing-signal-chip-accent">4 этапа</span>
       <span class="landing-signal-chip">12 чекпоинтов</span>
-      <span class="landing-signal-chip">прогресс по делу</span>
+      <span class="landing-signal-chip">теория + практика</span>
     </div>
 
     <div class="cta-row">
-      <a class="primary-button" href="/register">Подать заявку</a>
-      <a class="secondary-button" href="/login">Войти</a>
+      <a class="primary-button" href="/register">Начать путь</a>
+      <a class="secondary-button" href="/login">У меня уже есть доступ</a>
     </div>
   </div>
 
@@ -41,16 +41,16 @@
 
 <section class="landing-mini-summary">
   <article class="landing-mini-summary-card">
-    <span class="card-kicker">что получаешь</span>
-    <p>Этапы, чекпоинты и понятный следующий шаг.</p>
+    <span class="card-kicker">как это работает</span>
+    <p>Заходишь, идешь по блокам, читаешь урок и сразу делаешь руками.</p>
   </article>
   <article class="landing-mini-summary-card">
-    <span class="card-kicker">чего нет</span>
+    <span class="card-kicker">что будет</span>
+    <p>Теория, практика, домашки и понятный следующий шаг по маршруту.</p>
+  </article>
+  <article class="landing-mini-summary-card">
+    <span class="card-kicker">чего не будет</span>
     <p>Никакого “учи все подряд” и священных списков инструментов.</p>
-  </article>
-  <article class="landing-mini-summary-card">
-    <span class="card-kicker">как зайти</span>
-    <p>Заявка, подтверждение по почте и сразу в кабинет.</p>
   </article>
 </section>
 
@@ -74,41 +74,15 @@
   </ol>
 </section>
 
-{{if .FeaturedArticles}}
-  <section class="content-preview">
-    <div class="section-copy section-copy-minimal">
-      <div class="eyebrow">статьи по темам</div>
-      <h2 class="section-title">Можно не только чекать прогресс, но и читать базу прямо внутри маршрута.</h2>
-    </div>
-
-    <div class="content-grid">
-      {{range .FeaturedArticles}}
-        <article class="article-card">
-          <div class="article-card-top">
-            <span class="roadmap-stage-badge">{{.Badge}}</span>
-            <span class="article-reading-time">{{.ReadingTime}}</span>
-          </div>
-          <h3><a href="/articles/{{.Slug}}">{{.Title}}</a></h3>
-          <p>{{.Summary}}</p>
-          <div class="article-card-footer">
-            <span>{{.Stage}}</span>
-            <a href="/articles/{{.Slug}}">Читать</a>
-          </div>
-        </article>
-      {{end}}
-    </div>
-  </section>
-{{end}}
-
 <section class="landing-final landing-final-minimal">
   <div class="landing-final-copy">
     <div class="eyebrow">дальше руками</div>
-    <h2 class="section-title">Заходишь и двигаешься по маршруту, а не по хаосу вкладок.</h2>
+    <h2 class="section-title">Первый модуль уже про Linux-базу: загрузка системы, bash, файловая и первые домашки.</h2>
   </div>
 
   <div class="cta-row">
     <a class="primary-button" href="/register">Открыть доступ</a>
-    <a class="secondary-button" href="/login">У меня уже есть доступ</a>
+    <a class="secondary-button" href="/login">Войти и продолжить</a>
   </div>
 </section>
 {{end}}

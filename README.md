@@ -197,3 +197,28 @@ ADMIN_EMAILS=admin@example.com
 - выдавать и снимать админку
 - банить и разбанивать
 - удалять аккаунт
+
+### Как добавлять учебные блоки
+
+Сейчас контент сделан не через браузерный редактор, а через markdown-файлы. Это осознанно: так контент остается в git, проходит review и не теряется при деплое.
+
+Шаблон лежит в:
+
+- `content/articles/_template.lesson.md`
+
+Каждый блок в Linux-маршруте это отдельный `.md`-файл с frontmatter:
+
+```yaml
+title: "Название блока"
+slug: "slug-for-lesson"
+summary: "Короткое описание"
+badge: "linux"
+stage: "Linux Base"
+module: "Название модуля"
+module_order: 4
+block_order: 1
+kind: "theory" # theory | practice | test
+published: true
+```
+
+После этого блок автоматически попадет в `/learn` и встроится в порядок маршрута.

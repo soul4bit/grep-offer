@@ -520,7 +520,7 @@ func TestDashboardCheckpointTogglePersists(t *testing.T) {
 	}
 }
 
-func TestArticlesRoutesRenderMarkdown(t *testing.T) {
+func TestLearnRoutesRequireAuthAndRenderMarkdown(t *testing.T) {
 	t.Parallel()
 
 	contentDir := filepath.Join(t.TempDir(), "articles")
@@ -533,7 +533,10 @@ slug: "docker-without-religion"
 summary: "Быстрый конспект по доставке."
 badge: "delivery"
 stage: "Доставка"
-order: 1
+module: "Доставка"
+module_order: 2
+block_order: 1
+kind: "theory"
 published: true
 ---
 
@@ -549,29 +552,71 @@ published: true
 	server := httptest.NewServer(testApp.Routes())
 	defer server.Close()
 
-	indexResponse, err := server.Client().Get(server.URL + "/articles")
+	redirectClient := server.Client()
+	redirectClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	indexResponse, err := redirectClient.Get(server.URL + "/learn")
 	if err != nil {
-		t.Fatalf("articles index request: %v", err)
+		t.Fatalf("learn index request: %v", err)
+	}
+	defer indexResponse.Body.Close()
+
+	if indexResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected learn index status for guest: %d", indexResponse.StatusCode)
+	}
+
+	userApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	userServer := httptest.NewServer(userApp.Routes())
+	defer userServer.Close()
+
+	user, err := st.CreateUser(context.Background(), "bash_bandit", "reader@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	const sessionToken = "reader-session-token"
+	if err := st.CreateSession(context.Background(), user.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	indexRequest, err := http.NewRequest(http.MethodGet, userServer.URL+"/learn", nil)
+	if err != nil {
+		t.Fatalf("build learn index request: %v", err)
+	}
+	indexRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	indexResponse, err = userServer.Client().Do(indexRequest)
+	if err != nil {
+		t.Fatalf("authorized learn index request: %v", err)
 	}
 	defer indexResponse.Body.Close()
 
 	if indexResponse.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected articles index status: %d", indexResponse.StatusCode)
+		t.Fatalf("unexpected authorized learn index status: %d", indexResponse.StatusCode)
 	}
 
 	indexBody := readBody(t, indexResponse.Body)
 	if !strings.Contains(indexBody, "Docker без религии") {
-		t.Fatalf("article title missing on index: %s", indexBody)
+		t.Fatalf("lesson title missing on learn index: %s", indexBody)
 	}
 
-	showResponse, err := server.Client().Get(server.URL + "/articles/docker-without-religion")
+	showRequest, err := http.NewRequest(http.MethodGet, userServer.URL+"/learn/docker-without-religion", nil)
 	if err != nil {
-		t.Fatalf("article show request: %v", err)
+		t.Fatalf("build learn show request: %v", err)
+	}
+	showRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	showResponse, err := userServer.Client().Do(showRequest)
+	if err != nil {
+		t.Fatalf("learn show request: %v", err)
 	}
 	defer showResponse.Body.Close()
 
 	if showResponse.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected article show status: %d", showResponse.StatusCode)
+		t.Fatalf("unexpected learn show status: %d", showResponse.StatusCode)
 	}
 
 	showBody := readBody(t, showResponse.Body)
