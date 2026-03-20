@@ -1,0 +1,93 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+env:
+  APP_NAME: grep-offer
+  GOOS: linux
+  GOARCH: amd64
+  RELEASE_ROOT: /var/www/grep-offer
+  HEALTHCHECK_URL: http://127.0.0.1:8080/healthz
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: go test ./...
+
+  deploy:
+    needs: test
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binary
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags="-s -w" -o "dist/$APP_NAME" ./cmd/grep-offer
+
+      - name: Activate release on server
+        run: |
+          set -euo pipefail
+
+          RELEASE_DIR="$RELEASE_ROOT/releases/${GITHUB_SHA}"
+          mkdir -p "$RELEASE_ROOT/releases" "$RELEASE_ROOT/shared/data"
+          rm -rf "$RELEASE_DIR"
+          mkdir -p "$RELEASE_DIR"
+
+          install -m 755 "dist/$APP_NAME" "$RELEASE_DIR/$APP_NAME"
+          ln -sfn "$RELEASE_DIR" "$RELEASE_ROOT/current"
+
+          ls -1dt "$RELEASE_ROOT"/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+
+          sudo systemctl restart "$APP_NAME"
+          sudo systemctl is-active --quiet "$APP_NAME"
+
+      - name: Verify healthcheck
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent "$HEALTHCHECK_URL" >/dev/null; then
+              exit 0
+            fi
+
+            sleep 1
+          done
+
+          echo "healthcheck failed: $HEALTHCHECK_URL" >&2
+          exit 1

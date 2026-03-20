@@ -1,0 +1,16 @@
+[Unit]
+Description={{APP_NAME}} web application
+After=network.target
+
+[Service]
+Type=simple
+User={{APP_USER}}
+Group={{APP_GROUP}}
+WorkingDirectory={{APP_ROOT}}/current
+EnvironmentFile=/etc/{{APP_NAME}}.env
+ExecStart={{APP_ROOT}}/current/{{APP_NAME}}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

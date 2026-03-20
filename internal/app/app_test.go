@@ -75,6 +75,28 @@ func TestRegisterAndLogoutFlow(t *testing.T) {
 	}
 }
 
+func TestHealthz(t *testing.T) {
+	t.Parallel()
+
+	testApp := newTestApp(t)
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := server.Client().Get(server.URL + "/healthz")
+	if err != nil {
+		t.Fatalf("health request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected health status: %d", response.StatusCode)
+	}
+
+	if body := readBody(t, response.Body); body != "ok" {
+		t.Fatalf("unexpected health body: %q", body)
+	}
+}
+
 func newTestApp(t *testing.T) *App {
 	t.Helper()
 

@@ -73,6 +73,7 @@ func New(st *store.Store) (*App, error) {
 func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", a.static))
+	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /", a.handleHome)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
 	mux.HandleFunc("GET /register", a.handleRegisterForm)
@@ -81,6 +82,11 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /login", a.handleLoginSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	return a.withCurrentUser(mux)
+}
+
+func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte("ok"))
 }
 
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
