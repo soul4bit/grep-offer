@@ -1,0 +1,45 @@
+{{define "base"}}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{template "title" .}} | grep-offer.ru</title>
+  <meta name="description" content="Рофл-роадмап до DevOps с нормальным auth-flow на Go.">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="orb orb-lime"></div>
+  <div class="orb orb-coral"></div>
+
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">&gt;_</span>
+        <span class="brand-copy">grep-offer<span class="brand-zone">.ru</span></span>
+      </a>
+
+      <nav class="top-nav" aria-label="Главная навигация">
+        {{if .CurrentUser}}
+          <a href="/dashboard">Кабинет</a>
+          <form action="/logout" method="post">
+            <button class="ghost-button" type="submit">Выйти</button>
+          </form>
+        {{else}}
+          <a href="/login">Войти</a>
+          <a class="pill-link" href="/register">Регистрация</a>
+        {{end}}
+      </nav>
+    </header>
+
+    {{if .Notice}}
+      <div class="notice" role="status">{{.Notice}}</div>
+    {{end}}
+
+    <main class="main-content">
+      {{template "body" .}}
+    </main>
+  </div>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,38 @@
+{{define "title"}}Вход{{end}}
+
+{{define "body"}}
+<section class="auth-shell">
+  <div class="auth-copy">
+    <div class="eyebrow">login</div>
+    <h1>Возвращайся в консольную секту.</h1>
+    <p class="lead">
+      Вход простой: почта, пароль и никакого ritual YAML.
+    </p>
+  </div>
+
+  <div class="auth-card">
+    <h2>Войти</h2>
+    <p class="auth-muted">Продолжить путь к офферу и посмотреть заготовку кабинета.</p>
+
+    {{if .Error}}
+      <div class="form-alert" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form action="/login" method="post" class="auth-form">
+      <label class="field">
+        <span>Email</span>
+        <input type="email" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" required>
+      </label>
+
+      <label class="field">
+        <span>Пароль</span>
+        <input type="password" name="password" placeholder="Минимум 8 символов" required>
+      </label>
+
+      <button class="primary-button auth-submit" type="submit">Войти</button>
+    </form>
+
+    <p class="auth-footnote">Еще без аккаунта? <a href="/register">Регистрация здесь</a>.</p>
+  </div>
+</section>
+{{end}}

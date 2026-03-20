@@ -1,0 +1,45 @@
+{{define "title"}}Кабинет{{end}}
+
+{{define "body"}}
+<section class="dashboard-head">
+  <div>
+    <div class="eyebrow">dashboard</div>
+    <h1>Привет, {{.CurrentUser.Username}}.</h1>
+    <p class="lead">
+      База для авторизации уже на месте. Теперь сюда можно натягивать сам роадмап,
+      прогресс, чек-листы и внутренние рофлы.
+    </p>
+  </div>
+
+  <div class="profile-badge">
+    <span class="profile-label">email</span>
+    <strong>{{.CurrentUser.Email}}</strong>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <article class="feature-card">
+    <span class="card-kicker">next</span>
+    <h2>Что уже есть</h2>
+    <p>Регистрация, логин, logout и серверные сессии на SQLite.</p>
+  </article>
+
+  <article class="feature-card">
+    <span class="card-kicker">soon</span>
+    <h2>Что добавим дальше</h2>
+    <p>Этапы роадмапа, отметки прогресса, контент и нормальную структуру личного кабинета.</p>
+  </article>
+</section>
+
+<section class="roadmap-card">
+  <div class="roadmap-head">
+    <h2>Черновик будущего пути</h2>
+    <span>beta structure</span>
+  </div>
+  <ol class="roadmap-list">
+    {{range .Roadmap}}
+      <li>{{.}}</li>
+    {{end}}
+  </ol>
+</section>
+{{end}}

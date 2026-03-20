@@ -1,0 +1,44 @@
+{{define "title"}}Регистрация{{end}}
+
+{{define "body"}}
+<section class="auth-shell">
+  <div class="auth-copy">
+    <div class="eyebrow">register</div>
+    <h1>Создай аккаунт и начинай путь к DevOps без ритуалов.</h1>
+    <p class="lead">
+      Пока это первый слой: регистрация, сессия и стартовый кабинет.
+      Дальше сюда положим сам рофл-роадмап.
+    </p>
+  </div>
+
+  <div class="auth-card">
+    <h2>Регистрация</h2>
+    <p class="auth-muted">Ник, почта и пароль. Никаких OAuth-паровозов на первом шаге.</p>
+
+    {{if .Error}}
+      <div class="form-alert" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form action="/register" method="post" class="auth-form">
+      <label class="field">
+        <span>Ник</span>
+        <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" required>
+      </label>
+
+      <label class="field">
+        <span>Email</span>
+        <input type="email" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" required>
+      </label>
+
+      <label class="field">
+        <span>Пароль</span>
+        <input type="password" name="password" placeholder="Минимум 8 символов" required>
+      </label>
+
+      <button class="primary-button auth-submit" type="submit">Создать аккаунт</button>
+    </form>
+
+    <p class="auth-footnote">Уже зарегистрирован? <a href="/login">Войти</a>.</p>
+  </div>
+</section>
+{{end}}

@@ -1,0 +1,66 @@
+{{define "title"}}Рофл-роадмап в DevOps{{end}}
+
+{{define "body"}}
+<section class="hero-grid">
+  <div class="hero-copy">
+    <div class="eyebrow">roadmap beta</div>
+    <h1>Из bash-тыка в DevOps без инфоцыганского тумана.</h1>
+    <p class="lead">
+      grep-offer.ru будет собирать нормальный путь к офферу:
+      с Linux, CI/CD, Terraform и собесами, но в слегка издевательском тоне.
+    </p>
+
+    <div class="cta-row">
+      <a class="primary-button" href="/register">Залететь в бета-логин</a>
+      <a class="secondary-button" href="/login">У меня уже есть аккаунт</a>
+    </div>
+
+    <ul class="chip-row">
+      <li>кислотный лайм</li>
+      <li>графитовый фон</li>
+      <li>коралловый акцент</li>
+      <li>терминальный вайб</li>
+    </ul>
+  </div>
+
+  <aside class="hero-panel">
+    <div class="terminal-card">
+      <div class="terminal-head">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div class="terminal-body">
+        <p><span class="prompt">$</span> whoami</p>
+        <p>junior-devops-in-progress</p>
+        <p><span class="prompt">$</span> cat roadmap.txt</p>
+        <ol class="terminal-list">
+          {{range .Roadmap}}
+            <li>{{.}}</li>
+          {{end}}
+        </ol>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="feature-grid">
+  <article class="feature-card">
+    <span class="card-kicker">01</span>
+    <h2>Старт без фальши</h2>
+    <p>Соберем минимальную систему входа, а потом поверх нее нормальный роадмап и прогресс.</p>
+  </article>
+
+  <article class="feature-card">
+    <span class="card-kicker">02</span>
+    <h2>Ясная палитра</h2>
+    <p>Темный графит, кислотный лайм, теплый молочный и коралл. Не очередной фиолетовый SaaS-клон.</p>
+  </article>
+
+  <article class="feature-card">
+    <span class="card-kicker">03</span>
+    <h2>Go без лишнего</h2>
+    <p>Серверный рендер, SQLite и аккуратный auth-flow. Дальше можно наращивать фичи без боли.</p>
+  </article>
+</section>
+{{end}}
