@@ -47,16 +47,14 @@ type Config struct {
 }
 
 type ViewData struct {
-	CurrentUser       *store.User
-	Error             string
-	Notice            string
-	Form              AuthForm
-	Roadmap           []string
-	LandingRoadmap    []LandingStage
-	DashboardStats    []DashboardStat
-	DashboardStages   []DashboardStage
-	DashboardFocus    DashboardFocus
-	DashboardPlaybook []DashboardPlay
+	CurrentUser     *store.User
+	Error           string
+	Notice          string
+	Form            AuthForm
+	LandingRoadmap  []LandingStage
+	DashboardStats  []DashboardStat
+	DashboardStages []DashboardStage
+	DashboardFocus  DashboardFocus
 }
 
 type AuthForm struct {
@@ -84,7 +82,9 @@ type DashboardStage struct {
 	Summary     string
 	Status      string
 	StatusTone  string
-	Progress    string
+	Percent     int
+	DoneCount   int
+	TotalCount  int
 	Checkpoints []DashboardCheckpoint
 }
 
@@ -99,13 +99,9 @@ type DashboardFocus struct {
 	Summary        string
 	StageLabel     string
 	NextCheckpoint string
-	FinishLine     string
 	Percent        int
-}
-
-type DashboardPlay struct {
-	Label string
-	Value string
+	DoneCount      int
+	TotalCount     int
 }
 
 func New(st *store.Store, cfg Config) (*App, error) {
@@ -199,57 +195,47 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, focus, stages, playbook := buildDashboardView()
+	stats, focus, stages := buildDashboardView()
 	data := ViewData{
-		CurrentUser:       user,
-		Notice:            noticeFromRequest(r),
-		DashboardStats:    stats,
-		DashboardFocus:    focus,
-		DashboardStages:   stages,
-		DashboardPlaybook: playbook,
+		CurrentUser:     user,
+		Notice:          noticeFromRequest(r),
+		DashboardStats:  stats,
+		DashboardFocus:  focus,
+		DashboardStages: stages,
 	}
 
 	a.render(w, r, http.StatusOK, "dashboard", data)
 }
 
-func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage, []DashboardPlay) {
+func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage) {
 	stages := []DashboardStage{
 		{
-			Index:      "01",
-			Title:      "Фундамент",
-			Badge:      "linux / bash / git / network",
-			Summary:    "Сначала разбираешься с системой под ногами: shell, процессы, файловая система, ssh, логи и сетевые утилиты.",
-			Status:     "сейчас в фокусе",
-			StatusTone: "active",
-			Progress:   "этап 1 из 4",
+			Index:   "01",
+			Title:   "Фундамент",
+			Badge:   "linux / bash / git / network",
+			Summary: "Собираешь базу: терминал, процессы, сеть и привычку не гадать по логам.",
 			Checkpoints: []DashboardCheckpoint{
-				{Title: "Навигация по Linux без паники", Note: "Файлы, права, процессы, systemd и package manager без магии.", Done: false},
-				{Title: "Bash как рабочий инструмент", Note: "Pipe, redirection, grep, sed, env и привычка читать man.", Done: false},
-				{Title: "Git и сеть без белой магии", Note: "SSH, remote, DNS, curl, ss и разбор обычных поломок.", Done: false},
+				{Title: "Навигация по Linux без паники", Note: "Файлы, права, процессы, systemd и package manager без магии.", Done: true},
+				{Title: "Bash как рабочий инструмент", Note: "Pipe, redirection, grep, sed, env и привычка читать man.", Done: true},
+				{Title: "Git и сеть без белой магии", Note: "SSH, remote, DNS, curl, ss и разбор обычных поломок.", Done: true},
 			},
 		},
 		{
-			Index:      "02",
-			Title:      "Доставка",
-			Badge:      "docker / ci-cd / deploy",
-			Summary:    "Понимаешь путь кода от коммита до сервера и перестаешь верить, что deploy сам как-то случается.",
-			Status:     "следом за фундаментом",
-			StatusTone: "queued",
-			Progress:   "3 чекпоинта впереди",
+			Index:   "02",
+			Title:   "Доставка",
+			Badge:   "docker / ci-cd / deploy",
+			Summary: "Понимаешь, как код едет от коммита до сервера и где по дороге все обычно горит.",
 			Checkpoints: []DashboardCheckpoint{
-				{Title: "Собрать образ без шаманства", Note: "Dockerfile, layers, registry и разница между build и run.", Done: false},
+				{Title: "Собрать образ без шаманства", Note: "Dockerfile, layers, registry и разница между build и run.", Done: true},
 				{Title: "Положить CI на рельсы", Note: "Pipeline, тесты, артефакты и нормальные healthchecks.", Done: false},
 				{Title: "Довезти deploy до предсказуемости", Note: "Rollback, env, секреты и понимание, где обычно рвется цепочка.", Done: false},
 			},
 		},
 		{
-			Index:      "03",
-			Title:      "Платформа",
-			Badge:      "k8s / terraform / observability",
-			Summary:    "Поднимаешь уровень абстракции только после того, как база и доставка перестали быть черным ящиком.",
-			Status:     "после доставки",
-			StatusTone: "later",
-			Progress:   "3 чекпоинта впереди",
+			Index:   "03",
+			Title:   "Платформа",
+			Badge:   "k8s / terraform / observability",
+			Summary: "Подключаешь оркестрацию, инфраструктуру и наблюдаемость без культа YAML.",
 			Checkpoints: []DashboardCheckpoint{
 				{Title: "Понять orchestration, а не просто выучить YAML", Note: "Pods, services, ingress и что именно они решают.", Done: false},
 				{Title: "Наблюдать систему, а не надеяться", Note: "Logs, metrics, traces, alerts и что реально смотреть при инциденте.", Done: false},
@@ -257,13 +243,10 @@ func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage, []
 			},
 		},
 		{
-			Index:      "04",
-			Title:      "Оффер",
-			Badge:      "cv / interview / offer",
-			Summary:    "Упаковываешь опыт так, чтобы на собесе было что сказать кроме списка инструментов.",
-			Status:     "финальный участок",
-			StatusTone: "finish",
-			Progress:   "3 чекпоинта впереди",
+			Index:   "04",
+			Title:   "Оффер",
+			Badge:   "cv / interview / offer",
+			Summary: "Упаковываешь опыт, проходишь собесы и разговариваешь про деньги уже с реальной опорой.",
 			Checkpoints: []DashboardCheckpoint{
 				{Title: "Собрать резюме вокруг реальных задач", Note: "Что делал, что ломалось, что улучшил и какой был эффект.", Done: false},
 				{Title: "Подготовить техразговор без легенд", Note: "Архитектура, инциденты, delivery, надежность и компромиссы.", Done: false},
@@ -272,30 +255,76 @@ func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage, []
 		},
 	}
 
+	totalCheckpoints := 0
+	doneCheckpoints := 0
+	currentStageIndex := len(stages) - 1
+	foundActive := false
+
+	for i := range stages {
+		total := len(stages[i].Checkpoints)
+		done := 0
+
+		for _, checkpoint := range stages[i].Checkpoints {
+			totalCheckpoints++
+			if checkpoint.Done {
+				done++
+				doneCheckpoints++
+			}
+		}
+
+		stages[i].DoneCount = done
+		stages[i].TotalCount = total
+		if total > 0 {
+			stages[i].Percent = done * 100 / total
+		}
+
+		switch {
+		case done == total:
+			stages[i].Status = "готово"
+			stages[i].StatusTone = "done"
+		case !foundActive:
+			stages[i].Status = "в работе"
+			stages[i].StatusTone = "active"
+			currentStageIndex = i
+			foundActive = true
+		default:
+			stages[i].Status = "в очереди"
+			stages[i].StatusTone = "queued"
+		}
+	}
+
+	currentStage := stages[currentStageIndex]
+	nextCheckpoint := "Все чекпоинты закрыты. Можно идти за оффером."
+	for _, checkpoint := range currentStage.Checkpoints {
+		if !checkpoint.Done {
+			nextCheckpoint = checkpoint.Title
+			break
+		}
+	}
+
+	overallPercent := 0
+	if totalCheckpoints > 0 {
+		overallPercent = doneCheckpoints * 100 / totalCheckpoints
+	}
+
 	stats := []DashboardStat{
-		{Value: "4 этапа", Label: "маршрут до оффера"},
-		{Value: "12 чекпоинтов", Label: "без прыжков по стеку"},
-		{Value: "этап 1/4", Label: "текущая точка на карте"},
+		{Value: fmt.Sprintf("%d/%d", doneCheckpoints, totalCheckpoints), Label: "закрыто по маршруту"},
+		{Value: currentStage.Title, Label: "текущий этап"},
+		{Value: fmt.Sprintf("%d%%", overallPercent), Label: "общий прогресс"},
 	}
 
 	focus := DashboardFocus{
-		Title:          "Фундамент",
-		Summary:        "Сейчас задача не в том, чтобы хватать Kubernetes, а в том, чтобы научиться не теряться в Linux, логах и сети.",
-		StageLabel:     "этап 1 из 4",
-		NextCheckpoint: "Следующий ориентир: bash, процессы и сетевые утилиты без гадания.",
-		FinishLine:     "Финиш этого этапа: ты уверенно читаешь логи и понимаешь, что происходит на сервере.",
-		Percent:        25,
+		Title:          currentStage.Title,
+		Summary:        currentStage.Summary,
+		StageLabel:     fmt.Sprintf("этап %d из %d", currentStageIndex+1, len(stages)),
+		NextCheckpoint: nextCheckpoint,
+		Percent:        overallPercent,
+		DoneCount:      doneCheckpoints,
+		TotalCount:     totalCheckpoints,
 	}
 
-	playbook := []DashboardPlay{
-		{Label: "сегодня", Value: "Разобрать shell, процессы и файловую систему так, чтобы команды перестали быть заклинаниями."},
-		{Label: "на этой неделе", Value: "Привести в порядок git, ssh, curl, логирование и базовую сетевую диагностику."},
-		{Label: "не делать", Value: "Не перескакивать в Kubernetes и Terraform до того, как база перестанет шататься."},
-	}
-
-	return stats, focus, stages, playbook
+	return stats, focus, stages
 }
-
 func (a *App) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 	if a.currentUser(r) != nil {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)

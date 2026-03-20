@@ -1,14 +1,26 @@
 {{define "title"}}Кабинет{{end}}
 
 {{define "body"}}
-<section class="dashboard-hero">
+<section class="dashboard-hero dashboard-hero--compact">
   <div class="dashboard-copy">
     <div class="eyebrow">твой маршрут</div>
     <h1>Привет, {{.CurrentUser.Username}}.</h1>
     <p class="lead">
-      Здесь путь до DevOps собран как карта, а не как свалка случайных советов:
-      видно текущий этап, следующие ориентиры и то, что действительно стоит закрывать руками.
+      Сейчас в работе {{.DashboardFocus.Title}}. Ниже только карта пути, реальный прогресс и следующий шаг без простыни текста.
     </p>
+
+    <div class="dashboard-ops-strip" aria-hidden="true">
+      <div class="dashboard-ops-track">
+        <span>grep logs</span>
+        <span>ship deploy</span>
+        <span>watch metrics</span>
+        <span>patch yaml</span>
+        <span>survive interview</span>
+        <span>grep logs</span>
+        <span>ship deploy</span>
+        <span>watch metrics</span>
+      </div>
+    </div>
 
     <div class="dashboard-stat-row">
       {{range .DashboardStats}}
@@ -20,124 +32,79 @@
     </div>
   </div>
 
-  <aside class="status-card dashboard-focus-card">
-    <span class="card-kicker">сейчас в фокусе</span>
+  <aside class="status-card dashboard-focus-card dashboard-focus-card--compact">
+    <span class="card-kicker">текущий фокус</span>
     <h2>{{.DashboardFocus.Title}}</h2>
     <p>{{.DashboardFocus.Summary}}</p>
 
-    <div class="status-list">
-      <div class="status-item">
-        <span class="status-label">email</span>
-        <strong>{{.CurrentUser.Email}}</strong>
-      </div>
-
-      <div class="status-item">
-        <span class="status-label">этап</span>
-        <strong>{{.DashboardFocus.StageLabel}}</strong>
-      </div>
-
-      <div class="status-item">
-        <span class="status-label">следующий ориентир</span>
+    <div class="dashboard-focus-meta">
+      <article class="dashboard-focus-meta-card">
+        <span>{{.DashboardFocus.StageLabel}}</span>
+        <strong>{{.DashboardFocus.DoneCount}} / {{.DashboardFocus.TotalCount}}</strong>
+      </article>
+      <article class="dashboard-focus-meta-card dashboard-focus-meta-card--wide">
+        <span>следующий шаг</span>
         <strong>{{.DashboardFocus.NextCheckpoint}}</strong>
-      </div>
+      </article>
+      <article class="dashboard-focus-meta-card">
+        <span>email</span>
+        <strong>{{.CurrentUser.Email}}</strong>
+      </article>
+    </div>
+
+    <div class="dashboard-route" aria-hidden="true">
+      {{range .DashboardStages}}
+        <span class="dashboard-route-node dashboard-route-node--{{.StatusTone}}">
+          <em>{{.Index}}</em>
+          <small>{{.Title}}</small>
+        </span>
+      {{end}}
+      <span class="dashboard-route-packet"></span>
     </div>
 
     <div class="dashboard-progress-card">
       <div class="dashboard-progress-head">
-        <span>позиция на карте</span>
+        <span>общий прогресс</span>
         <strong>{{.DashboardFocus.Percent}}%</strong>
       </div>
       <div class="dashboard-progress-track" aria-hidden="true">
         <span style="width: {{.DashboardFocus.Percent}}%;"></span>
       </div>
-      <p>{{.DashboardFocus.FinishLine}}</p>
     </div>
   </aside>
 </section>
 
-<section class="dashboard-grid dashboard-highlights-grid">
-  <article class="feature-card">
-    <span class="card-kicker">как пользоваться</span>
-    <h2>Смотри на этап, а не на список модных слов.</h2>
-    <p>Сначала закрываешь ближайшие чекпоинты текущего этапа, а уже потом идешь дальше. Без прыжков через базу.</p>
-  </article>
-
-  <article class="feature-card">
-    <span class="card-kicker">зачем это нужно</span>
-    <h2>Чтобы не строить карьеру из вкладок и чужих советов.</h2>
-    <p>Маршрут держит в одном месте то, что учить, в каком порядке это связывать и где реально растет ценность.</p>
-  </article>
-
-  <article class="feature-card">
-    <span class="card-kicker">логика пути</span>
-    <h2>База, доставка, платформа, оффер.</h2>
-    <p>Каждый следующий уровень начинает приносить пользу только после того, как предыдущий перестал быть черным ящиком.</p>
-  </article>
-</section>
-
-<section class="dashboard-main-grid">
-  <div class="roadmap-card dashboard-stage-board">
-    <div class="roadmap-head dashboard-stage-board-head">
-      <div>
-        <h2>Этапы и чекпоинты</h2>
-        <span>текущий маршрут по порядку</span>
-      </div>
-    </div>
-
-    <div class="dashboard-stage-list">
-      {{range .DashboardStages}}
-        <article class="dashboard-stage-card dashboard-stage-card--{{.StatusTone}}">
-          <div class="dashboard-stage-top">
-            <div class="dashboard-stage-topline">
-              <span class="dashboard-stage-index">{{.Index}}</span>
-              <span class="dashboard-stage-status">{{.Status}}</span>
-            </div>
+<section class="dashboard-stage-grid-compact">
+  {{range .DashboardStages}}
+    <article class="dashboard-stage-card dashboard-stage-card--{{.StatusTone}}">
+      <div class="dashboard-stage-head-compact">
+        <div class="dashboard-stage-title-group">
+          <span class="dashboard-stage-index">{{.Index}}</span>
+          <div>
+            <h3>{{.Title}}</h3>
             <span class="dashboard-stage-badge">{{.Badge}}</span>
           </div>
+        </div>
+        <span class="dashboard-stage-status">{{.Status}}</span>
+      </div>
 
-          <div class="dashboard-stage-copy">
-            <h3>{{.Title}}</h3>
-            <p>{{.Summary}}</p>
-          </div>
+      <p class="dashboard-stage-summary">{{.Summary}}</p>
 
-          <div class="dashboard-stage-progress">{{.Progress}}</div>
+      <div class="dashboard-stage-progress-row">
+        <span>{{.DoneCount}} / {{.TotalCount}} закрыто</span>
+        <strong>{{.Percent}}%</strong>
+      </div>
 
-          <ul class="dashboard-checkpoint-list">
-            {{range .Checkpoints}}
-              <li class="dashboard-checkpoint {{if .Done}}is-done{{else}}is-pending{{end}}">
-                <strong>{{.Title}}</strong>
-                <span>{{.Note}}</span>
-              </li>
-            {{end}}
-          </ul>
-        </article>
-      {{end}}
-    </div>
-  </div>
+      <div class="dashboard-stage-meter" aria-hidden="true">
+        <span style="width: {{.Percent}}%;"></span>
+      </div>
 
-  <div class="dashboard-side-stack">
-    <aside class="aside-note dashboard-playbook">
-      <span class="card-kicker">что закрыть сначала</span>
-      <h2>Небольшой план на старт.</h2>
-      <div class="dashboard-play-list">
-        {{range .DashboardPlaybook}}
-          <article class="dashboard-play-item">
-            <span>{{.Label}}</span>
-            <p>{{.Value}}</p>
-          </article>
+      <div class="dashboard-checkpoint-pills">
+        {{range .Checkpoints}}
+          <span class="dashboard-checkpoint-pill {{if .Done}}is-done{{else}}is-pending{{end}}">{{.Title}}</span>
         {{end}}
       </div>
-    </aside>
-
-    <aside class="aside-note dashboard-principles-card">
-      <span class="card-kicker">как читать этот путь</span>
-      <h2>Не гонись за стеком раньше задачи.</h2>
-      <ul class="mini-list">
-        <li>Сначала понимать, потом автоматизировать.</li>
-        <li>Каждый этап должен закрываться руками, а не только глазами.</li>
-        <li>Инструменты важны только в контексте задачи и системы.</li>
-      </ul>
-    </aside>
-  </div>
+    </article>
+  {{end}}
 </section>
 {{end}}
