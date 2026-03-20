@@ -5,17 +5,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"grep-offer/internal/content"
 	"grep-offer/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -517,10 +520,232 @@ func TestDashboardCheckpointTogglePersists(t *testing.T) {
 	}
 }
 
+func TestArticlesRoutesRenderMarkdown(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "intro.md"), []byte(`---
+title: "Docker без религии"
+slug: "docker-without-religion"
+summary: "Быстрый конспект по доставке."
+badge: "delivery"
+stage: "Доставка"
+order: 1
+published: true
+---
+
+# Docker без религии
+
+Собираем образ и не надеемся на магию.`), 0o644); err != nil {
+		t.Fatalf("write article: %v", err)
+	}
+
+	testApp, _ := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	indexResponse, err := server.Client().Get(server.URL + "/articles")
+	if err != nil {
+		t.Fatalf("articles index request: %v", err)
+	}
+	defer indexResponse.Body.Close()
+
+	if indexResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected articles index status: %d", indexResponse.StatusCode)
+	}
+
+	indexBody := readBody(t, indexResponse.Body)
+	if !strings.Contains(indexBody, "Docker без религии") {
+		t.Fatalf("article title missing on index: %s", indexBody)
+	}
+
+	showResponse, err := server.Client().Get(server.URL + "/articles/docker-without-religion")
+	if err != nil {
+		t.Fatalf("article show request: %v", err)
+	}
+	defer showResponse.Body.Close()
+
+	if showResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected article show status: %d", showResponse.StatusCode)
+	}
+
+	showBody := readBody(t, showResponse.Body)
+	if !strings.Contains(showBody, "<h1>Docker без религии</h1>") {
+		t.Fatalf("rendered markdown heading missing: %s", showBody)
+	}
+}
+
+func TestAdminCanManageUsers(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	member, err := st.CreateUser(ctx, "bash_bandit", "member@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create member user: %v", err)
+	}
+
+	const sessionToken = "admin-session-token"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	indexRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin", nil)
+	if err != nil {
+		t.Fatalf("build admin request: %v", err)
+	}
+	indexRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	indexResponse, err := client.Do(indexRequest)
+	if err != nil {
+		t.Fatalf("admin page request: %v", err)
+	}
+	defer indexResponse.Body.Close()
+
+	if indexResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected admin page status: %d", indexResponse.StatusCode)
+	}
+
+	if body := readBody(t, indexResponse.Body); !strings.Contains(body, "member@example.com") {
+		t.Fatalf("member missing from admin page: %s", body)
+	}
+
+	promoteRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/users/"+strconv.FormatInt(member.ID, 10)+"/admin", strings.NewReader("value=1"))
+	if err != nil {
+		t.Fatalf("build promote request: %v", err)
+	}
+	promoteRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	promoteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	promoteResponse, err := client.Do(promoteRequest)
+	if err != nil {
+		t.Fatalf("promote request: %v", err)
+	}
+	defer promoteResponse.Body.Close()
+
+	if promoteResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected promote status: %d", promoteResponse.StatusCode)
+	}
+
+	member, err = st.UserByID(ctx, member.ID)
+	if err != nil {
+		t.Fatalf("reload promoted user: %v", err)
+	}
+	if !member.IsAdmin {
+		t.Fatalf("expected user to become admin")
+	}
+
+	banRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/users/"+strconv.FormatInt(member.ID, 10)+"/ban", strings.NewReader("value=1"))
+	if err != nil {
+		t.Fatalf("build ban request: %v", err)
+	}
+	banRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	banRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	banResponse, err := client.Do(banRequest)
+	if err != nil {
+		t.Fatalf("ban request: %v", err)
+	}
+	defer banResponse.Body.Close()
+
+	if banResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected ban status: %d", banResponse.StatusCode)
+	}
+
+	member, err = st.UserByID(ctx, member.ID)
+	if err != nil {
+		t.Fatalf("reload banned user: %v", err)
+	}
+	if !member.IsBanned {
+		t.Fatalf("expected user to become banned")
+	}
+
+	deleteRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/users/"+strconv.FormatInt(member.ID, 10)+"/delete", nil)
+	if err != nil {
+		t.Fatalf("build delete request: %v", err)
+	}
+	deleteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	deleteResponse, err := client.Do(deleteRequest)
+	if err != nil {
+		t.Fatalf("delete request: %v", err)
+	}
+	defer deleteResponse.Body.Close()
+
+	if deleteResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected delete status: %d", deleteResponse.StatusCode)
+	}
+
+	if _, err := st.UserByID(ctx, member.ID); !errors.Is(err, store.ErrUserNotFound) {
+		t.Fatalf("expected deleted user to be gone, got %v", err)
+	}
+}
+
+func TestBannedUserCannotLogin(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("supersecret123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+
+	user, err := st.CreateUser(context.Background(), "frozen_ops", "banned@example.com", string(passwordHash))
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := st.SetUserBanned(context.Background(), user.ID, true); err != nil {
+		t.Fatalf("ban user: %v", err)
+	}
+
+	response, err := server.Client().PostForm(server.URL+"/login", url.Values{
+		"email":    {"banned@example.com"},
+		"password": {"supersecret123"},
+	})
+	if err != nil {
+		t.Fatalf("login request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("unexpected login status for banned user: %d", response.StatusCode)
+	}
+
+	if body := readBody(t, response.Body); !strings.Contains(body, "заморожен") {
+		t.Fatalf("banned user message missing: %s", body)
+	}
+}
+
 type testAppOptions struct {
 	mailer        ConfirmationMailer
 	notifier      AdminApprovalNotifier
 	webhookSecret string
+	articleDir    string
+	uploadsDir    string
 }
 
 func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
@@ -565,10 +790,25 @@ func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 		})
 	}
 
+	var articles *content.Library
+	if options.articleDir != "" {
+		articles = content.NewLibrary(options.articleDir)
+	}
+
+	uploadsDir := options.uploadsDir
+	if uploadsDir == "" {
+		uploadsDir = filepath.Join(t.TempDir(), "uploads")
+	}
+	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
+		t.Fatalf("create uploads dir: %v", err)
+	}
+
 	app, err := New(st, Config{
 		Registration:          registration,
 		PasswordReset:         passwordReset,
 		TelegramWebhookSecret: options.webhookSecret,
+		Articles:              articles,
+		UploadsDir:            uploadsDir,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)

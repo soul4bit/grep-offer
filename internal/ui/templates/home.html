@@ -3,10 +3,10 @@
 {{define "body"}}
 <section class="landing-hero landing-hero-minimal">
   <div class="landing-copy landing-copy-minimal">
-    <div class="eyebrow">маршрут до devops</div>
+    <div class="eyebrow">маршрут до DevOps</div>
     <h1 class="landing-title landing-title-minimal">Путь до DevOps без культа вокруг Kubernetes.</h1>
     <p class="landing-lead landing-lead-minimal">
-      grep-offer.ru собирает маршрут до оффера в нормальном порядке: база, доставка, платформа, рынок.
+      grep-offer.ru собирает маршрут до оффера в нормальном порядке: база, доставка, платформа и рынок.
     </p>
 
     <div class="landing-signal-row">
@@ -24,7 +24,7 @@
   <aside class="roadmap-hero-card roadmap-hero-card-minimal">
     <div class="roadmap-mini-head">
       <span class="card-kicker">что внутри</span>
-      <strong>маршрут, а не свалка советов</strong>
+      <strong>Маршрут, а не свалка советов</strong>
     </div>
 
     <div class="roadmap-mini-grid">
@@ -46,11 +46,11 @@
   </article>
   <article class="landing-mini-summary-card">
     <span class="card-kicker">чего нет</span>
-    <p>Никакого “учи все подряд” и сакральных списков инструментов.</p>
+    <p>Никакого “учи все подряд” и священных списков инструментов.</p>
   </article>
   <article class="landing-mini-summary-card">
     <span class="card-kicker">как зайти</span>
-    <p>Заявка, подтверждение почты и сразу в кабинет.</p>
+    <p>Заявка, подтверждение по почте и сразу в кабинет.</p>
   </article>
 </section>
 
@@ -73,6 +73,32 @@
     {{end}}
   </ol>
 </section>
+
+{{if .FeaturedArticles}}
+  <section class="content-preview">
+    <div class="section-copy section-copy-minimal">
+      <div class="eyebrow">статьи по темам</div>
+      <h2 class="section-title">Можно не только чекать прогресс, но и читать базу прямо внутри маршрута.</h2>
+    </div>
+
+    <div class="content-grid">
+      {{range .FeaturedArticles}}
+        <article class="article-card">
+          <div class="article-card-top">
+            <span class="roadmap-stage-badge">{{.Badge}}</span>
+            <span class="article-reading-time">{{.ReadingTime}}</span>
+          </div>
+          <h3><a href="/articles/{{.Slug}}">{{.Title}}</a></h3>
+          <p>{{.Summary}}</p>
+          <div class="article-card-footer">
+            <span>{{.Stage}}</span>
+            <a href="/articles/{{.Slug}}">Читать</a>
+          </div>
+        </article>
+      {{end}}
+    </div>
+  </section>
+{{end}}
 
 <section class="landing-final landing-final-minimal">
   <div class="landing-final-copy">

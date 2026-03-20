@@ -168,3 +168,32 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 - Автодеплой срабатывает на `push` в `main`, а не на локальный `git commit`. Без `git push` GitHub Actions не стартует.
 - Для проверки после рестарта добавлен endpoint `/healthz`.
 - В `/var/www/grep-offer` должны лежать только `current`, `releases` и `shared`. Клон репозитория лучше хранить отдельно, например в `/home/deploy/grep-offer`.
+## Контент и админка
+
+Теперь в проекте есть еще два слоя:
+
+- `content/articles` — markdown-статьи по этапам роадмапа
+- `shared/uploads` — картинки и другие файлы, которые отдаются с `/uploads/...`
+
+По умолчанию приложение читает:
+
+```env
+CONTENT_DIR=content/articles
+UPLOADS_DIR=/var/www/grep-offer/shared/uploads
+ADMIN_EMAILS=admin@example.com
+```
+
+Что это значит:
+
+- `CONTENT_DIR` — откуда читать markdown-статьи
+- `UPLOADS_DIR` — откуда отдавать изображения и вложения
+- `ADMIN_EMAILS` — список email через запятую; если пользователь с таким email существует, ему автоматически поднимается `is_admin`
+
+На сервере релиз теперь копирует папку `content` вместе с бинарем, а `setup-server.sh` создает еще и `/var/www/grep-offer/shared/uploads`.
+
+Админка доступна по `/admin` и умеет:
+
+- смотреть список пользователей
+- выдавать и снимать админку
+- банить и разбанивать
+- удалять аккаунт

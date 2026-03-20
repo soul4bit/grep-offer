@@ -14,6 +14,7 @@ import (
 var (
 	ErrEmailTaken                  = errors.New("email already taken")
 	ErrUsernameTaken               = errors.New("username already taken")
+	ErrUserBanned                  = errors.New("user banned")
 	ErrSessionNotFound             = errors.New("session not found")
 	ErrUserNotFound                = errors.New("user not found")
 	ErrRegistrationPending         = errors.New("registration pending")
@@ -32,6 +33,8 @@ type User struct {
 	Username     string
 	Email        string
 	PasswordHash string
+	IsAdmin      bool
+	IsBanned     bool
 	CreatedAt    time.Time
 }
 
@@ -52,8 +55,12 @@ func (s *Store) Init(ctx context.Context) error {
 			username TEXT NOT NULL,
 			email TEXT NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0,
+			is_banned INTEGER NOT NULL DEFAULT 0,
 			created_at INTEGER NOT NULL
 		);`,
+		`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;`,
+		`ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0;`,
 		`CREATE TABLE IF NOT EXISTS sessions (
 			token_hash TEXT PRIMARY KEY,
 			user_id INTEGER NOT NULL,
@@ -97,6 +104,9 @@ func (s *Store) Init(ctx context.Context) error {
 
 	for _, statement := range statements {
 		if _, err := s.db.ExecContext(ctx, statement); err != nil {
+			if isIgnorableMigrationError(err) {
+				continue
+			}
 			return fmt.Errorf("exec statement: %w", err)
 		}
 	}
@@ -147,7 +157,7 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 func (s *Store) UserByEmail(ctx context.Context, email string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, created_at FROM users WHERE email = ?`,
+		`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE email = ?`,
 		normalizeEmail(email),
 	)
 
@@ -165,7 +175,7 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (*User, error) {
 func (s *Store) UserByUsername(ctx context.Context, username string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, created_at FROM users WHERE lower(username) = ?`,
+		`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE lower(username) = ?`,
 		normalizeUsername(username),
 	)
 
@@ -183,7 +193,7 @@ func (s *Store) UserByUsername(ctx context.Context, username string) (*User, err
 func (s *Store) UserBySession(ctx context.Context, rawToken string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT u.id, u.username, u.email, u.password_hash, u.created_at
+		`SELECT u.id, u.username, u.email, u.password_hash, u.is_admin, u.is_banned, u.created_at
 		FROM sessions s
 		INNER JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = ? AND s.expires_at > ?`,
@@ -232,6 +242,11 @@ func (s *Store) DeleteSession(ctx context.Context, rawToken string) error {
 	return nil
 }
 
+func (s *Store) DeleteSessionsByUserID(ctx context.Context, userID int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+	return err
+}
+
 func (s *Store) DeleteExpiredSessions(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, time.Now().UTC().Unix())
 	return err
@@ -240,13 +255,17 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context) error {
 func scanUser(row scanner) (*User, error) {
 	var (
 		user      User
+		isAdmin   int
+		isBanned  int
 		createdAt int64
 	)
 
-	if err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &createdAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &isAdmin, &isBanned, &createdAt); err != nil {
 		return nil, err
 	}
 
+	user.IsAdmin = isAdmin != 0
+	user.IsBanned = isBanned != 0
 	user.CreatedAt = time.Unix(createdAt, 0).UTC()
 	return &user, nil
 }
@@ -262,4 +281,9 @@ func normalizeUsername(username string) string {
 func hashToken(rawToken string) string {
 	hash := sha256.Sum256([]byte(rawToken))
 	return hex.EncodeToString(hash[:])
+}
+
+func isIgnorableMigrationError(err error) bool {
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "duplicate column name")
 }

@@ -1,0 +1,21 @@
+{{define "title"}}{{if .Article}}{{.Article.Title}}{{else}}Статья{{end}}{{end}}
+
+{{define "body"}}
+{{with .Article}}
+  <article class="article-shell">
+    <header class="article-head">
+      <div class="article-meta-row">
+        <span class="roadmap-stage-badge">{{.Badge}}</span>
+        <span class="article-reading-time">{{.ReadingTime}}</span>
+        <span class="article-stage">{{.Stage}}</span>
+      </div>
+      <h1 class="section-title">{{.Title}}</h1>
+      <p class="lead">{{.Summary}}</p>
+    </header>
+
+    <div class="article-body prose">
+      {{.HTML}}
+    </div>
+  </article>
+{{end}}
+{{end}}

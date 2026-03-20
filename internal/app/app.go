@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"grep-offer/internal/content"
 	"grep-offer/internal/store"
 	"grep-offer/internal/ui"
 
@@ -37,15 +38,21 @@ type App struct {
 	store                 *store.Store
 	templates             map[string]*template.Template
 	static                http.Handler
+	uploads               http.Handler
+	articles              *content.Library
 	registration          *RegistrationCoordinator
 	passwordReset         *PasswordResetCoordinator
 	telegramWebhookSecret string
+	bootstrapAdminEmails  map[string]struct{}
 }
 
 type Config struct {
 	Registration          *RegistrationCoordinator
 	PasswordReset         *PasswordResetCoordinator
 	TelegramWebhookSecret string
+	Articles              *content.Library
+	UploadsDir            string
+	BootstrapAdminEmails  []string
 }
 
 type ViewData struct {
@@ -55,6 +62,10 @@ type ViewData struct {
 	Form               AuthForm
 	PasswordResetToken string
 	LandingRoadmap     []LandingStage
+	FeaturedArticles   []ArticleCard
+	Articles           []ArticleCard
+	Article            *ArticlePage
+	AdminUsers         []AdminUserRow
 	DashboardStats     []DashboardStat
 	DashboardStages    []DashboardStage
 	DashboardFocus     DashboardFocus
@@ -71,6 +82,35 @@ type LandingStage struct {
 	Badge   string
 	Summary string
 	Note    string
+}
+
+type ArticleCard struct {
+	Title       string
+	Slug        string
+	Summary     string
+	Badge       string
+	Stage       string
+	ReadingTime string
+}
+
+type ArticlePage struct {
+	Title       string
+	Slug        string
+	Summary     string
+	Badge       string
+	Stage       string
+	ReadingTime string
+	HTML        template.HTML
+}
+
+type AdminUserRow struct {
+	ID            int64
+	Username      string
+	Email         string
+	IsAdmin       bool
+	IsBanned      bool
+	IsCurrentUser bool
+	CreatedLabel  string
 }
 
 type DashboardStat struct {
@@ -119,23 +159,41 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		return nil, fmt.Errorf("load static fs: %w", err)
 	}
 
+	uploadsDir := strings.TrimSpace(cfg.UploadsDir)
+	var uploads http.Handler
+	if uploadsDir != "" {
+		uploads = http.FileServer(http.Dir(uploadsDir))
+	}
+
 	return &App{
 		store:                 st,
 		templates:             templates,
 		static:                http.FileServer(http.FS(staticFS)),
+		uploads:               uploads,
+		articles:              cfg.Articles,
 		registration:          cfg.Registration,
 		passwordReset:         cfg.PasswordReset,
 		telegramWebhookSecret: cfg.TelegramWebhookSecret,
+		bootstrapAdminEmails:  normalizeAdminEmails(cfg.BootstrapAdminEmails),
 	}, nil
 }
 
 func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", a.static))
+	if a.uploads != nil {
+		mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", a.uploads))
+	}
 	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /", a.handleHome)
+	mux.HandleFunc("GET /articles", a.handleArticlesIndex)
+	mux.HandleFunc("GET /articles/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
 	mux.HandleFunc("POST /dashboard/checkpoints", a.handleDashboardCheckpointToggle)
+	mux.HandleFunc("GET /admin", a.handleAdminDashboard)
+	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
+	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
+	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
 	mux.HandleFunc("GET /register", a.handleRegisterForm)
 	mux.HandleFunc("POST /register", a.handleRegisterSubmit)
 	mux.HandleFunc("GET /register/confirm", a.handleRegisterConfirm)
@@ -161,8 +219,15 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	featuredArticles, err := a.loadFeaturedArticles(3)
+	if err != nil {
+		http.Error(w, "load articles failed", http.StatusInternalServerError)
+		return
+	}
+
 	data := ViewData{
-		Notice: noticeFromRequest(r),
+		Notice:           noticeFromRequest(r),
+		FeaturedArticles: featuredArticles,
 		LandingRoadmap: []LandingStage{
 			{
 				Index:   "01",
@@ -461,6 +526,18 @@ func (a *App) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err = a.ensureBootstrapAdmin(r.Context(), user)
+	if err != nil {
+		http.Error(w, "bootstrap admin failed", http.StatusInternalServerError)
+		return
+	}
+
+	if user.IsBanned {
+		data.Error = "Этот доступ заморожен. Админ уже снял этот маршрут с релиза."
+		a.render(w, r, http.StatusForbidden, "login", data)
+		return
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		data.Error = "Почта или пароль не совпали. grep ничего не нашел."
 		a.render(w, r, http.StatusUnauthorized, "login", data)
@@ -515,7 +592,24 @@ func (a *App) userFromRequest(r *http.Request) (*store.User, error) {
 		return nil, nil
 	}
 
-	return a.store.UserBySession(r.Context(), cookie.Value)
+	user, err := a.store.UserBySession(r.Context(), cookie.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err = a.ensureBootstrapAdmin(r.Context(), user)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.IsBanned {
+		if deleteErr := a.store.DeleteSession(r.Context(), cookie.Value); deleteErr != nil && !errors.Is(deleteErr, store.ErrSessionNotFound) {
+			log.Printf("delete banned session: %v", deleteErr)
+		}
+		return nil, store.ErrSessionNotFound
+	}
+
+	return user, nil
 }
 
 func (a *App) currentUser(r *http.Request) *store.User {
@@ -524,6 +618,18 @@ func (a *App) currentUser(r *http.Request) *store.User {
 }
 
 func (a *App) issueSession(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64) error {
+	user, err := a.store.UserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	user, err = a.ensureBootstrapAdmin(ctx, user)
+	if err != nil {
+		return err
+	}
+	if user.IsBanned {
+		return store.ErrUserBanned
+	}
+
 	token, err := generateSessionToken()
 	if err != nil {
 		return err
@@ -587,7 +693,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 
 func loadTemplates() (map[string]*template.Template, error) {
 	cache := make(map[string]*template.Template)
-	pages := []string{"home", "login", "register", "forgot_password", "reset_password", "dashboard"}
+	pages := []string{"home", "login", "register", "forgot_password", "reset_password", "dashboard", "articles", "article", "admin"}
 
 	for _, page := range pages {
 		tmpl, err := template.ParseFS(
@@ -715,4 +821,25 @@ func noticeFromRequest(r *http.Request) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeAdminEmails(values []string) map[string]struct{} {
+	if len(values) == 0 {
+		return nil
+	}
+
+	index := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		email := strings.ToLower(strings.TrimSpace(value))
+		if email == "" {
+			continue
+		}
+		index[email] = struct{}{}
+	}
+
+	if len(index) == 0 {
+		return nil
+	}
+
+	return index
 }

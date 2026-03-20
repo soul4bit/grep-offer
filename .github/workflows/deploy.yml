@@ -72,6 +72,7 @@ jobs:
           mkdir -p "$RELEASE_DIR"
 
           install -m 755 "dist/$APP_NAME" "$RELEASE_DIR/$APP_NAME"
+          cp -R content "$RELEASE_DIR/"
           ln -sfn "$RELEASE_DIR" "$RELEASE_ROOT/current"
 
           rollback() {

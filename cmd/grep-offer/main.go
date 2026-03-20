@@ -10,10 +10,12 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"grep-offer/internal/app"
+	"grep-offer/internal/content"
 	"grep-offer/internal/notify"
 	"grep-offer/internal/store"
 
@@ -23,9 +25,14 @@ import (
 func main() {
 	addr := envOrDefault("ADDR", ":8080")
 	dbPath := envOrDefault("DB_PATH", filepath.Join("data", "grep-offer.db"))
+	contentDir := envOrDefault("CONTENT_DIR", filepath.Join("content", "articles"))
+	uploadsDir := envOrDefault("UPLOADS_DIR", filepath.Join("shared", "uploads"))
 
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		log.Fatalf("create data dir: %v", err)
+	}
+	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
+		log.Fatalf("create uploads dir: %v", err)
 	}
 
 	db, err := sql.Open("sqlite", dbPath)
@@ -57,7 +64,11 @@ func main() {
 		log.Printf("cleanup password reset tokens: %v", err)
 	}
 
-	appConfig := app.Config{}
+	appConfig := app.Config{
+		Articles:             content.NewLibrary(contentDir),
+		UploadsDir:           uploadsDir,
+		BootstrapAdminEmails: parseCSVEnv("ADMIN_EMAILS"),
+	}
 	mailer, err := buildSMTPMailer()
 	if err != nil {
 		log.Fatalf("build smtp mailer: %v", err)
@@ -121,6 +132,28 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func parseCSVEnv(key string) []string {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil
+	}
+
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n'
+	})
+
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		values = append(values, part)
+	}
+
+	return values
 }
 
 func buildSMTPMailer() (*notify.SMTPMailer, error) {

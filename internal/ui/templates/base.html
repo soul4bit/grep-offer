@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{template "title" .}} | grep-offer.ru</title>
-  <meta name="description" content="Рофл-роадмап до DevOps с нормальным порядком тем, этапами пути и прогрессом без карго-культа.">
+  <meta name="description" content="Рофл-роадмап до DevOps: этапы, статьи, прогресс и нормальный маршрут без карго-культа.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
@@ -22,13 +22,17 @@
         <span class="brand-mark">&gt;_</span>
         <span class="brand-stack">
           <span class="brand-copy">grep-offer<span class="brand-zone">.ru</span></span>
-          <span class="brand-tag">путь до devops без карго-культа</span>
+          <span class="brand-tag">путь до DevOps без карго-культа</span>
         </span>
       </a>
 
       <nav class="top-nav" aria-label="Главная навигация">
+        <a class="nav-link" href="/articles">Статьи</a>
         {{if .CurrentUser}}
           <a class="nav-link" href="/dashboard">Кабинет</a>
+          {{if .CurrentUser.IsAdmin}}
+            <a class="nav-link" href="/admin">Админка</a>
+          {{end}}
           <form action="/logout" method="post">
             <button class="ghost-button" type="submit">Выйти</button>
           </form>
@@ -87,7 +91,7 @@
         },
         "confirm-password": {
           test: function (value, input, form) {
-            var passwordInput = form.querySelector('input[name=\"password\"]');
+            var passwordInput = form.querySelector('input[name="password"]');
             return Boolean(passwordInput) && value.length >= 8 && value === passwordInput.value;
           },
           idle: "Должен совпасть. Иначе даже до письма дойдет драма.",
@@ -106,7 +110,7 @@
         var updateField = function (input) {
           var kind = input.dataset.validate;
           var field = input.closest(".field");
-          var status = form.querySelector('[data-field-status=\"' + kind + '\"]');
+          var status = form.querySelector('[data-field-status="' + kind + '"]');
           var validator = validators[kind];
           if (!field || !status || !validator) {
             return true;
@@ -147,7 +151,7 @@
             updateField(input);
 
             if (input.name === "password") {
-              var confirm = form.querySelector('[data-validate=\"confirm-password\"]');
+              var confirm = form.querySelector('[data-validate="confirm-password"]');
               if (confirm) {
                 updateField(confirm);
               }

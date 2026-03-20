@@ -1,0 +1,64 @@
+{{define "title"}}Админка{{end}}
+
+{{define "body"}}
+<section class="admin-hero">
+  <div>
+    <div class="eyebrow">админка</div>
+    <h1 class="section-title">Пользователи и доступы без цирка.</h1>
+    <p class="lead">Список пользователей, бан, выдача админки и удаление аккаунта.</p>
+  </div>
+</section>
+
+<section class="admin-table-shell">
+  <div class="admin-table-head">
+    <strong>Пользователи</strong>
+    <span>{{len .AdminUsers}} всего</span>
+  </div>
+
+  <div class="admin-user-list">
+    {{range .AdminUsers}}
+      <article class="admin-user-card {{if .IsBanned}}is-banned{{end}}">
+        <div class="admin-user-main">
+          <div class="admin-user-title">
+            <strong>{{.Username}}</strong>
+            <span>{{.Email}}</span>
+          </div>
+          <div class="admin-user-meta">
+            <span class="admin-pill {{if .IsAdmin}}is-admin{{end}}">{{if .IsAdmin}}admin{{else}}user{{end}}</span>
+            <span class="admin-pill {{if .IsBanned}}is-banned{{end}}">{{if .IsBanned}}banned{{else}}active{{end}}</span>
+            {{if .IsCurrentUser}}
+              <span class="admin-pill">you</span>
+            {{end}}
+            <span class="admin-created">{{.CreatedLabel}}</span>
+          </div>
+        </div>
+
+        <div class="admin-user-actions">
+          {{if not .IsCurrentUser}}
+            <form method="post" action="/admin/users/{{.ID}}/admin">
+              <input type="hidden" name="value" value="{{if .IsAdmin}}0{{else}}1{{end}}">
+              <button class="ghost-button" type="submit">{{if .IsAdmin}}Снять админку{{else}}Выдать админку{{end}}</button>
+            </form>
+
+            <form method="post" action="/admin/users/{{.ID}}/ban">
+              <input type="hidden" name="value" value="{{if .IsBanned}}0{{else}}1{{end}}">
+              <button class="ghost-button" type="submit">{{if .IsBanned}}Разбанить{{else}}Забанить{{end}}</button>
+            </form>
+
+            <form method="post" action="/admin/users/{{.ID}}/delete">
+              <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
+            </form>
+          {{else}}
+            <span class="admin-user-lock">Себя этим экраном не ломаем.</span>
+          {{end}}
+        </div>
+      </article>
+    {{else}}
+      <article class="article-card article-card-empty">
+        <h2>Пока никого нет</h2>
+        <p>Как только появятся пользователи, они будут здесь.</p>
+      </article>
+    {{end}}
+  </div>
+</section>
+{{end}}
