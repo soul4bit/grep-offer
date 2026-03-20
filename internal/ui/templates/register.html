@@ -9,11 +9,25 @@
       Пока это первый слой: регистрация, сессия и стартовый кабинет.
       Дальше сюда положим сам рофл-роадмап.
     </p>
+
+    <ul class="auth-points">
+      <li><strong>Быстрый старт.</strong> Только ник, почта и пароль, без лишней сцены.</li>
+      <li><strong>Понятная структура.</strong> Сначала доступ, потом дорожная карта и прогресс.</li>
+      <li><strong>Правильный тон.</strong> С юмором, но без ощущения дешевого лендинга.</li>
+    </ul>
+
+    <div class="auth-side-card">
+      <span class="card-kicker">beta access</span>
+      <p>Регистрация сейчас открывает базовый кабинет. Позже сюда добавим этапы, заметки, прогресс и реальный контент.</p>
+    </div>
   </div>
 
   <div class="auth-card">
-    <h2>Регистрация</h2>
-    <p class="auth-muted">Ник, почта и пароль. Никаких OAuth-паровозов на первом шаге.</p>
+    <div class="auth-card-top">
+      <span class="card-kicker">create account</span>
+      <h2>Регистрация</h2>
+      <p class="auth-muted">Ник, почта и пароль. Никаких OAuth-паровозов на первом шаге.</p>
+    </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>

@@ -1,20 +1,43 @@
 {{define "title"}}Кабинет{{end}}
 
 {{define "body"}}
-<section class="dashboard-head">
-  <div>
+<section class="dashboard-hero">
+  <div class="dashboard-copy">
     <div class="eyebrow">dashboard</div>
     <h1>Привет, {{.CurrentUser.Username}}.</h1>
     <p class="lead">
       База для авторизации уже на месте. Теперь сюда можно натягивать сам роадмап,
       прогресс, чек-листы и внутренние рофлы.
     </p>
+
+    <div class="summary-row">
+      <span class="summary-chip">auth готов</span>
+      <span class="summary-chip">стартовый кабинет есть</span>
+      <span class="summary-chip">роадмап следующий</span>
+    </div>
   </div>
 
-  <div class="profile-badge">
-    <span class="profile-label">email</span>
-    <strong>{{.CurrentUser.Email}}</strong>
-  </div>
+  <aside class="status-card">
+    <span class="card-kicker">profile</span>
+    <h2>{{.CurrentUser.Username}}</h2>
+
+    <div class="status-list">
+      <div class="status-item">
+        <span class="status-label">email</span>
+        <strong>{{.CurrentUser.Email}}</strong>
+      </div>
+
+      <div class="status-item">
+        <span class="status-label">session</span>
+        <strong>активна и жива</strong>
+      </div>
+
+      <div class="status-item">
+        <span class="status-label">phase</span>
+        <strong>beta groundwork</strong>
+      </div>
+    </div>
+  </aside>
 </section>
 
 <section class="dashboard-grid">
@@ -29,17 +52,39 @@
     <h2>Что добавим дальше</h2>
     <p>Этапы роадмапа, отметки прогресса, контент и нормальную структуру личного кабинета.</p>
   </article>
+
+  <article class="feature-card">
+    <span class="card-kicker">ui/ux</span>
+    <h2>Новый визуальный каркас</h2>
+    <p>Типографика, акценты и сетка уже подтянуты так, чтобы продукт читался цельнее и увереннее.</p>
+  </article>
 </section>
 
-<section class="roadmap-card">
-  <div class="roadmap-head">
-    <h2>Черновик будущего пути</h2>
-    <span>beta structure</span>
+<section class="roadmap-grid">
+  <div class="roadmap-card">
+    <div class="roadmap-head">
+      <h2>Черновик будущего пути</h2>
+      <span>beta structure</span>
+    </div>
+    <ol class="roadmap-list">
+      {{range .Roadmap}}
+        <li>{{.}}</li>
+      {{end}}
+    </ol>
   </div>
-  <ol class="roadmap-list">
-    {{range .Roadmap}}
-      <li>{{.}}</li>
-    {{end}}
-  </ol>
+
+  <aside class="aside-note roadmap-note">
+    <span class="card-kicker">product note</span>
+    <h2>Кабинет должен стать штурманской панелью.</h2>
+    <p>
+      Тут логично сделать этапы пути, краткие пояснения, индикаторы прогресса,
+      избранные темы и в будущем разборы по собесам.
+    </p>
+    <ul class="mini-list">
+      <li>этапы с нормальным порядком</li>
+      <li>чекпоинты и метки прогресса</li>
+      <li>контент, который не стыдно перечитывать</li>
+    </ul>
+  </aside>
 </section>
 {{end}}

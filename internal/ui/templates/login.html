@@ -6,13 +6,27 @@
     <div class="eyebrow">login</div>
     <h1>Возвращайся в консольную секту.</h1>
     <p class="lead">
-      Вход простой: почта, пароль и никакого ritual YAML.
+      Вход должен ощущаться как короткий и внятный шаг, а не как пролог к корпоративной боли.
     </p>
+
+    <ul class="auth-points">
+      <li><strong>Один экран.</strong> Без OAuth-парадов и странных развилок.</li>
+      <li><strong>Нормальный фокус.</strong> Сначала вход, потом контент, а не наоборот.</li>
+      <li><strong>Чистая подача.</strong> Контраст, крупные поля и заметный call to action.</li>
+    </ul>
+
+    <div class="auth-side-card">
+      <span class="card-kicker">inside beta</span>
+      <p>После логина пользователь попадает в личный кабинет, где дальше можно строить этапы роадмапа и прогресс.</p>
+    </div>
   </div>
 
   <div class="auth-card">
-    <h2>Войти</h2>
-    <p class="auth-muted">Продолжить путь к офферу и посмотреть заготовку кабинета.</p>
+    <div class="auth-card-top">
+      <span class="card-kicker">member access</span>
+      <h2>Войти</h2>
+      <p class="auth-muted">Продолжить путь к офферу и посмотреть заготовку кабинета.</p>
+    </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>

@@ -6,27 +6,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{template "title" .}} | grep-offer.ru</title>
   <meta name="description" content="Рофл-роадмап до DevOps с нормальным auth-flow на Go.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <div class="orb orb-lime"></div>
   <div class="orb orb-coral"></div>
+  <div class="orb orb-mint"></div>
 
   <div class="page-shell">
     <header class="site-header">
       <a class="brand" href="/">
         <span class="brand-mark">&gt;_</span>
-        <span class="brand-copy">grep-offer<span class="brand-zone">.ru</span></span>
+        <span class="brand-stack">
+          <span class="brand-copy">grep-offer<span class="brand-zone">.ru</span></span>
+          <span class="brand-tag">devops roadmap beta</span>
+        </span>
       </a>
 
       <nav class="top-nav" aria-label="Главная навигация">
         {{if .CurrentUser}}
-          <a href="/dashboard">Кабинет</a>
+          <a class="nav-link" href="/dashboard">Кабинет</a>
           <form action="/logout" method="post">
             <button class="ghost-button" type="submit">Выйти</button>
           </form>
         {{else}}
-          <a href="/login">Войти</a>
+          <a class="nav-link" href="/login">Войти</a>
           <a class="pill-link" href="/register">Регистрация</a>
         {{end}}
       </nav>
