@@ -850,6 +850,51 @@ input::placeholder {
   background: linear-gradient(180deg, rgba(255, 132, 90, 0.06), rgba(255, 255, 255, 0.018));
 }
 
+.landing-access {
+  display: grid;
+  gap: 1rem;
+  padding: 0.2rem 0 0;
+}
+
+.access-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.access-step-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.15rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+}
+
+.access-step-card h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.16rem;
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+}
+
+.access-step-card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.access-step-index {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .landing-rules {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1567,6 +1612,7 @@ p {
 
   .landing-facts,
   .landing-fit,
+  .access-flow-grid,
   .auth-highlights,
   .roadmap-stage-grid,
   .landing-rules,
@@ -1612,6 +1658,7 @@ p {
   .landing-facts,
   .roadmap-poster-grid,
   .landing-fit,
+  .access-flow-grid,
   .auth-highlights,
   .landing-rules,
   .landing-final {
@@ -1677,6 +1724,7 @@ p {
 
   .landing-facts,
   .landing-fit,
+  .access-flow-grid,
   .auth-highlights,
   .roadmap-stage-grid,
   .landing-rules,
