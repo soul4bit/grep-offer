@@ -330,6 +330,33 @@ input::placeholder {
   line-height: 1.68;
 }
 
+.landing-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  max-width: 42rem;
+}
+
+.landing-fact {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.landing-fact strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.landing-fact span {
+  color: var(--muted);
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
 .landing-chip-row li {
   border-color: rgba(216, 255, 97, 0.16);
   background: rgba(216, 255, 97, 0.06);
@@ -339,6 +366,7 @@ input::placeholder {
   display: grid;
   gap: 0.55rem;
   max-width: 33rem;
+  margin-top: 0.15rem;
   padding: 1rem 1.05rem;
   border: 1px solid rgba(101, 224, 178, 0.14);
   border-radius: 1.3rem;
@@ -788,6 +816,38 @@ input::placeholder {
   line-height: 1.58;
   padding-top: 0.7rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.landing-fit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 0.925fr));
+  gap: 1rem;
+}
+
+.fit-card {
+  padding: 1.25rem 1.15rem;
+  height: 100%;
+}
+
+.fit-card h2 {
+  font-family: var(--font-body);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.fit-card p {
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.62;
+}
+
+.fit-card-main {
+  background: linear-gradient(180deg, rgba(216, 255, 97, 0.05), rgba(255, 255, 255, 0.018));
+}
+
+.fit-card-alt {
+  background: linear-gradient(180deg, rgba(255, 132, 90, 0.06), rgba(255, 255, 255, 0.018));
 }
 
 .landing-rules {
@@ -1358,6 +1418,8 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .landing-facts,
+  .landing-fit,
   .roadmap-stage-grid,
   .landing-rules,
   .landing-principles {
@@ -1398,7 +1460,9 @@ p {
     width: 100%;
   }
 
+  .landing-facts,
   .roadmap-poster-grid,
+  .landing-fit,
   .landing-rules,
   .landing-final {
     grid-template-columns: 1fr;
@@ -1457,6 +1521,8 @@ p {
     font-size: clamp(2rem, 11vw, 3rem);
   }
 
+  .landing-facts,
+  .landing-fit,
   .roadmap-stage-grid,
   .landing-rules,
   .landing-principles {

@@ -106,12 +106,6 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 
 	data := ViewData{
 		Notice: noticeFromRequest(r),
-		Roadmap: []string{
-			"Фундамент: Linux, bash, git, сеть и привычка читать логи, а не гадать.",
-			"Доставка: Docker, registry, CI/CD и деплой без классики \"но локально же работало\".",
-			"Платформа: Kubernetes, observability, Terraform и аккуратная работа с облаком.",
-			"Оффер: резюме, собесы и разговор о деньгах без инфоцыганских фанфар.",
-		},
 		LandingRoadmap: []LandingStage{
 			{
 				Index:   "01",

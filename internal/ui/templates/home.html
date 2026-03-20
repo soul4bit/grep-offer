@@ -3,7 +3,7 @@
 {{define "body"}}
 <section class="landing-hero">
   <div class="landing-copy">
-    <div class="eyebrow">roadmap without cargo cult</div>
+    <div class="eyebrow">маршрут до devops</div>
     <p class="landing-kicker">Рофл-стиль, но порядок тем все еще важнее хайпа.</p>
     <h1 class="landing-title">Сначала bash. Потом деплой. Потом уже Kubernetes.</h1>
     <p class="landing-lead">
@@ -16,12 +16,20 @@
       <a class="secondary-button" href="/login">Войти</a>
     </div>
 
-    <ul class="chip-row landing-chip-row">
-      <li>Linux</li>
-      <li>Docker</li>
-      <li>Kubernetes</li>
-      <li>Offer</li>
-    </ul>
+    <div class="landing-facts">
+      <article class="landing-fact">
+        <strong>Фокус</strong>
+        <span>Не учить все подряд, а идти по нормальной последовательности.</span>
+      </article>
+      <article class="landing-fact">
+        <strong>Тон</strong>
+        <span>Сухой инженерный рофл без кринжа и маркетинговой пены.</span>
+      </article>
+      <article class="landing-fact">
+        <strong>Финиш</strong>
+        <span>Дойти от терминала и деплоя до нормального собеса и оффера.</span>
+      </article>
+    </div>
 
     <div class="landing-note">
       <span class="landing-note-command">$ grep -R "магия" ./career</span>
@@ -32,10 +40,10 @@
   <aside class="roadmap-hero-card roadmap-poster">
     <div class="roadmap-hero-top roadmap-poster-head">
       <div>
-        <span class="card-kicker">маршрут</span>
-        <strong>от первого `ssh` до оффера</strong>
+        <span class="card-kicker">карта пути</span>
+        <strong>от первой `ssh`-сессии до оффера</strong>
       </div>
-      <span class="poster-badge">4 этапа</span>
+      <span class="poster-badge">4 шага</span>
     </div>
 
     <div class="roadmap-poster-grid">
@@ -66,12 +74,12 @@
 
     <div class="roadmap-poster-foot">
       <div class="poster-signal">
-        <span>panic level</span>
-        <strong>managed</strong>
+        <span>уровень паники</span>
+        <strong>под контролем</strong>
       </div>
       <div class="poster-signal">
-        <span>magic flags</span>
-        <strong>disabled</strong>
+        <span>магические флаги</span>
+        <strong>отключены</strong>
       </div>
     </div>
   </aside>
@@ -79,22 +87,22 @@
 
 <section class="landing-section landing-roadmap-section">
   <div class="section-copy">
-    <div class="eyebrow">что внутри</div>
-    <h2 class="section-title">Четыре этапа, чтобы не учить Terraform раньше, чем ты понял, где лежат логи.</h2>
+    <div class="eyebrow">как устроен путь</div>
+    <h2 class="section-title">Четыре этапа, чтобы не учить Terraform раньше, чем ты понял, где вообще лежат логи.</h2>
     <p class="section-lead">
       Это не список модных слов. Это нормальная последовательность, в которой инструменты
       начинают решать задачи, а не просто копятся в резюме.
     </p>
 
     <div class="roadmap-section-note">
-      <span class="card-kicker">normal flow</span>
+      <span class="card-kicker">не перепрыгивай</span>
       <p>Если перескочить базу и сразу кинуться в модный стек, потом придется чинить не карьеру, а последствия спешки.</p>
     </div>
   </div>
 
   <div class="roadmap-stage-shell">
     <article class="roadmap-stage-overview">
-      <span class="card-kicker">как это читать</span>
+      <span class="card-kicker">как этим пользоваться</span>
       <h3>Не “список технологий”, а карта пути.</h3>
       <p>Каждый этап отвечает на свой вопрос: что понять, что собрать руками и где реально растет ценность. Не надо глотать все сразу.</p>
       <div class="roadmap-overview-legend">
@@ -121,32 +129,34 @@
   </div>
 </section>
 
-<section class="landing-rules">
-  <article class="principle-card rules-card">
-    <span class="card-kicker">что будет</span>
-    <h2>Практичный маршрут без тумана.</h2>
+<section class="landing-fit">
+  <article class="principle-card fit-card fit-card-main">
+    <span class="card-kicker">кому подойдет</span>
+    <h2>Тем, кто хочет нормальный порядок тем, а не набор громких слов.</h2>
     <ul class="mini-list">
-      <li>Порядок тем от базы к платформе, а не по степени хайпа в ленте.</li>
-      <li>Нормальные пояснения, зачем нужен каждый блок и где он встречается в реальной работе.</li>
-      <li>Рофлы ровно в том количестве, чтобы читать было живо, а не стыдно.</li>
+      <li>Junior-разработчику, который хочет зайти в DevOps без культа вокруг инструментов.</li>
+      <li>Backend или frontend-разработчику, который устал смотреть на инфраструктуру как на черный ящик.</li>
+      <li>Тем, кто хочет двигаться от практики и системы, а не от чужих чеклистов из чатов.</li>
     </ul>
   </article>
 
-  <article class="principle-card rules-card rules-card-alt">
+  <article class="principle-card fit-card">
+    <span class="card-kicker">какой подход</span>
+    <h2>Сначала понять, потом автоматизировать.</h2>
+    <p>Тут путь строится от базы к доставке, от доставки к платформе и только потом к рынку. Не наоборот и без фокусов.</p>
+  </article>
+
+  <article class="principle-card fit-card fit-card-alt">
     <span class="card-kicker">чего не будет</span>
     <h2>Никакого “учи все подряд”.</h2>
-    <ul class="mini-list">
-      <li>Без секты вокруг Kubernetes на второй день знакомства с Linux.</li>
-      <li>Без списков “топ-27 must-have tools”, которые только имитируют опыт.</li>
-      <li>Без обещаний 300k после одного туториала и двух мотивационных кружков.</li>
-    </ul>
+    <p>Без инфоцыганства, без сакрального списка must-have tools и без обещаний оффера за один туториал и две мотивационные речи.</p>
   </article>
 </section>
 
 <section class="landing-final">
   <div class="landing-final-copy">
     <div class="eyebrow">дальше уже руками</div>
-    <h2 class="section-title">Регайся, если хочешь разложить путь по шагам и не держать весь roadmap в голове.</h2>
+    <h2 class="section-title">Регайся, если хочешь пройти этот путь без хранения всего роадмапа в голове и заметках.</h2>
   </div>
 
   <div class="cta-row">
