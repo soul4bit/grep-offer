@@ -62,15 +62,21 @@
     {{end}}
 
     <form action="/login" method="post" class="auth-form" autocomplete="off">
+      <div class="autofill-decoy" aria-hidden="true">
+        <input type="text" tabindex="-1" autocomplete="username">
+        <input type="email" tabindex="-1" autocomplete="email">
+        <input type="password" tabindex="-1" autocomplete="current-password">
+      </div>
+
       <label class="field">
         <span>Email</span>
-        <input type="email" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required>
+        <input type="text" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" class="anti-autofill-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
         <p class="field-hint">Тот же email, на который привязан твой доступ к маршруту.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
-        <input type="password" name="password" placeholder="Минимум 8 символов" autocomplete="off" required>
+        <input type="password" name="password" placeholder="Минимум 8 символов" class="anti-autofill-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly required>
         <p class="field-hint">Вспоминай спокойно: дальше сразу попадешь туда, где остановился.</p>
       </label>
 

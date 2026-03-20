@@ -1386,6 +1386,22 @@ p {
   gap: 1rem;
 }
 
+.autofill-decoy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.autofill-decoy input {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+}
+
 .field {
   display: grid;
   gap: 0.48rem;
@@ -1423,6 +1439,10 @@ p {
   background: rgba(12, 17, 14, 0.92);
   box-shadow: 0 0 0 3px rgba(216, 255, 97, 0.08);
   transform: none;
+}
+
+.anti-autofill-input[readonly] {
+  caret-color: transparent;
 }
 
 .field input:-webkit-autofill,
@@ -1544,6 +1564,303 @@ p {
   font-size: 1rem;
 }
 
+.dashboard-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.dashboard-stat-card {
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.dashboard-stat-card strong {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.38rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-stat-card span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.dashboard-focus-card {
+  gap: 1rem;
+}
+
+.dashboard-progress-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid rgba(216, 255, 97, 0.14);
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.dashboard-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-progress-head span {
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-progress-head strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.dashboard-progress-track {
+  height: 0.68rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dashboard-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-3));
+  box-shadow: 0 0 18px rgba(216, 255, 97, 0.24);
+}
+
+.dashboard-progress-card p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.dashboard-highlights-grid {
+  margin-top: 1rem;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dashboard-stage-board {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-stage-board-head {
+  align-items: end;
+}
+
+.dashboard-stage-board-head div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.dashboard-stage-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-stage-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 1.3rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.dashboard-stage-card--active {
+  border-color: rgba(216, 255, 97, 0.3);
+  background:
+    linear-gradient(180deg, rgba(216, 255, 97, 0.07), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.dashboard-stage-card--queued {
+  border-color: rgba(101, 224, 178, 0.18);
+}
+
+.dashboard-stage-card--later {
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+.dashboard-stage-card--finish {
+  border-color: rgba(255, 132, 90, 0.22);
+}
+
+.dashboard-stage-top {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.dashboard-stage-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-stage-index {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 255, 97, 0.22);
+  background: rgba(216, 255, 97, 0.08);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-stage-status,
+.dashboard-stage-badge,
+.dashboard-stage-progress {
+  width: fit-content;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-stage-status {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+}
+
+.dashboard-stage-badge {
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(101, 224, 178, 0.16);
+  background: rgba(101, 224, 178, 0.08);
+  color: var(--accent-3);
+  font-size: 0.71rem;
+}
+
+.dashboard-stage-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.dashboard-stage-copy h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.dashboard-stage-copy p {
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.6;
+}
+
+.dashboard-stage-progress {
+  padding: 0.42rem 0.75rem;
+  border: 1px solid rgba(216, 255, 97, 0.14);
+  background: rgba(216, 255, 97, 0.05);
+  color: var(--muted-strong);
+  font-size: 0.71rem;
+}
+
+.dashboard-checkpoint-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dashboard-checkpoint {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.92rem 0.95rem 0.95rem 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1rem;
+  background: rgba(10, 15, 12, 0.5);
+}
+
+.dashboard-checkpoint::before {
+  content: "";
+  position: absolute;
+  top: 1.1rem;
+  left: 0.72rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.dashboard-checkpoint.is-done::before {
+  background: var(--accent-3);
+}
+
+.dashboard-checkpoint strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.dashboard-checkpoint span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.dashboard-side-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-play-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dashboard-play-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dashboard-play-item span {
+  color: var(--accent-3);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-play-item p {
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
 .roadmap-grid {
   grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr);
 }
@@ -1574,6 +1891,7 @@ p {
 .auth-card,
 .auth-side-card,
 .dashboard-hero,
+.dashboard-main-grid,
 .roadmap-card,
 .roadmap-note {
   animation: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1619,6 +1937,7 @@ p {
   .hero-grid,
   .auth-shell,
   .dashboard-hero,
+  .dashboard-main-grid,
   .roadmap-grid,
   .split-grid,
   .feature-grid,
@@ -1634,6 +1953,7 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-stat-row,
   .landing-facts,
   .landing-fit,
   .access-flow-grid,
@@ -1679,6 +1999,7 @@ p {
     width: 100%;
   }
 
+  .dashboard-stat-row,
   .landing-facts,
   .roadmap-poster-grid,
   .landing-fit,

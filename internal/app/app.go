@@ -47,12 +47,16 @@ type Config struct {
 }
 
 type ViewData struct {
-	CurrentUser    *store.User
-	Error          string
-	Notice         string
-	Form           AuthForm
-	Roadmap        []string
-	LandingRoadmap []LandingStage
+	CurrentUser       *store.User
+	Error             string
+	Notice            string
+	Form              AuthForm
+	Roadmap           []string
+	LandingRoadmap    []LandingStage
+	DashboardStats    []DashboardStat
+	DashboardStages   []DashboardStage
+	DashboardFocus    DashboardFocus
+	DashboardPlaybook []DashboardPlay
 }
 
 type AuthForm struct {
@@ -66,6 +70,42 @@ type LandingStage struct {
 	Badge   string
 	Summary string
 	Note    string
+}
+
+type DashboardStat struct {
+	Value string
+	Label string
+}
+
+type DashboardStage struct {
+	Index       string
+	Title       string
+	Badge       string
+	Summary     string
+	Status      string
+	StatusTone  string
+	Progress    string
+	Checkpoints []DashboardCheckpoint
+}
+
+type DashboardCheckpoint struct {
+	Title string
+	Note  string
+	Done  bool
+}
+
+type DashboardFocus struct {
+	Title          string
+	Summary        string
+	StageLabel     string
+	NextCheckpoint string
+	FinishLine     string
+	Percent        int
+}
+
+type DashboardPlay struct {
+	Label string
+	Value string
 }
 
 func New(st *store.Store, cfg Config) (*App, error) {
@@ -159,18 +199,101 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	stats, focus, stages, playbook := buildDashboardView()
 	data := ViewData{
-		CurrentUser: user,
-		Notice:      noticeFromRequest(r),
-		Roadmap: []string{
-			"Поднять профиль: linux, git, bash, tcp/ip.",
-			"Накатить доставку: docker, registry, CI/CD, healthchecks.",
-			"Разобрать оркестрацию: k8s, helm, ingress, observability.",
-			"Закрыть инфраструктуру: terraform, cloud, secrets, backup.",
-		},
+		CurrentUser:       user,
+		Notice:            noticeFromRequest(r),
+		DashboardStats:    stats,
+		DashboardFocus:    focus,
+		DashboardStages:   stages,
+		DashboardPlaybook: playbook,
 	}
 
 	a.render(w, r, http.StatusOK, "dashboard", data)
+}
+
+func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage, []DashboardPlay) {
+	stages := []DashboardStage{
+		{
+			Index:      "01",
+			Title:      "Фундамент",
+			Badge:      "linux / bash / git / network",
+			Summary:    "Сначала разбираешься с системой под ногами: shell, процессы, файловая система, ssh, логи и сетевые утилиты.",
+			Status:     "сейчас в фокусе",
+			StatusTone: "active",
+			Progress:   "этап 1 из 4",
+			Checkpoints: []DashboardCheckpoint{
+				{Title: "Навигация по Linux без паники", Note: "Файлы, права, процессы, systemd и package manager без магии.", Done: false},
+				{Title: "Bash как рабочий инструмент", Note: "Pipe, redirection, grep, sed, env и привычка читать man.", Done: false},
+				{Title: "Git и сеть без белой магии", Note: "SSH, remote, DNS, curl, ss и разбор обычных поломок.", Done: false},
+			},
+		},
+		{
+			Index:      "02",
+			Title:      "Доставка",
+			Badge:      "docker / ci-cd / deploy",
+			Summary:    "Понимаешь путь кода от коммита до сервера и перестаешь верить, что deploy сам как-то случается.",
+			Status:     "следом за фундаментом",
+			StatusTone: "queued",
+			Progress:   "3 чекпоинта впереди",
+			Checkpoints: []DashboardCheckpoint{
+				{Title: "Собрать образ без шаманства", Note: "Dockerfile, layers, registry и разница между build и run.", Done: false},
+				{Title: "Положить CI на рельсы", Note: "Pipeline, тесты, артефакты и нормальные healthchecks.", Done: false},
+				{Title: "Довезти deploy до предсказуемости", Note: "Rollback, env, секреты и понимание, где обычно рвется цепочка.", Done: false},
+			},
+		},
+		{
+			Index:      "03",
+			Title:      "Платформа",
+			Badge:      "k8s / terraform / observability",
+			Summary:    "Поднимаешь уровень абстракции только после того, как база и доставка перестали быть черным ящиком.",
+			Status:     "после доставки",
+			StatusTone: "later",
+			Progress:   "3 чекпоинта впереди",
+			Checkpoints: []DashboardCheckpoint{
+				{Title: "Понять orchestration, а не просто выучить YAML", Note: "Pods, services, ingress и что именно они решают.", Done: false},
+				{Title: "Наблюдать систему, а не надеяться", Note: "Logs, metrics, traces, alerts и что реально смотреть при инциденте.", Done: false},
+				{Title: "Описывать инфраструктуру как код", Note: "Terraform, state, secrets и аккуратная работа с cloud-ресурсами.", Done: false},
+			},
+		},
+		{
+			Index:      "04",
+			Title:      "Оффер",
+			Badge:      "cv / interview / offer",
+			Summary:    "Упаковываешь опыт так, чтобы на собесе было что сказать кроме списка инструментов.",
+			Status:     "финальный участок",
+			StatusTone: "finish",
+			Progress:   "3 чекпоинта впереди",
+			Checkpoints: []DashboardCheckpoint{
+				{Title: "Собрать резюме вокруг реальных задач", Note: "Что делал, что ломалось, что улучшил и какой был эффект.", Done: false},
+				{Title: "Подготовить техразговор без легенд", Note: "Архитектура, инциденты, delivery, надежность и компромиссы.", Done: false},
+				{Title: "Договориться об оффере без тумана", Note: "Деньги, ожидания, зона ответственности и следующий уровень роста.", Done: false},
+			},
+		},
+	}
+
+	stats := []DashboardStat{
+		{Value: "4 этапа", Label: "маршрут до оффера"},
+		{Value: "12 чекпоинтов", Label: "без прыжков по стеку"},
+		{Value: "этап 1/4", Label: "текущая точка на карте"},
+	}
+
+	focus := DashboardFocus{
+		Title:          "Фундамент",
+		Summary:        "Сейчас задача не в том, чтобы хватать Kubernetes, а в том, чтобы научиться не теряться в Linux, логах и сети.",
+		StageLabel:     "этап 1 из 4",
+		NextCheckpoint: "Следующий ориентир: bash, процессы и сетевые утилиты без гадания.",
+		FinishLine:     "Финиш этого этапа: ты уверенно читаешь логи и понимаешь, что происходит на сервере.",
+		Percent:        25,
+	}
+
+	playbook := []DashboardPlay{
+		{Label: "сегодня", Value: "Разобрать shell, процессы и файловую систему так, чтобы команды перестали быть заклинаниями."},
+		{Label: "на этой неделе", Value: "Привести в порядок git, ssh, curl, логирование и базовую сетевую диагностику."},
+		{Label: "не делать", Value: "Не перескакивать в Kubernetes и Terraform до того, как база перестанет шататься."},
+	}
+
+	return stats, focus, stages, playbook
 }
 
 func (a *App) handleRegisterForm(w http.ResponseWriter, r *http.Request) {

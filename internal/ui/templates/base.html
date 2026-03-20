@@ -47,6 +47,20 @@
       {{template "body" .}}
     </main>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll(".anti-autofill-input").forEach(function (input) {
+        var unlock = function () {
+          input.removeAttribute("readonly");
+        };
+
+        input.addEventListener("pointerdown", unlock, { once: true });
+        input.addEventListener("focus", unlock, { once: true });
+        input.addEventListener("keydown", unlock, { once: true });
+      });
+    });
+  </script>
 </body>
 </html>
 {{end}}
