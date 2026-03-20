@@ -1425,6 +1425,27 @@ p {
   transform: none;
 }
 
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-box-shadow:
+    0 0 0 1000px rgba(12, 17, 14, 0.92) inset,
+    0 0 0 3px rgba(216, 255, 97, 0.08);
+  transition: background-color 9999s ease-out 0s;
+}
+
+.field input::-webkit-contacts-auto-fill-button,
+.field input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 .field-hint {
   color: var(--muted);
   font-size: 0.84rem;

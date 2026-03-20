@@ -4,41 +4,41 @@
 <section class="auth-shell">
   <div class="auth-copy auth-copy-rich">
     <div class="eyebrow">старт маршрута</div>
-    <p class="auth-kicker">Заявка на доступ как короткий технический шаг, а не как ритуал посвящения.</p>
-    <h1 class="auth-title">Оставь заявку, дождись апрува и зайди в маршрут без лишнего церемониала.</h1>
+    <p class="auth-kicker">Короткий вход в продукт, а не ритуал посвящения.</p>
+    <h1 class="auth-title">Оставь заявку, пройди короткое подтверждение и зайди в маршрут без лишнего церемониала.</h1>
     <p class="lead auth-lead">
-      Схема простая: оставляешь ник, почту и пароль, заявка уходит в Telegram на апрув,
-      после этого тебе приходит письмо, и подтверждение сразу открывает сессию.
+      Схема простая: оставляешь ник, почту и пароль, проходишь короткое подтверждение доступа
+      и сразу попадаешь в кабинет, где путь уже можно держать перед глазами.
     </p>
 
     <div class="auth-highlights">
       <article class="auth-highlight-card">
         <strong>3 поля</strong>
-        <p>Ник, почта и пароль. Не нужен OAuth-паровоз и не нужна форма из двадцати вопросов.</p>
+        <p>Ник, почта и пароль. Этого хватает, чтобы быстро открыть путь без длинной сцены.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Апрув в Telegram</strong>
-        <p>После отправки формы заявка сначала прилетает админу в бота, а не сразу в users-таблицу.</p>
+        <strong>Подтвержденный доступ</strong>
+        <p>Регистрация проходит короткую проверку, чтобы внутрь попадали те, кому реально нужен продукт.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Автовход после письма</strong>
-        <p>Подтверждаешь email по ссылке и сразу попадаешь в кабинет без отдельного логина.</p>
+        <strong>Сразу в кабинет</strong>
+        <p>После подтверждения почты открывается сессия, и путь сразу оказывается перед глазами.</p>
       </article>
     </div>
 
     <div class="auth-side-card auth-side-console">
       <div class="auth-console-head">
-        <span class="card-kicker">после регистрации</span>
-        <strong>telegram -> email -> dashboard</strong>
+        <span class="card-kicker">после доступа</span>
+        <strong>/dashboard</strong>
       </div>
       <ul class="auth-console-list">
         <li>
           <span class="auth-console-key">что произойдет</span>
-          <p>Сначала придет апрув в Telegram, потом письмо на почту, и только после подтверждения создастся доступ.</p>
+          <p>После подтверждения почты откроется кабинет, где можно двигаться по этапам и держать курс перед глазами.</p>
         </li>
         <li>
           <span class="auth-console-key">что будет дальше</span>
-          <p>После входа можно будет держать этапы, чекпоинты и прогресс в одном месте вместо хаоса в заметках.</p>
+          <p>Этапы, чекпоинты и прогресс будут лежать в одном месте вместо хаоса по заметкам и вкладкам.</p>
         </li>
       </ul>
     </div>
@@ -46,45 +46,44 @@
 
   <div class="auth-card auth-card-form">
     <div class="auth-card-top">
-      <span class="card-kicker">request access</span>
+      <span class="card-kicker">заявка на доступ</span>
       <h2>Отправить заявку</h2>
-      <p class="auth-muted">Форма короткая, дальше уже апрув в боте и письмо с подтверждением.</p>
+      <p class="auth-muted">Короткая форма, после которой путь открывается без лишней ручной возни.</p>
     </div>
 
     <div class="auth-meta-row">
-      <span class="auth-meta-chip">ascii nick</span>
-      <span class="auth-meta-chip">tg approve</span>
-      <span class="auth-meta-chip">email confirm</span>
-      <span class="auth-meta-chip">autologin</span>
+      <span class="auth-meta-chip">короткий старт</span>
+      <span class="auth-meta-chip">подтверждение почты</span>
+      <span class="auth-meta-chip">вход после подтверждения</span>
     </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>
     {{end}}
 
-    <form action="/register" method="post" class="auth-form">
+    <form action="/register" method="post" class="auth-form" autocomplete="off">
       <label class="field">
         <span>Ник</span>
-        <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" required>
-        <p class="field-hint">Пока только ASCII: буквы, цифры, точка, дефис и нижнее подчеркивание.</p>
+        <input type="text" name="username" placeholder="bash_bandit" value="{{.Form.Username}}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <p class="field-hint">Пока только латиница, цифры, точка, дефис и нижнее подчеркивание.</p>
       </label>
 
       <label class="field">
         <span>Email</span>
-        <input type="email" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" required>
-        <p class="field-hint">На эту почту потом и будешь заходить в кабинет.</p>
+        <input type="email" name="email" placeholder="offer-hunter@grep-offer.ru" value="{{.Form.Email}}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required>
+        <p class="field-hint">На эту почту придет письмо, которое откроет путь в кабинет.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
-        <input type="password" name="password" placeholder="Минимум 8 символов" required>
+        <input type="password" name="password" placeholder="Минимум 8 символов" autocomplete="new-password" required>
         <p class="field-hint">Минимум 8 символов. Совсем уж рофлить над безопасностью не будем.</p>
       </label>
 
-      <button class="primary-button auth-submit" type="submit">Отправить на апрув</button>
+      <button class="primary-button auth-submit" type="submit">Отправить заявку</button>
     </form>
 
-    <p class="auth-footnote">Уже зарегистрирован? <a href="/login">Войти</a> и продолжить путь без повторного круга.</p>
+    <p class="auth-footnote">Уже есть доступ? <a href="/login">Войти</a> и продолжить путь без повторного круга.</p>
   </div>
 </section>
 {{end}}

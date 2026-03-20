@@ -4,41 +4,41 @@
 <section class="auth-shell">
   <div class="auth-copy auth-copy-rich">
     <div class="eyebrow">вход в маршрут</div>
-    <p class="auth-kicker">Быстрый возврат в кабинет без корпоративного лабиринта.</p>
-    <h1 class="auth-title">Войти и продолжить путь, а не заново вспоминать весь роадмап.</h1>
+    <p class="auth-kicker">Быстрый возврат в продукт без лишней сцены.</p>
+    <h1 class="auth-title">Войти и продолжить путь, а не заново собирать его по заметкам.</h1>
     <p class="lead auth-lead">
-      Тут вход должен ощущаться как короткое техническое действие: почта, пароль и обратно к маршруту,
-      а не как квест из десяти экранов и странных интеграций.
+      Вход нужен для одного: быстро вернуть тебя к маршруту, этапам и текущей точке движения,
+      а не разворачивать еще один квест до того, как ты увидишь продукт.
     </p>
 
     <div class="auth-highlights">
       <article class="auth-highlight-card">
         <strong>Один экран</strong>
-        <p>Без OAuth-парадов, без “выберите удобный способ”, без потери фокуса.</p>
+        <p>Без лишних развилок и без ощущения, что вход важнее самого продукта.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Нормальный ритм</strong>
-        <p>Сначала вход, потом кабинет, а не маркетинговая экскурсия по продукту.</p>
+        <strong>Возврат к прогрессу</strong>
+        <p>После входа ты снова видишь маршрут и текущую точку, а не пустой экран.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Контроль</strong>
-        <p>Ты возвращаешься туда, где уже собран маршрут, а не в пустой экран после формы.</p>
+        <strong>Четкий фокус</strong>
+        <p>Почта, пароль и сразу обратно к этапам, которые ты уже себе собрал.</p>
       </article>
     </div>
 
     <div class="auth-side-card auth-side-console">
       <div class="auth-console-head">
-        <span class="card-kicker">после входа</span>
+        <span class="card-kicker">внутри кабинета</span>
         <strong>/dashboard</strong>
       </div>
       <ul class="auth-console-list">
         <li>
           <span class="auth-console-key">что увидишь</span>
-          <p>Заготовку кабинета, текущие этапы и точку, с которой можно продолжить путь.</p>
+          <p>Маршрут, текущие этапы и опорную точку, с которой можно продолжить движение.</p>
         </li>
         <li>
           <span class="auth-console-key">зачем это нужно</span>
-          <p>Чтобы не держать весь маршрут в голове и не метаться между темами наугад.</p>
+          <p>Чтобы не держать весь путь в голове и не метаться между темами без системы.</p>
         </li>
       </ul>
     </div>
@@ -46,38 +46,38 @@
 
   <div class="auth-card auth-card-form">
     <div class="auth-card-top">
-      <span class="card-kicker">member access</span>
+      <span class="card-kicker">доступ</span>
       <h2>Войти в кабинет</h2>
-      <p class="auth-muted">Почта, пароль и дальше уже к этапам, а не к лишней церемонии.</p>
+      <p class="auth-muted">Почта, пароль и дальше уже к маршруту, этапам и прогрессу.</p>
     </div>
 
     <div class="auth-meta-row">
-      <span class="auth-meta-chip">без oauth</span>
       <span class="auth-meta-chip">1 шаг</span>
-      <span class="auth-meta-chip">сессия сразу</span>
+      <span class="auth-meta-chip">маршрут внутри</span>
+      <span class="auth-meta-chip">прогресс под рукой</span>
     </div>
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>
     {{end}}
 
-    <form action="/login" method="post" class="auth-form">
+    <form action="/login" method="post" class="auth-form" autocomplete="off">
       <label class="field">
         <span>Email</span>
-        <input type="email" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" required>
-        <p class="field-hint">Тот же email, с которым ты уже заходил в этот хаос.</p>
+        <input type="email" name="email" placeholder="devops@grep-offer.ru" value="{{.Form.Email}}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required>
+        <p class="field-hint">Тот же email, на который привязан твой доступ к маршруту.</p>
       </label>
 
       <label class="field">
         <span>Пароль</span>
-        <input type="password" name="password" placeholder="Минимум 8 символов" required>
-        <p class="field-hint">Пароль хранится не в `.txt`, а как положено, так что вспоминай аккуратно.</p>
+        <input type="password" name="password" placeholder="Минимум 8 символов" autocomplete="off" required>
+        <p class="field-hint">Вспоминай спокойно: дальше сразу попадешь туда, где остановился.</p>
       </label>
 
       <button class="primary-button auth-submit" type="submit">Войти</button>
     </form>
 
-    <p class="auth-footnote">Еще без аккаунта? <a href="/register">Зарегистрироваться</a> и начать маршрут с нуля, но без паники.</p>
+    <p class="auth-footnote">Еще без доступа? <a href="/register">Подать заявку</a> и начать маршрут с нуля, но без паники.</p>
   </div>
 </section>
 {{end}}

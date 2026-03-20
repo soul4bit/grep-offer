@@ -3,22 +3,21 @@
 {{define "body"}}
 <section class="dashboard-hero">
   <div class="dashboard-copy">
-    <div class="eyebrow">dashboard</div>
+    <div class="eyebrow">твой маршрут</div>
     <h1>Привет, {{.CurrentUser.Username}}.</h1>
     <p class="lead">
-      База для авторизации уже на месте. Теперь сюда можно натягивать сам роадмап,
-      прогресс, чек-листы и внутренние рофлы.
+      Здесь должен жить твой путь до DevOps: этапы, ориентиры и точка, в которой ты находишься прямо сейчас.
     </p>
 
     <div class="summary-row">
-      <span class="summary-chip">auth готов</span>
-      <span class="summary-chip">стартовый кабинет есть</span>
-      <span class="summary-chip">роадмап следующий</span>
+      <span class="summary-chip">4 этапа пути</span>
+      <span class="summary-chip">от базы до оффера</span>
+      <span class="summary-chip">порядок тем важнее шума</span>
     </div>
   </div>
 
   <aside class="status-card">
-    <span class="card-kicker">profile</span>
+    <span class="card-kicker">профиль</span>
     <h2>{{.CurrentUser.Username}}</h2>
 
     <div class="status-list">
@@ -28,13 +27,13 @@
       </div>
 
       <div class="status-item">
-        <span class="status-label">session</span>
-        <strong>активна и жива</strong>
+        <span class="status-label">маршрут</span>
+        <strong>активен</strong>
       </div>
 
       <div class="status-item">
-        <span class="status-label">phase</span>
-        <strong>beta groundwork</strong>
+        <span class="status-label">фаза</span>
+        <strong>сбор опорных точек</strong>
       </div>
     </div>
   </aside>
@@ -42,29 +41,29 @@
 
 <section class="dashboard-grid">
   <article class="feature-card">
-    <span class="card-kicker">next</span>
-    <h2>Что уже есть</h2>
-    <p>Регистрация, логин, logout и серверные сессии на SQLite.</p>
+    <span class="card-kicker">сейчас</span>
+    <h2>Маршрут уже собран по этапам</h2>
+    <p>Можно смотреть путь сверху вниз и не терять из виду, как база переходит в доставку, а доставка в платформу.</p>
   </article>
 
   <article class="feature-card">
-    <span class="card-kicker">soon</span>
-    <h2>Что добавим дальше</h2>
-    <p>Этапы роадмапа, отметки прогресса, контент и нормальную структуру личного кабинета.</p>
+    <span class="card-kicker">дальше</span>
+    <h2>Добавим чекпоинты и прогресс</h2>
+    <p>Чтобы путь был не просто списком тем, а нормальной последовательностью с отметками и движением вперед.</p>
   </article>
 
   <article class="feature-card">
-    <span class="card-kicker">ui/ux</span>
-    <h2>Новый визуальный каркас</h2>
-    <p>Типографика, акценты и сетка уже подтянуты так, чтобы продукт читался цельнее и увереннее.</p>
+    <span class="card-kicker">смысл</span>
+    <h2>Не терять курс посреди шума</h2>
+    <p>Кабинет нужен, чтобы держать перед глазами следующий шаг, а не собирать карьеру по кускам из вкладок и чатов.</p>
   </article>
 </section>
 
 <section class="roadmap-grid">
   <div class="roadmap-card">
     <div class="roadmap-head">
-      <h2>Черновик будущего пути</h2>
-      <span>beta structure</span>
+      <h2>Текущий маршрут</h2>
+      <span>путь по этапам</span>
     </div>
     <ol class="roadmap-list">
       {{range .Roadmap}}
@@ -74,11 +73,11 @@
   </div>
 
   <aside class="aside-note roadmap-note">
-    <span class="card-kicker">product note</span>
-    <h2>Кабинет должен стать штурманской панелью.</h2>
+    <span class="card-kicker">зачем кабинет</span>
+    <h2>Это должна быть штурманская панель пути.</h2>
     <p>
-      Тут логично сделать этапы пути, краткие пояснения, индикаторы прогресса,
-      избранные темы и в будущем разборы по собесам.
+      Здесь логично держать этапы, пояснения, прогресс и избранные темы,
+      чтобы продукт помогал двигаться, а не просто красиво называл знакомые технологии.
     </p>
     <ul class="mini-list">
       <li>этапы с нормальным порядком</li>
