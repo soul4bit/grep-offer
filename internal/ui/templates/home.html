@@ -3,69 +3,87 @@
 {{define "body"}}
 <section class="landing-hero">
   <div class="landing-copy">
-    <div class="eyebrow">devops roadmap beta</div>
-    <p class="landing-kicker">Рофл-стиль, но маршрут настоящий.</p>
-    <h1 class="landing-title">Роадмап до DevOps без сектантства, дыма и лишней магии.</h1>
+    <div class="eyebrow">roadmap without cargo cult</div>
+    <p class="landing-kicker">Рофл-стиль, но порядок тем все еще важнее хайпа.</p>
+    <h1 class="landing-title">Сначала bash. Потом деплой. Потом уже Kubernetes.</h1>
     <p class="landing-lead">
-      Сначала фундамент, потом доставка, потом платформа и только после этого разговор
-      про оффер. Не наоборот. И без сказок про «войти в IT за две субботы».
+      grep-offer.ru это маршрут до DevOps для тех, кто не хочет учить все подряд,
+      путать стек с профессией и слушать байки про оффер за две субботы.
     </p>
 
     <div class="cta-row">
-      <a class="primary-button" href="/register">Открыть маршрут</a>
-      <a class="secondary-button" href="/login">У меня уже есть аккаунт</a>
+      <a class="primary-button" href="/register">Начать путь</a>
+      <a class="secondary-button" href="/login">Войти</a>
     </div>
 
-    <div class="landing-strip">
-      <span>4 этапа</span>
-      <span>от Linux до оффера</span>
-      <span>без карго-культа</span>
+    <ul class="chip-row landing-chip-row">
+      <li>Linux</li>
+      <li>Docker</li>
+      <li>Kubernetes</li>
+      <li>Offer</li>
+    </ul>
+
+    <div class="landing-note">
+      <span class="landing-note-command">$ grep -R "магия" ./career</span>
+      <p>Ничего не найдено. Только логи, YAML, CI и привычка сначала понимать, потом трогать прод.</p>
     </div>
   </div>
 
-  <aside class="roadmap-hero-card">
-    <div class="roadmap-hero-top">
-      <span class="card-kicker">roadmap preview</span>
-      <strong>от терминала до собеса</strong>
+  <aside class="roadmap-hero-card roadmap-poster">
+    <div class="roadmap-hero-top roadmap-poster-head">
+      <div>
+        <span class="card-kicker">маршрут</span>
+        <strong>от первого `ssh` до оффера</strong>
+      </div>
+      <span class="poster-badge">4 этапа</span>
     </div>
 
-    <div class="roadmap-visual">
-      <div class="route-line" aria-hidden="true"></div>
-
-      <article class="route-stop route-stop-1">
+    <div class="roadmap-poster-grid">
+      <article class="poster-stage poster-stage-foundation">
         <span class="route-index">01</span>
         <h2>Фундамент</h2>
-        <p>Linux, bash, git, tcp/ip и чтение логов без паники.</p>
+        <p>Linux, bash, git, tcp/ip и чтение логов без гадания по кофейной гуще.</p>
       </article>
 
-      <article class="route-stop route-stop-2">
+      <article class="poster-stage poster-stage-delivery">
         <span class="route-index">02</span>
         <h2>Доставка</h2>
-        <p>Docker, registry, CI/CD и путь от коммита до деплоя.</p>
+        <p>Docker, registry, CI/CD и деплой без жанра «но локально же работало».</p>
       </article>
 
-      <article class="route-stop route-stop-3">
+      <article class="poster-stage poster-stage-platform">
         <span class="route-index">03</span>
         <h2>Платформа</h2>
-        <p>Kubernetes, observability, Terraform и облачная гигиена.</p>
+        <p>Kubernetes, observability, Terraform и понимание, где кончается магия и начинается эксплуатация.</p>
       </article>
 
-      <article class="route-stop route-stop-4">
+      <article class="poster-stage poster-stage-offer">
         <span class="route-index">04</span>
         <h2>Оффер</h2>
-        <p>Резюме, собесы и нормальный разговор про деньги.</p>
+        <p>Резюме, собесы и разговор про деньги без инфоцыганских фанфар.</p>
       </article>
+    </div>
+
+    <div class="roadmap-poster-foot">
+      <div class="poster-signal">
+        <span>panic level</span>
+        <strong>managed</strong>
+      </div>
+      <div class="poster-signal">
+        <span>magic flags</span>
+        <strong>disabled</strong>
+      </div>
     </div>
   </aside>
 </section>
 
 <section class="landing-section">
   <div class="section-copy">
-    <div class="eyebrow">маршрут по этапам</div>
-    <h2 class="section-title">Нормальный порядок тем, чтобы не начать с Kubernetes и не закончить нервным тиком.</h2>
+    <div class="eyebrow">что внутри</div>
+    <h2 class="section-title">Четыре этапа, чтобы не учить Terraform раньше, чем ты понял, где лежат логи.</h2>
     <p class="section-lead">
-      Ниже черновой скелет пути. Его задача простая: показать, что учить, в каком порядке,
-      и где реально растет ценность, а где просто красиво шумят словами.
+      Это не список модных слов. Это нормальная последовательность, в которой инструменты
+      начинают решать задачи, а не просто копятся в резюме.
     </p>
   </div>
 
@@ -78,23 +96,37 @@
   </ol>
 </section>
 
-<section class="landing-principles">
-  <article class="principle-card">
-    <span class="card-kicker">что тут важно</span>
-    <h2>Не «что модно», а что реально строит базу.</h2>
-    <p>Если у тебя не собран фундамент, то модный стек сверху просто красивее ломается.</p>
+<section class="landing-rules">
+  <article class="principle-card rules-card">
+    <span class="card-kicker">что будет</span>
+    <h2>Практичный маршрут без тумана.</h2>
+    <ul class="mini-list">
+      <li>Порядок тем от базы к платформе, а не по степени хайпа в ленте.</li>
+      <li>Нормальные пояснения, зачем нужен каждый блок и где он встречается в реальной работе.</li>
+      <li>Рофлы ровно в том количестве, чтобы читать было живо, а не стыдно.</li>
+    </ul>
   </article>
 
-  <article class="principle-card">
+  <article class="principle-card rules-card rules-card-alt">
     <span class="card-kicker">чего не будет</span>
-    <h2>Никаких «топ-12 must-have tools» без контекста.</h2>
-    <p>Сначала понимание задач, потом инструменты. Иначе получаешь коллекцию слов, а не профессию.</p>
+    <h2>Никакого “учи все подряд”.</h2>
+    <ul class="mini-list">
+      <li>Без секты вокруг Kubernetes на второй день знакомства с Linux.</li>
+      <li>Без списков “топ-27 must-have tools”, которые только имитируют опыт.</li>
+      <li>Без обещаний 300k после одного туториала и двух мотивационных кружков.</li>
+    </ul>
   </article>
+</section>
 
-  <article class="principle-card">
-    <span class="card-kicker">зачем регаться</span>
-    <h2>Чтобы дальше сохранить путь и собрать личный прогресс.</h2>
-    <p>Регистрация нужна не ради ceremony, а чтобы потом разложить сам roadmap по шагам и чекпоинтам.</p>
-  </article>
+<section class="landing-final">
+  <div class="landing-final-copy">
+    <div class="eyebrow">дальше уже руками</div>
+    <h2 class="section-title">Регайся, если хочешь разложить путь по шагам и не держать весь roadmap в голове.</h2>
+  </div>
+
+  <div class="cta-row">
+    <a class="primary-button" href="/register">Открыть маршрут</a>
+    <a class="secondary-button" href="/login">У меня уже есть аккаунт</a>
+  </div>
 </section>
 {{end}}
