@@ -64,9 +64,8 @@ func (m *SMTPMailer) SendRegistrationConfirmation(ctx context.Context, email, us
 	}
 	defer client.Close()
 
-	if ok, _ := client.Extension("AUTH"); ok && m.username != "" {
-		auth := smtp.PlainAuth("", m.username, m.password, m.host)
-		if err := client.Auth(auth); err != nil {
+	if m.username != "" {
+		if err := m.authenticate(client); err != nil {
 			return err
 		}
 	}
@@ -133,4 +132,53 @@ func (m *SMTPMailer) newClient(ctx context.Context) (*smtp.Client, error) {
 	}
 
 	return client, nil
+}
+
+func (m *SMTPMailer) authenticate(client *smtp.Client) error {
+	ok, mechanisms := client.Extension("AUTH")
+	if !ok {
+		return fmt.Errorf("smtp server does not advertise AUTH")
+	}
+
+	supported := map[string]bool{}
+	for _, mechanism := range strings.Fields(strings.ToUpper(strings.TrimSpace(mechanisms))) {
+		supported[mechanism] = true
+	}
+
+	switch {
+	case supported["LOGIN"]:
+		return client.Auth(loginAuth{
+			username: m.username,
+			password: m.password,
+		})
+	case supported["PLAIN"]:
+		return client.Auth(smtp.PlainAuth("", m.username, m.password, m.host))
+	default:
+		return fmt.Errorf("smtp server does not support a compatible auth mechanism: %s", mechanisms)
+	}
+}
+
+type loginAuth struct {
+	username string
+	password string
+}
+
+func (a loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	return "LOGIN", nil, nil
+}
+
+func (a loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+
+	prompt := strings.TrimSpace(strings.ToLower(string(fromServer)))
+	switch {
+	case strings.Contains(prompt, "username"), strings.Contains(prompt, "login"):
+		return []byte(a.username), nil
+	case strings.Contains(prompt, "password"):
+		return []byte(a.password), nil
+	default:
+		return nil, fmt.Errorf("unexpected AUTH LOGIN challenge: %q", string(fromServer))
+	}
 }
