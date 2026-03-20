@@ -7,7 +7,8 @@
 - сервер на `net/http`
 - серверный рендер через `html/template`
 - `SQLite` для пользователей и сессий
-- регистрация, вход и выход
+- регистрация с approve через Telegram и подтверждением по email
+- вход и выход
 - стартовая визуальная система для рофл-роадмапа в DevOps
 
 Палитра первого захода:
@@ -27,6 +28,21 @@ go run ./cmd/grep-offer
 
 - `ADDR` по умолчанию `:8080`
 - `DB_PATH` по умолчанию `data/grep-offer.db`
+- `APP_BASE_URL` например `https://grep-offer.ru`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`
+
+Если SMTP и Telegram env не заданы, approval-flow регистрации отключается.
+
+## Регистрация
+
+Текущий flow такой:
+
+1. Пользователь отправляет форму регистрации.
+2. Заявка уходит в Telegram-бота админу.
+3. Админ жмет approve.
+4. Пользователю уходит письмо с ссылкой подтверждения.
+5. После перехода по ссылке аккаунт создается и пользователь автоматически входит в кабинет.
 
 ## Автодеплой
 
@@ -74,6 +90,16 @@ bash deploy/setup-server.sh
 ```env
 ADDR=127.0.0.1:8080
 DB_PATH=/var/www/grep-offer/shared/data/grep-offer.db
+APP_BASE_URL=https://grep-offer.ru
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USERNAME=registration@example.com
+SMTP_PASSWORD=change-me
+MAIL_FROM=registration@example.com
+TELEGRAM_BOT_TOKEN=change-me
+TELEGRAM_ADMIN_CHAT_ID=123456789
+TELEGRAM_WEBHOOK_SECRET=change-me
 ```
 
 ### GitHub Runner
@@ -117,6 +143,22 @@ sudo /usr/bin/systemctl is-active grep-offer
 
 ```sudoers
 deploy ALL=NOPASSWD: /usr/bin/systemctl restart grep-offer, /usr/bin/systemctl is-active grep-offer
+```
+
+### Telegram webhook
+
+После того как домен и HTTPS уже работают, один раз выставь webhook для бота:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -d "url=https://grep-offer.ru/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+```
+
+Проверить можно так:
+
+```bash
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```
 
 ### Что еще важно

@@ -12,9 +12,13 @@ import (
 )
 
 var (
-	ErrEmailTaken      = errors.New("email already taken")
-	ErrSessionNotFound = errors.New("session not found")
-	ErrUserNotFound    = errors.New("user not found")
+	ErrEmailTaken                  = errors.New("email already taken")
+	ErrSessionNotFound             = errors.New("session not found")
+	ErrUserNotFound                = errors.New("user not found")
+	ErrRegistrationPending         = errors.New("registration pending")
+	ErrRegistrationNotFound        = errors.New("registration not found")
+	ErrRegistrationAlreadyApproved = errors.New("registration already approved")
+	ErrRegistrationTokenNotFound   = errors.New("registration token not found")
 )
 
 type Store struct {
@@ -56,6 +60,19 @@ func (s *Store) Init(ctx context.Context) error {
 			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);`,
+		`CREATE TABLE IF NOT EXISTS registration_requests (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			verification_token_hash TEXT,
+			verification_expires_at INTEGER,
+			approved_at INTEGER,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_registration_requests_email ON registration_requests(email);`,
+		`CREATE INDEX IF NOT EXISTS idx_registration_requests_verification_token_hash ON registration_requests(verification_token_hash);`,
 	}
 
 	for _, statement := range statements {

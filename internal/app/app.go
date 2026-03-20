@@ -34,9 +34,16 @@ type contextKey string
 const currentUserKey contextKey = "currentUser"
 
 type App struct {
-	store     *store.Store
-	templates map[string]*template.Template
-	static    http.Handler
+	store                 *store.Store
+	templates             map[string]*template.Template
+	static                http.Handler
+	registration          *RegistrationCoordinator
+	telegramWebhookSecret string
+}
+
+type Config struct {
+	Registration          *RegistrationCoordinator
+	TelegramWebhookSecret string
 }
 
 type ViewData struct {
@@ -61,7 +68,7 @@ type LandingStage struct {
 	Note    string
 }
 
-func New(st *store.Store) (*App, error) {
+func New(st *store.Store, cfg Config) (*App, error) {
 	templates, err := loadTemplates()
 	if err != nil {
 		return nil, err
@@ -73,9 +80,11 @@ func New(st *store.Store) (*App, error) {
 	}
 
 	return &App{
-		store:     st,
-		templates: templates,
-		static:    http.FileServer(http.FS(staticFS)),
+		store:                 st,
+		templates:             templates,
+		static:                http.FileServer(http.FS(staticFS)),
+		registration:          cfg.Registration,
+		telegramWebhookSecret: cfg.TelegramWebhookSecret,
 	}, nil
 }
 
@@ -87,9 +96,11 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
 	mux.HandleFunc("GET /register", a.handleRegisterForm)
 	mux.HandleFunc("POST /register", a.handleRegisterSubmit)
+	mux.HandleFunc("GET /register/confirm", a.handleRegisterConfirm)
 	mux.HandleFunc("GET /login", a.handleLoginForm)
 	mux.HandleFunc("POST /login", a.handleLoginSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
+	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
 	return a.withCurrentUser(mux)
 }
 
@@ -207,24 +218,27 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.store.CreateUser(r.Context(), username, email, string(passwordHash))
-	if err != nil {
-		if errors.Is(err, store.ErrEmailTaken) {
+	if a.registration == nil || !a.registration.Enabled() {
+		data.Error = "Регистрация сейчас выключена. Сначала надо настроить апрув в Telegram и письмо с подтверждением."
+		a.render(w, r, http.StatusServiceUnavailable, "register", data)
+		return
+	}
+
+	if err := a.registration.Submit(r.Context(), username, email, string(passwordHash)); err != nil {
+		switch {
+		case errors.Is(err, store.ErrEmailTaken):
 			data.Error = "Такой email уже занят. Значит, кто-то уже пошел грести оффер."
 			a.render(w, r, http.StatusConflict, "register", data)
-			return
+		case errors.Is(err, store.ErrRegistrationPending):
+			data.Error = "Заявка на этот email уже висит. Сначала дождись апрува в Telegram и письма на почту."
+			a.render(w, r, http.StatusConflict, "register", data)
+		default:
+			http.Error(w, "submit registration failed", http.StatusInternalServerError)
 		}
-
-		http.Error(w, "create user failed", http.StatusInternalServerError)
 		return
 	}
 
-	if err := a.issueSession(r.Context(), w, r, user.ID); err != nil {
-		http.Error(w, "create session failed", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/dashboard?notice=welcome", http.StatusSeeOther)
+	http.Redirect(w, r, "/register?notice=registration-requested", http.StatusSeeOther)
 }
 
 func (a *App) handleLoginForm(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +281,7 @@ func (a *App) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.UserByEmail(r.Context(), email)
 	if err != nil {
 		if errors.Is(err, store.ErrUserNotFound) {
-			data.Error = "Почта или пароль не совпали. grep ничего не нашел."
+			data.Error = a.loginErrorForEmail(r.Context(), email)
 			a.render(w, r, http.StatusUnauthorized, "login", data)
 			return
 		}
@@ -357,7 +371,7 @@ func (a *App) issueSession(ctx context.Context, w http.ResponseWriter, r *http.R
 		MaxAge:   int(sessionTTL.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   r.TLS != nil,
+		Secure:   requestIsSecure(r),
 	})
 
 	return nil
@@ -479,8 +493,14 @@ func noticeFromRequest(r *http.Request) string {
 	switch r.URL.Query().Get("notice") {
 	case "login-required":
 		return "Сначала войди. Роадмап офферов сам себя не посмотрит."
+	case "registration-requested":
+		return "Заявка отправлена. Теперь ждем апрув в Telegram, потом письмо с подтверждением, и только после этого вход."
 	case "welcome":
 		return "Аккаунт создан. Теперь можно строить путь из bash-тыка в DevOps."
+	case "email-confirmed":
+		return "Почта подтверждена. Сессия уже открыта, можно идти в кабинет."
+	case "confirmation-invalid":
+		return "Ссылка подтверждения устарела или уже недействительна."
 	case "logged-in":
 		return "Сессия активна. Продолжаем путь к офферу."
 	case "logged-out":

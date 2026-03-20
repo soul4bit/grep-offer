@@ -4,11 +4,11 @@
 <section class="auth-shell">
   <div class="auth-copy auth-copy-rich">
     <div class="eyebrow">старт маршрута</div>
-    <p class="auth-kicker">Регистрация как короткий технический шаг, а не как ритуал посвящения.</p>
-    <h1 class="auth-title">Создай аккаунт и собери путь до DevOps без лишнего церемониала.</h1>
+    <p class="auth-kicker">Заявка на доступ как короткий технический шаг, а не как ритуал посвящения.</p>
+    <h1 class="auth-title">Оставь заявку, дождись апрува и зайди в маршрут без лишнего церемониала.</h1>
     <p class="lead auth-lead">
-      Сейчас тебе нужен только доступ к личному маршруту. Ник, почта, пароль,
-      и дальше уже можно раскладывать этот беспорядочный стек по нормальным этапам.
+      Схема простая: оставляешь ник, почту и пароль, заявка уходит в Telegram на апрув,
+      после этого тебе приходит письмо, и подтверждение сразу открывает сессию.
     </p>
 
     <div class="auth-highlights">
@@ -17,28 +17,28 @@
         <p>Ник, почта и пароль. Не нужен OAuth-паровоз и не нужна форма из двадцати вопросов.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Сессия сразу</strong>
-        <p>После регистрации не придется логиниться заново. Создал аккаунт и поехал дальше.</p>
+        <strong>Апрув в Telegram</strong>
+        <p>После отправки формы заявка сначала прилетает админу в бота, а не сразу в users-таблицу.</p>
       </article>
       <article class="auth-highlight-card">
-        <strong>Путь под себя</strong>
-        <p>Регистрация нужна затем, чтобы держать этапы, прогресс и заметки в одном месте.</p>
+        <strong>Автовход после письма</strong>
+        <p>Подтверждаешь email по ссылке и сразу попадаешь в кабинет без отдельного логина.</p>
       </article>
     </div>
 
     <div class="auth-side-card auth-side-console">
       <div class="auth-console-head">
         <span class="card-kicker">после регистрации</span>
-        <strong>/dashboard?notice=welcome</strong>
+        <strong>telegram -> email -> dashboard</strong>
       </div>
       <ul class="auth-console-list">
         <li>
-          <span class="auth-console-key">что получишь</span>
-          <p>Базовый кабинет и точку, откуда можно дальше строить сам роадмап по шагам.</p>
+          <span class="auth-console-key">что произойдет</span>
+          <p>Сначала придет апрув в Telegram, потом письмо на почту, и только после подтверждения создастся доступ.</p>
         </li>
         <li>
           <span class="auth-console-key">что будет дальше</span>
-          <p>Этапы, чекпоинты, заметки и нормальный трек прогресса вместо хаоса в голове.</p>
+          <p>После входа можно будет держать этапы, чекпоинты и прогресс в одном месте вместо хаоса в заметках.</p>
         </li>
       </ul>
     </div>
@@ -46,15 +46,16 @@
 
   <div class="auth-card auth-card-form">
     <div class="auth-card-top">
-      <span class="card-kicker">create account</span>
-      <h2>Создать аккаунт</h2>
-      <p class="auth-muted">Только то, что реально нужно на старте. Без сцены, пены и магии.</p>
+      <span class="card-kicker">request access</span>
+      <h2>Отправить заявку</h2>
+      <p class="auth-muted">Форма короткая, дальше уже апрув в боте и письмо с подтверждением.</p>
     </div>
 
     <div class="auth-meta-row">
       <span class="auth-meta-chip">ascii nick</span>
-      <span class="auth-meta-chip">без oauth</span>
-      <span class="auth-meta-chip">вход сразу после signup</span>
+      <span class="auth-meta-chip">tg approve</span>
+      <span class="auth-meta-chip">email confirm</span>
+      <span class="auth-meta-chip">autologin</span>
     </div>
 
     {{if .Error}}
@@ -80,7 +81,7 @@
         <p class="field-hint">Минимум 8 символов. Совсем уж рофлить над безопасностью не будем.</p>
       </label>
 
-      <button class="primary-button auth-submit" type="submit">Создать аккаунт</button>
+      <button class="primary-button auth-submit" type="submit">Отправить на апрув</button>
     </form>
 
     <p class="auth-footnote">Уже зарегистрирован? <a href="/login">Войти</a> и продолжить путь без повторного круга.</p>
