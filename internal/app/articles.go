@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"grep-offer/internal/content"
 	"grep-offer/internal/store"
@@ -14,7 +16,8 @@ func (a *App) handleArticlesIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if a.currentUser(r) == nil {
+	user := a.currentUser(r)
+	if user == nil {
 		http.Redirect(w, r, "/login?notice=login-required", http.StatusSeeOther)
 		return
 	}
@@ -30,14 +33,18 @@ func (a *App) handleArticlesIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	viewModules := make([]CourseModule, 0, len(modules))
-	for _, module := range modules {
-		viewModules = append(viewModules, mapCourseModule(module))
+	progress, err := a.loadLessonProgress(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load lesson progress failed", http.StatusInternalServerError)
+		return
 	}
 
+	viewModules, courseProgress := mapCourseModules(modules, progress)
+
 	a.render(w, r, http.StatusOK, "articles", ViewData{
-		Notice:        noticeFromRequest(r),
-		CourseModules: viewModules,
+		Notice:         noticeFromRequest(r),
+		CourseModules:  viewModules,
+		CourseProgress: courseProgress,
 	})
 }
 
@@ -59,6 +66,12 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 
 	if a.articles == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	progress, err := a.loadLessonProgress(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load lesson progress failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -85,10 +98,19 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 		ReadingTime: lesson.ReadingTime,
 		HTML:        lesson.HTML,
 		ModuleItems: make([]ArticleCard, 0, len(lesson.ModuleItems)),
+		Done:        progress[lesson.Slug],
 	}
 
 	for _, item := range lesson.ModuleItems {
-		page.ModuleItems = append(page.ModuleItems, mapArticleCard(item))
+		done := progress[item.Slug]
+		page.ModuleItems = append(page.ModuleItems, mapArticleCard(item, done))
+		page.ModuleTotalCount++
+		if done {
+			page.ModuleDoneCount++
+		}
+	}
+	if page.ModuleTotalCount > 0 {
+		page.ModulePercent = page.ModuleDoneCount * 100 / page.ModuleTotalCount
 	}
 	if lesson.Prev != nil {
 		page.Prev = &ArticleNav{
@@ -111,6 +133,58 @@ func (a *App) handleArticleShow(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *App) handleLessonProgressToggle(w http.ResponseWriter, r *http.Request) {
+	user := a.requireSignedInUser(w, r)
+	if user == nil {
+		return
+	}
+
+	if a.articles == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	lessonSlug := strings.TrimSpace(r.FormValue("lesson"))
+	if lessonSlug == "" {
+		http.Error(w, "lesson is required", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := a.articles.LessonBySlug(lessonSlug); err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.Error(w, "load lesson failed", http.StatusInternalServerError)
+		return
+	}
+
+	doneValue := r.FormValue("done")
+	var done bool
+	switch doneValue {
+	case "1":
+		done = true
+	case "0":
+		done = false
+	default:
+		http.Error(w, "invalid lesson state", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.store.SetLessonProgress(r.Context(), user.ID, lessonSlug, done); err != nil {
+		http.Error(w, "save lesson progress failed", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, safeLearnRedirect(r.FormValue("return_to"), lessonSlug), http.StatusSeeOther)
+}
+
 func (a *App) loadFeaturedArticles(limit int) ([]ArticleCard, error) {
 	if a.articles == nil {
 		return nil, nil
@@ -127,13 +201,79 @@ func (a *App) loadFeaturedArticles(limit int) ([]ArticleCard, error) {
 
 	cards := make([]ArticleCard, 0, len(articles))
 	for _, article := range articles {
-		cards = append(cards, mapArticleCard(article))
+		cards = append(cards, mapArticleCard(article, false))
 	}
 
 	return cards, nil
 }
 
-func mapCourseModule(module content.Module) CourseModule {
+func (a *App) loadLessonProgress(ctx context.Context, userID int64) (map[string]bool, error) {
+	if userID == 0 {
+		return nil, nil
+	}
+
+	return a.store.LessonProgress(ctx, userID)
+}
+
+func (a *App) loadCourseOverview(ctx context.Context, userID int64) (CourseProgressView, error) {
+	summary := CourseProgressView{
+		ContinueHref: "/learn",
+	}
+	if a.articles == nil {
+		return summary, nil
+	}
+
+	modules, err := a.articles.Curriculum()
+	if err != nil {
+		return summary, err
+	}
+
+	progress, err := a.loadLessonProgress(ctx, userID)
+	if err != nil {
+		return summary, err
+	}
+
+	_, summary = mapCourseModules(modules, progress)
+	return summary, nil
+}
+
+func mapCourseModules(modules []content.Module, progress map[string]bool) ([]CourseModule, CourseProgressView) {
+	viewModules := make([]CourseModule, 0, len(modules))
+	summary := CourseProgressView{
+		ContinueHref: "/learn",
+	}
+
+	for _, module := range modules {
+		viewModule := mapCourseModule(module, progress)
+		viewModules = append(viewModules, viewModule)
+
+		summary.DoneCount += viewModule.DoneCount
+		summary.TotalCount += viewModule.TotalCount
+
+		if summary.NextSlug != "" {
+			continue
+		}
+
+		for _, lesson := range viewModule.Lessons {
+			if lesson.Done {
+				continue
+			}
+
+			summary.NextSlug = lesson.Slug
+			summary.NextTitle = lesson.Title
+			summary.ContinueHref = "/learn/" + lesson.Slug
+			break
+		}
+	}
+
+	if summary.TotalCount > 0 {
+		summary.Percent = summary.DoneCount * 100 / summary.TotalCount
+	}
+
+	return viewModules, summary
+}
+
+func mapCourseModule(module content.Module, progress map[string]bool) CourseModule {
 	viewModule := CourseModule{
 		Index:   module.Index,
 		Title:   module.Title,
@@ -141,13 +281,22 @@ func mapCourseModule(module content.Module) CourseModule {
 	}
 
 	for _, lesson := range module.Lessons {
-		viewModule.Lessons = append(viewModule.Lessons, mapArticleCard(lesson))
+		done := progress[lesson.Slug]
+		viewModule.Lessons = append(viewModule.Lessons, mapArticleCard(lesson, done))
+		viewModule.TotalCount++
+		if done {
+			viewModule.DoneCount++
+		}
+	}
+
+	if viewModule.TotalCount > 0 {
+		viewModule.Percent = viewModule.DoneCount * 100 / viewModule.TotalCount
 	}
 
 	return viewModule
 }
 
-func mapArticleCard(article content.ArticleMeta) ArticleCard {
+func mapArticleCard(article content.ArticleMeta, done bool) ArticleCard {
 	return ArticleCard{
 		Title:       article.Title,
 		Slug:        article.Slug,
@@ -158,7 +307,21 @@ func mapArticleCard(article content.ArticleMeta) ArticleCard {
 		Kind:        lessonKindLabel(article.Kind),
 		Index:       formatLessonIndex(article.ModuleOrder, article.BlockOrder),
 		ReadingTime: article.ReadingTime,
+		Done:        done,
 	}
+}
+
+func safeLearnRedirect(value, lessonSlug string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "/learn") && !strings.HasPrefix(value, "//") {
+		return value
+	}
+
+	if lessonSlug != "" {
+		return "/learn/" + lessonSlug
+	}
+
+	return "/learn"
 }
 
 func formatLessonIndex(moduleOrder, blockOrder int) string {

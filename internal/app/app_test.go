@@ -625,6 +625,169 @@ published: true
 	}
 }
 
+func TestLessonProgressPersistsAcrossLearnAndDashboard(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	lessonOne := `---
+title: "История Linux"
+slug: "linux-history"
+summary: "Быстрый старт по базе Linux."
+badge: "linux"
+stage: "Фундамент"
+module: "Фундамент"
+module_order: 1
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# История Linux
+
+Начинаем с базы.`
+	lessonTwo := `---
+title: "Файловая иерархия"
+slug: "linux-filesystem"
+summary: "Разбираем /etc, /var и компанию."
+badge: "linux"
+stage: "Фундамент"
+module: "Фундамент"
+module_order: 1
+block_order: 2
+kind: "practice"
+published: true
+---
+
+# Файловая иерархия
+
+Практика по структуре системы.`
+
+	if err := os.WriteFile(filepath.Join(contentDir, "01-history.md"), []byte(lessonOne), 0o644); err != nil {
+		t.Fatalf("write first lesson: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "02-filesystem.md"), []byte(lessonTwo), 0o644); err != nil {
+		t.Fatalf("write second lesson: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	user, err := st.CreateUser(ctx, "bash_bandit", "learn-progress@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	const sessionToken = "learn-progress-session"
+	if err := st.CreateSession(ctx, user.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	indexRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn", nil)
+	if err != nil {
+		t.Fatalf("build learn request: %v", err)
+	}
+	indexRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	indexResponse, err := client.Do(indexRequest)
+	if err != nil {
+		t.Fatalf("learn request: %v", err)
+	}
+	defer indexResponse.Body.Close()
+
+	if indexResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected learn status: %d", indexResponse.StatusCode)
+	}
+
+	initialBody := readBody(t, indexResponse.Body)
+	if !strings.Contains(initialBody, "0 / 2") {
+		t.Fatalf("expected empty lesson progress: %s", initialBody)
+	}
+
+	form := url.Values{
+		"lesson":    {"linux-history"},
+		"done":      {"1"},
+		"return_to": {"/learn/linux-history"},
+	}
+
+	progressRequest, err := http.NewRequest(http.MethodPost, server.URL+"/learn/progress", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build lesson progress request: %v", err)
+	}
+	progressRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	progressRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	progressResponse, err := client.Do(progressRequest)
+	if err != nil {
+		t.Fatalf("lesson progress request: %v", err)
+	}
+	defer progressResponse.Body.Close()
+
+	if progressResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected lesson progress status: %d", progressResponse.StatusCode)
+	}
+
+	progress, err := st.LessonProgress(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("load lesson progress: %v", err)
+	}
+	if !progress["linux-history"] {
+		t.Fatalf("expected lesson progress to persist")
+	}
+
+	indexReloadRequest, err := http.NewRequest(http.MethodGet, server.URL+"/learn", nil)
+	if err != nil {
+		t.Fatalf("build learn reload request: %v", err)
+	}
+	indexReloadRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	indexReloadResponse, err := client.Do(indexReloadRequest)
+	if err != nil {
+		t.Fatalf("learn reload request: %v", err)
+	}
+	defer indexReloadResponse.Body.Close()
+
+	reloadedBody := readBody(t, indexReloadResponse.Body)
+	if !strings.Contains(reloadedBody, "1 / 2") {
+		t.Fatalf("expected updated lesson progress on learn page: %s", reloadedBody)
+	}
+	if !strings.Contains(reloadedBody, "done") {
+		t.Fatalf("expected done state on learn page: %s", reloadedBody)
+	}
+
+	dashboardRequest, err := http.NewRequest(http.MethodGet, server.URL+"/dashboard", nil)
+	if err != nil {
+		t.Fatalf("build dashboard request: %v", err)
+	}
+	dashboardRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	dashboardResponse, err := client.Do(dashboardRequest)
+	if err != nil {
+		t.Fatalf("dashboard request: %v", err)
+	}
+	defer dashboardResponse.Body.Close()
+
+	dashboardBody := readBody(t, dashboardResponse.Body)
+	if !strings.Contains(dashboardBody, "1/2") {
+		t.Fatalf("expected lesson progress on dashboard: %s", dashboardBody)
+	}
+	if !strings.Contains(dashboardBody, "Следующий блок") {
+		t.Fatalf("expected dashboard continue CTA for next lesson: %s", dashboardBody)
+	}
+}
+
 func TestAdminCanManageUsers(t *testing.T) {
 	t.Parallel()
 

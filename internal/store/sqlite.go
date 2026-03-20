@@ -100,6 +100,15 @@ func (s *Store) Init(ctx context.Context) error {
 			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_user_roadmap_progress_user_id ON user_roadmap_progress(user_id);`,
+		`CREATE TABLE IF NOT EXISTS user_lesson_progress (
+			user_id INTEGER NOT NULL,
+			lesson_slug TEXT NOT NULL,
+			done INTEGER NOT NULL DEFAULT 0,
+			updated_at INTEGER NOT NULL,
+			PRIMARY KEY (user_id, lesson_slug),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id);`,
 	}
 
 	for _, statement := range statements {

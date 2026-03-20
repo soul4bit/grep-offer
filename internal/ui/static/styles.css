@@ -3271,6 +3271,37 @@ button.dashboard-checkpoint-pill {
   margin-bottom: 1.2rem;
 }
 
+.course-hero-split {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-items: start;
+  gap: 1rem;
+}
+
+.course-progress-summary {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  border: 1px solid rgba(215, 255, 100, 0.12);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
+    rgba(9, 13, 11, 0.92);
+}
+
+.course-progress-summary-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.course-progress-summary-head strong {
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.course-progress-track {
+  min-height: 0.8rem;
+}
+
 .course-module-list {
   display: grid;
   gap: 1.2rem;
@@ -3292,6 +3323,16 @@ button.dashboard-checkpoint-pill {
   margin-bottom: 1rem;
 }
 
+.course-module-head-rich {
+  justify-content: space-between;
+}
+
+.course-module-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .course-module-head h2,
 .course-module-head p {
   margin: 0;
@@ -3299,6 +3340,33 @@ button.dashboard-checkpoint-pill {
 
 .course-module-head p {
   color: rgba(243, 239, 227, 0.64);
+}
+
+.course-module-progress {
+  min-width: 148px;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.course-module-progress strong {
+  justify-self: end;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.course-module-meter {
+  width: 100%;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(243, 239, 227, 0.08);
+  overflow: hidden;
+}
+
+.course-module-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(215, 255, 100, 0.9), rgba(255, 122, 89, 0.9));
 }
 
 .course-module-index,
@@ -3339,6 +3407,13 @@ button.dashboard-checkpoint-pill {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
+.course-lesson-card.is-done {
+  border-color: rgba(215, 255, 100, 0.24);
+  background:
+    linear-gradient(180deg, rgba(215, 255, 100, 0.055), rgba(255, 255, 255, 0.015)),
+    rgba(6, 10, 8, 0.92);
+}
+
 .course-lesson-card:hover,
 .lesson-sidebar-item:hover,
 .lesson-sidebar-item.is-current {
@@ -3362,6 +3437,41 @@ button.dashboard-checkpoint-pill {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
+}
+
+.course-lesson-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.lesson-state-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 239, 227, 0.12);
+  background: rgba(243, 239, 227, 0.04);
+  color: rgba(243, 239, 227, 0.74);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lesson-state-chip.is-done {
+  border-color: rgba(215, 255, 100, 0.26);
+  background: rgba(215, 255, 100, 0.12);
+  color: var(--accent);
+}
+
+.lesson-state-chip.is-pending {
+  border-color: rgba(255, 122, 89, 0.18);
+  color: rgba(243, 239, 227, 0.72);
 }
 
 .lesson-layout {
@@ -3404,6 +3514,10 @@ button.dashboard-checkpoint-pill {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
+.lesson-sidebar-item.is-done {
+  border-color: rgba(215, 255, 100, 0.18);
+}
+
 .lesson-sidebar-item span {
   color: var(--accent);
   font-family: var(--font-mono);
@@ -3411,6 +3525,39 @@ button.dashboard-checkpoint-pill {
 
 .lesson-shell {
   padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.lesson-progress-row {
+  margin-top: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.lesson-progress-meta {
+  min-width: min(100%, 320px);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.lesson-progress-meta span {
+  color: rgba(243, 239, 227, 0.72);
+  font-size: 0.92rem;
+}
+
+.lesson-module-meter {
+  max-width: 280px;
+}
+
+.lesson-progress-form {
+  display: flex;
+  align-items: center;
+}
+
+.lesson-progress-button {
+  min-width: 220px;
 }
 
 .lesson-footer-nav {
@@ -3427,6 +3574,7 @@ button.dashboard-checkpoint-pill {
 }
 
 @media (max-width: 1040px) {
+  .course-hero-split,
   .lesson-layout {
     grid-template-columns: 1fr;
   }
@@ -3439,6 +3587,22 @@ button.dashboard-checkpoint-pill {
 @media (max-width: 720px) {
   .course-lesson-list {
     grid-template-columns: 1fr;
+  }
+
+  .course-module-head-rich,
+  .course-module-title-group,
+  .lesson-progress-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .course-module-progress strong {
+    justify-self: start;
+  }
+
+  .lesson-progress-button {
+    width: 100%;
+    min-width: 0;
   }
 
   .lesson-footer-nav {

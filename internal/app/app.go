@@ -64,6 +64,7 @@ type ViewData struct {
 	LandingRoadmap     []LandingStage
 	FeaturedArticles   []ArticleCard
 	CourseModules      []CourseModule
+	CourseProgress     CourseProgressView
 	Articles           []ArticleCard
 	Article            *ArticlePage
 	AdminUsers         []AdminUserRow
@@ -95,12 +96,25 @@ type ArticleCard struct {
 	Kind        string
 	Index       string
 	ReadingTime string
+	Done        bool
 }
 
 type CourseModule struct {
-	Index   string
-	Title   string
-	Lessons []ArticleCard
+	Index      string
+	Title      string
+	Lessons    []ArticleCard
+	DoneCount  int
+	TotalCount int
+	Percent    int
+}
+
+type CourseProgressView struct {
+	DoneCount    int
+	TotalCount   int
+	Percent      int
+	NextSlug     string
+	NextTitle    string
+	ContinueHref string
 }
 
 type ArticleNav struct {
@@ -110,19 +124,23 @@ type ArticleNav struct {
 }
 
 type ArticlePage struct {
-	Title       string
-	Slug        string
-	Summary     string
-	Badge       string
-	Stage       string
-	Module      string
-	Kind        string
-	Index       string
-	ReadingTime string
-	Prev        *ArticleNav
-	Next        *ArticleNav
-	ModuleItems []ArticleCard
-	HTML        template.HTML
+	Title            string
+	Slug             string
+	Summary          string
+	Badge            string
+	Stage            string
+	Module           string
+	Kind             string
+	Index            string
+	ReadingTime      string
+	Prev             *ArticleNav
+	Next             *ArticleNav
+	ModuleItems      []ArticleCard
+	HTML             template.HTML
+	Done             bool
+	ModuleDoneCount  int
+	ModuleTotalCount int
+	ModulePercent    int
 }
 
 type AdminUserRow struct {
@@ -210,6 +228,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /", a.handleHome)
 	mux.HandleFunc("GET /learn", a.handleArticlesIndex)
 	mux.HandleFunc("GET /learn/{slug}", a.handleArticleShow)
+	mux.HandleFunc("POST /learn/progress", a.handleLessonProgressToggle)
 	mux.HandleFunc("GET /articles", a.handleArticlesIndex)
 	mux.HandleFunc("GET /articles/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
@@ -311,12 +330,25 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	courseProgress, err := a.loadCourseOverview(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "load course progress failed", http.StatusInternalServerError)
+		return
+	}
+	if courseProgress.TotalCount > 0 {
+		stats = append(stats, DashboardStat{
+			Value: formatProgress(courseProgress.DoneCount, courseProgress.TotalCount),
+			Label: "блоков Linux",
+		})
+	}
+
 	data := ViewData{
 		CurrentUser:     user,
 		Notice:          noticeFromRequest(r),
 		DashboardStats:  stats,
 		DashboardFocus:  focus,
 		DashboardStages: stages,
+		CourseProgress:  courseProgress,
 	}
 
 	a.render(w, r, http.StatusOK, "dashboard", data)

@@ -11,11 +11,11 @@
 
       <div class="lesson-sidebar-list">
         {{range .ModuleItems}}
-          <a class="lesson-sidebar-item {{if eq .Slug $.Article.Slug}}is-current{{end}}" href="/learn/{{.Slug}}">
+          <a class="lesson-sidebar-item {{if eq .Slug $.Article.Slug}}is-current{{end}} {{if .Done}}is-done{{end}}" href="/learn/{{.Slug}}">
             <span>{{.Index}}</span>
             <div>
               <strong>{{.Title}}</strong>
-              <small>{{.Kind}}</small>
+              <small>{{.Kind}} {{if .Done}}• done{{end}}</small>
             </div>
           </a>
         {{end}}
@@ -31,6 +31,24 @@
         </div>
         <h1 class="section-title">{{.Title}}</h1>
         <p class="lead">{{.Summary}}</p>
+
+        <div class="lesson-progress-row">
+          <div class="lesson-progress-meta">
+            <span>{{.ModuleDoneCount}} / {{.ModuleTotalCount}} блоков модуля closed</span>
+            <div class="course-module-meter lesson-module-meter" aria-hidden="true">
+              <span style="width: {{.ModulePercent}}%;"></span>
+            </div>
+          </div>
+
+          <form method="post" action="/learn/progress" class="lesson-progress-form">
+            <input type="hidden" name="lesson" value="{{.Slug}}">
+            <input type="hidden" name="done" value="{{if .Done}}0{{else}}1{{end}}">
+            <input type="hidden" name="return_to" value="/learn/{{.Slug}}">
+            <button type="submit" class="{{if .Done}}secondary-button{{else}}primary-button{{end}} lesson-progress-button">
+              {{if .Done}}Вернуть в work{{else}}Отметить блок done{{end}}
+            </button>
+          </form>
+        </div>
       </header>
 
       <div class="article-body prose">

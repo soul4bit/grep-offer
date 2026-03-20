@@ -17,7 +17,9 @@
     </div>
 
     <div class="cta-row dashboard-cta-row">
-      <a class="primary-button" href="/learn">Продолжить Linux</a>
+      <a class="primary-button" href="{{if .CourseProgress.ContinueHref}}{{.CourseProgress.ContinueHref}}{{else}}/learn{{end}}">
+        {{if .CourseProgress.NextSlug}}Следующий блок{{else}}Продолжить Linux{{end}}
+      </a>
     </div>
   </div>
 

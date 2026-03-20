@@ -1,31 +1,60 @@
 {{define "title"}}Маршрут Linux{{end}}
 
 {{define "body"}}
-<section class="content-hero course-hero">
+<section class="content-hero course-hero course-hero-split">
   <div>
     <div class="eyebrow">linux base</div>
     <h1 class="section-title">Стартуем с Linux-базы и идем по блокам, а не по хаосу вкладок.</h1>
     <p class="lead">Здесь теория, практика и домашки собраны в один маршрут. Открыл урок, сделал руками, пошел дальше.</p>
   </div>
+
+  <aside class="course-progress-summary">
+    <div class="course-progress-summary-head">
+      <span class="card-kicker">progress</span>
+      <strong>{{.CourseProgress.DoneCount}} / {{.CourseProgress.TotalCount}} блоков closed</strong>
+    </div>
+
+    <div class="dashboard-progress-track course-progress-track" aria-hidden="true">
+      <span style="width: {{.CourseProgress.Percent}}%;"></span>
+    </div>
+
+    {{if .CourseProgress.NextSlug}}
+      <a class="secondary-button" href="{{.CourseProgress.ContinueHref}}">Продолжить: {{.CourseProgress.NextTitle}}</a>
+    {{else if gt .CourseProgress.TotalCount 0}}
+      <a class="secondary-button" href="/learn">Маршрут закрыт, можно повторить</a>
+    {{end}}
+  </aside>
 </section>
 
 <section class="course-module-list">
   {{range .CourseModules}}
     <article class="course-module-card">
-      <header class="course-module-head">
-        <span class="course-module-index">{{.Index}}</span>
-        <div>
-          <h2>{{.Title}}</h2>
-          <p>{{len .Lessons}} блоков</p>
+      <header class="course-module-head course-module-head-rich">
+        <div class="course-module-title-group">
+          <span class="course-module-index">{{.Index}}</span>
+          <div>
+            <h2>{{.Title}}</h2>
+            <p>{{.DoneCount}} / {{.TotalCount}} блоков closed</p>
+          </div>
+        </div>
+
+        <div class="course-module-progress">
+          <strong>{{.Percent}}%</strong>
+          <div class="course-module-meter" aria-hidden="true">
+            <span style="width: {{.Percent}}%;"></span>
+          </div>
         </div>
       </header>
 
       <div class="course-lesson-list">
         {{range .Lessons}}
-          <a class="course-lesson-card" href="/learn/{{.Slug}}">
+          <a class="course-lesson-card {{if .Done}}is-done{{end}}" href="/learn/{{.Slug}}">
             <div class="course-lesson-top">
               <span class="course-lesson-index">{{.Index}}</span>
-              <span class="roadmap-stage-badge">{{.Kind}}</span>
+              <div class="course-lesson-badges">
+                <span class="roadmap-stage-badge">{{.Kind}}</span>
+                <span class="lesson-state-chip {{if .Done}}is-done{{else}}is-pending{{end}}">{{if .Done}}done{{else}}todo{{end}}</span>
+              </div>
             </div>
             <strong>{{.Title}}</strong>
             <p>{{.Summary}}</p>
