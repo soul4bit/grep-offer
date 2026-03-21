@@ -6,7 +6,7 @@
     <div class="admin-editor-hero-copy">
       <div class="eyebrow">content editor</div>
       <h1 class="section-title">{{.AdminArticleForm.ModeLabel}}</h1>
-      <p class="lead">Собираешь блок маршрута в четыре шага: называешь его, ставишь в нужное место, пишешь markdown и сразу проверяешь, как он выглядит у ученика.</p>
+      <p class="lead">Собираешь блок маршрута в четыре шага: задаешь основу, ставишь его в нужное место, пишешь markdown и сразу проверяешь, как он выглядит у ученика.</p>
 
       <div class="admin-editor-flow">
         <span>1. Основа</span>
@@ -47,7 +47,7 @@
         <span class="admin-editor-step-index">01</span>
         <div>
           <strong>Основа блока</strong>
-          <p>То, что увидят в списке уроков: название, slug и короткое объяснение, зачем сюда вообще заходить.</p>
+          <p>Это то, что увидят в списке уроков: название, slug и короткое объяснение, зачем сюда вообще заходить.</p>
         </div>
       </div>
 
@@ -75,20 +75,58 @@
         <span class="admin-editor-step-index">02</span>
         <div>
           <strong>Позиция в маршруте</strong>
-          <p>Эта секция отвечает за модуль, порядок и тип блока: теория, практика или тест.</p>
+          <p>Здесь задаются категория, раздел, порядок и тип блока. Можно выбрать уже существующее или сразу создать новое.</p>
         </div>
       </div>
 
-      <div class="admin-editor-grid">
-        <label class="field">
-          <span>Stage</span>
-          <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" placeholder="Linux Base">
-        </label>
+      <div class="admin-editor-route-picker" data-editor-route-picker>
+        <div class="admin-editor-choice-group">
+          <div class="admin-editor-choice-head">
+            <div>
+              <strong>Категория</strong>
+              <p>Быстрый выбор из того, что уже есть в маршруте. Если нужно новое направление, просто введи его ниже.</p>
+            </div>
+          </div>
 
-        <label class="field">
-          <span>Module</span>
-          <input type="text" name="module" value="{{.AdminArticleForm.Module}}" placeholder="Файловая система">
-        </label>
+          <div class="admin-editor-chip-list" data-editor-stage-options>
+            {{range .AdminArticleOptions.Stages}}
+              <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}">{{.Value}}</button>
+            {{else}}
+              <p class="admin-editor-choice-empty">Пока нет готовых категорий. Первую можно создать прямо в поле ниже.</p>
+            {{end}}
+          </div>
+
+          <label class="field">
+            <span>Текущая категория</span>
+            <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" data-editor-stage-input placeholder="Linux Base" autocomplete="off">
+            <small class="admin-editor-note">Сохранится в front matter как <code>stage</code>.</small>
+          </label>
+        </div>
+
+        <div class="admin-editor-choice-group">
+          <div class="admin-editor-choice-head">
+            <div>
+              <strong>Раздел</strong>
+              <p>Показываем подходящие разделы для выбранной категории. Если нужного нет, просто вводишь свой.</p>
+            </div>
+          </div>
+
+          <div class="admin-editor-chip-list" data-editor-module-options>
+            {{range .AdminArticleOptions.Stages}}
+              {{$stage := .Value}}
+              {{range .Modules}}
+                <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.}}">{{.}}</button>
+              {{end}}
+            {{end}}
+          </div>
+          <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этой категории пока нет готовых разделов. Можно создать свой.</p>
+
+          <label class="field">
+            <span>Текущий раздел</span>
+            <input type="text" name="module" value="{{.AdminArticleForm.Module}}" data-editor-module-input placeholder="Файловая система" autocomplete="off">
+            <small class="admin-editor-note">Сохранится в front matter как <code>module</code>.</small>
+          </label>
+        </div>
       </div>
 
       <div class="admin-editor-grid admin-editor-grid-route">
@@ -224,13 +262,13 @@
       <div class="admin-editor-card-head">
         <div>
           <strong>Мини-чеклист</strong>
-          <p>То, что обычно экономит тебе лишний возврат к редактору через пять минут.</p>
+          <p>То, что обычно экономит лишний возврат к редактору через пять минут.</p>
         </div>
       </div>
 
       <ul class="admin-editor-checklist-list">
         <li>Название и summary читаются без контекста.</li>
-        <li>Порядок модуля и блока не ломает маршрут.</li>
+        <li>Категория, раздел и порядок не ломают маршрут.</li>
         <li>Если это test, вопросы добавятся после сохранения.</li>
         <li>Draft не уходит ученикам, пока ты сам не решишь.</li>
       </ul>

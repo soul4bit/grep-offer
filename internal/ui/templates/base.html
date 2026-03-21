@@ -256,6 +256,11 @@
         var bodyInput = form.querySelector("[data-article-body]");
         var moduleOrderInput = form.querySelector("[data-editor-module-order]");
         var blockOrderInput = form.querySelector("[data-editor-block-order]");
+        var stageInput = form.querySelector("[data-editor-stage-input]");
+        var moduleInput = form.querySelector("[data-editor-module-input]");
+        var moduleEmptyNode = form.querySelector("[data-editor-module-empty]");
+        var stageChipButtons = form.querySelectorAll("[data-editor-stage-chip]");
+        var moduleChipButtons = form.querySelectorAll("[data-editor-module-chip]");
         var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
         var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
         var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
@@ -295,7 +300,33 @@
           learnLink.removeAttribute("rel");
         };
 
+        var syncRoutePicker = function () {
+          var currentStage = stageInput ? stageInput.value.trim() : "";
+          var currentModule = moduleInput ? moduleInput.value.trim() : "";
+          var visibleModules = 0;
+
+          stageChipButtons.forEach(function (button) {
+            button.classList.toggle("is-active", button.dataset.stageValue === currentStage);
+          });
+
+          moduleChipButtons.forEach(function (button) {
+            var matchesStage = !currentStage || button.dataset.moduleStage === currentStage;
+            button.hidden = !matchesStage;
+            button.disabled = !matchesStage;
+            button.classList.toggle("is-active", matchesStage && button.dataset.moduleValue === currentModule);
+            if (matchesStage) {
+              visibleModules++;
+            }
+          });
+
+          if (moduleEmptyNode) {
+            moduleEmptyNode.hidden = visibleModules > 0;
+          }
+        };
+
         var refreshLocalSummary = function () {
+          syncRoutePicker();
+
           if (!slugInput.dataset.manual) {
             slugInput.value = slugify(titleInput.value);
           }
@@ -396,6 +427,44 @@
           slugInput.dataset.manual = slugInput.value.trim() ? "1" : "";
           refreshLocalSummary();
           renderPreview();
+        });
+
+        if (stageInput) {
+          ["input", "change"].forEach(function (eventName) {
+            stageInput.addEventListener(eventName, function () {
+              refreshLocalSummary();
+              renderPreview();
+            });
+          });
+        }
+
+        if (moduleInput) {
+          ["input", "change"].forEach(function (eventName) {
+            moduleInput.addEventListener(eventName, function () {
+              refreshLocalSummary();
+              renderPreview();
+            });
+          });
+        }
+
+        stageChipButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            if (stageInput) {
+              stageInput.value = button.dataset.stageValue || "";
+            }
+            refreshLocalSummary();
+            renderPreview();
+          });
+        });
+
+        moduleChipButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            if (moduleInput) {
+              moduleInput.value = button.dataset.moduleValue || "";
+            }
+            refreshLocalSummary();
+            renderPreview();
+          });
         });
 
         [bodyInput, kindInput, moduleOrderInput, blockOrderInput].forEach(function (input) {

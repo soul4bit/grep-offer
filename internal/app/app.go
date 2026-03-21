@@ -58,30 +58,31 @@ type Config struct {
 }
 
 type ViewData struct {
-	CurrentUser        *store.User
-	Error              string
-	Notice             string
-	CSRFToken          string
-	CSPNonce           string
-	AdminSection       string
-	AdminNav           []AdminNavItem
-	Form               AuthForm
-	PasswordResetToken string
-	LandingRoadmap     []LandingStage
-	FeaturedArticles   []ArticleCard
-	CourseModules      []CourseModule
-	CourseProgress     CourseProgressView
-	Articles           []ArticleCard
-	Article            *ArticlePage
-	AdminUsers         []AdminUserRow
-	AdminArticles      []AdminArticleRow
-	AdminArticleForm   AdminArticleForm
-	AdminTestLessons   []AdminLessonOption
-	AdminTestQuestions []AdminTestQuestionRow
-	AdminAuditLogs     []AdminAuditLogRow
-	DashboardStats     []DashboardStat
-	DashboardStages    []DashboardStage
-	DashboardFocus     DashboardFocus
+	CurrentUser         *store.User
+	Error               string
+	Notice              string
+	CSRFToken           string
+	CSPNonce            string
+	AdminSection        string
+	AdminNav            []AdminNavItem
+	Form                AuthForm
+	PasswordResetToken  string
+	LandingRoadmap      []LandingStage
+	FeaturedArticles    []ArticleCard
+	CourseModules       []CourseModule
+	CourseProgress      CourseProgressView
+	Articles            []ArticleCard
+	Article             *ArticlePage
+	AdminUsers          []AdminUserRow
+	AdminArticles       []AdminArticleRow
+	AdminArticleForm    AdminArticleForm
+	AdminArticleOptions AdminArticleOptions
+	AdminTestLessons    []AdminLessonOption
+	AdminTestQuestions  []AdminTestQuestionRow
+	AdminAuditLogs      []AdminAuditLogRow
+	DashboardStats      []DashboardStat
+	DashboardStages     []DashboardStage
+	DashboardFocus      DashboardFocus
 }
 
 type AuthForm struct {
@@ -206,6 +207,15 @@ type AdminArticleForm struct {
 	LineCount    int
 	KindHint     string
 	PreviewHTML  template.HTML
+}
+
+type AdminArticleOptions struct {
+	Stages []AdminStageOption
+}
+
+type AdminStageOption struct {
+	Value   string
+	Modules []string
 }
 
 type AdminLessonOption struct {

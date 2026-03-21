@@ -172,12 +172,65 @@ func (a *App) renderAdminArticleEditor(w http.ResponseWriter, r *http.Request, s
 
 func (a *App) renderAdminArticleEditorWithError(w http.ResponseWriter, r *http.Request, status int, form AdminArticleForm, message string) {
 	form = hydrateAdminArticleForm(form)
+	options := a.loadAdminArticleOptions()
 
 	a.render(w, r, status, "admin_article_edit", ViewData{
-		Notice:           noticeFromRequest(r),
-		Error:            message,
-		AdminArticleForm: form,
+		Notice:              noticeFromRequest(r),
+		Error:               message,
+		AdminArticleForm:    form,
+		AdminArticleOptions: options,
 	})
+}
+
+func (a *App) loadAdminArticleOptions() AdminArticleOptions {
+	if a.articles == nil {
+		return AdminArticleOptions{}
+	}
+
+	articles, err := a.articles.ListAll()
+	if err != nil {
+		return AdminArticleOptions{}
+	}
+
+	options := AdminArticleOptions{
+		Stages: make([]AdminStageOption, 0, len(articles)),
+	}
+
+	stageIndexes := make(map[string]int)
+	moduleSeen := make(map[string]map[string]struct{})
+
+	for _, article := range articles {
+		stage := strings.TrimSpace(article.Stage)
+		if stage == "" {
+			continue
+		}
+
+		stageIndex, ok := stageIndexes[stage]
+		if !ok {
+			stageIndex = len(options.Stages)
+			stageIndexes[stage] = stageIndex
+			options.Stages = append(options.Stages, AdminStageOption{
+				Value: stage,
+			})
+		}
+
+		module := strings.TrimSpace(article.Module)
+		if module == "" {
+			continue
+		}
+
+		if moduleSeen[stage] == nil {
+			moduleSeen[stage] = make(map[string]struct{})
+		}
+		if _, ok := moduleSeen[stage][module]; ok {
+			continue
+		}
+
+		moduleSeen[stage][module] = struct{}{}
+		options.Stages[stageIndex].Modules = append(options.Stages[stageIndex].Modules, module)
+	}
+
+	return options
 }
 
 func (a *App) loadAdminArticles() ([]AdminArticleRow, error) {

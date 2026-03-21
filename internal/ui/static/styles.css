@@ -4066,6 +4066,87 @@ button.dashboard-checkpoint-pill {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.admin-editor-route-picker {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-editor-choice-group {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 1.15rem;
+  background: rgba(5, 8, 7, 0.72);
+}
+
+.admin-editor-choice-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.admin-editor-choice-head strong {
+  display: block;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.admin-editor-choice-head p {
+  margin: 0.24rem 0 0;
+  color: rgba(243, 239, 227, 0.66);
+  line-height: 1.55;
+}
+
+.admin-editor-chip-list {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.admin-editor-choice-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 239, 227, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-soft);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.admin-editor-choice-chip:hover {
+  transform: translateY(-2px);
+  border-color: rgba(243, 239, 227, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-editor-choice-chip.is-active {
+  border-color: rgba(216, 255, 97, 0.32);
+  background: rgba(216, 255, 97, 0.1);
+  color: var(--text);
+  box-shadow: 0 14px 28px rgba(216, 255, 97, 0.1);
+}
+
+.admin-editor-choice-empty {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.62);
+  line-height: 1.5;
+}
+
 .admin-editor-publish-toggle {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
