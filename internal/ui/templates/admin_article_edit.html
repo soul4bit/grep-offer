@@ -138,8 +138,11 @@
 
         <div class="admin-editor-toolbar">
           <button type="button" class="ghost-button" data-markdown-template="heading">H2</button>
+          <button type="button" class="ghost-button" data-markdown-template="subheading">H3</button>
           <button type="button" class="ghost-button" data-markdown-template="list">Список</button>
           <button type="button" class="ghost-button" data-markdown-template="code">Код</button>
+          <button type="button" class="ghost-button" data-markdown-template="callout">Заметка</button>
+          <button type="button" class="ghost-button" data-markdown-template="command">Команда</button>
           <button type="button" class="ghost-button" data-markdown-template="practice">Практика</button>
           <button type="button" class="ghost-button" data-markdown-template="result">Итог</button>
         </div>
@@ -183,6 +186,38 @@
       </div>
 
       <p class="admin-editor-kind-hint" data-editor-kind-hint>{{.AdminArticleForm.KindHint}}</p>
+    </article>
+
+    <article class="admin-editor-card admin-editor-upload-card">
+      <div class="admin-editor-card-head">
+        <div>
+          <strong>Картинки</strong>
+          <p>Загружай изображение на сервер и вставляй путь в markdown без ручной возни с файловой системой.</p>
+        </div>
+      </div>
+
+      <form class="admin-editor-upload-form" data-editor-upload-form data-upload-endpoint="/admin/uploads/images">
+        <label class="field">
+          <span>Файл</span>
+          <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp,.gif" required data-editor-upload-input>
+        </label>
+
+        <button class="secondary-button" type="submit" data-editor-upload-submit>Загрузить картинку</button>
+      </form>
+
+      <p class="admin-editor-upload-status" data-editor-upload-status>Поддерживаются PNG, JPG, WEBP и GIF до 8 MB.</p>
+
+      <div class="admin-editor-upload-result" data-editor-upload-result hidden>
+        <div class="admin-editor-upload-meta">
+          <span>Путь</span>
+          <strong data-editor-upload-path>—</strong>
+        </div>
+
+        <div class="admin-editor-upload-actions">
+          <button type="button" class="ghost-button" data-editor-upload-insert>Вставить в markdown</button>
+          <button type="button" class="ghost-button" data-editor-upload-copy>Копировать путь</button>
+        </div>
+      </div>
     </article>
 
     <article class="admin-editor-card admin-editor-checklist">

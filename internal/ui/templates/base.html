@@ -431,6 +431,141 @@
       });
     });
   </script>
+  <script nonce="{{.CSPNonce}}">
+    document.addEventListener("DOMContentLoaded", function () {
+      var extraEditorSnippets = {
+        subheading: "\n### Подблок\n\nЕще один короткий абзац.\n",
+        callout: "\n> Заметка: короткий акцент на то, что важно не пропустить.\n",
+        command: "\n```bash\nsudo systemctl status nginx\njournalctl -u nginx -n 50 --no-pager\n```\n"
+      };
+
+      var insertAtCursor = function (textarea, snippet) {
+        if (!textarea) {
+          return;
+        }
+
+        var start = textarea.selectionStart || 0;
+        var end = textarea.selectionEnd || 0;
+        var value = textarea.value;
+        textarea.value = value.slice(0, start) + snippet + value.slice(end);
+        textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      };
+
+      document.querySelectorAll("[data-article-editor]").forEach(function (form) {
+        var bodyInput = form.querySelector("[data-article-body]");
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var uploadForm = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-form]");
+        var uploadInput = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-input]");
+        var uploadStatus = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-status]");
+        var uploadResult = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-result]");
+        var uploadPathNode = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-path]");
+        var uploadInsertButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-insert]");
+        var uploadCopyButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-copy]");
+        var uploadSubmitButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-submit]");
+        var latestUploadPath = "";
+
+        form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
+          var snippet = extraEditorSnippets[button.dataset.markdownTemplate];
+          if (!snippet) {
+            return;
+          }
+
+          button.addEventListener("click", function () {
+            insertAtCursor(bodyInput, snippet);
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        });
+
+        if (!uploadForm || !uploadInput || !uploadStatus || !uploadResult || !uploadPathNode) {
+          return;
+        }
+
+        uploadForm.addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          if (!uploadInput.files || !uploadInput.files.length) {
+            uploadStatus.textContent = "Сначала выбери картинку.";
+            return;
+          }
+
+          var payload = new FormData();
+          payload.append("image", uploadInput.files[0]);
+
+          if (uploadSubmitButton) {
+            uploadSubmitButton.disabled = true;
+          }
+          uploadStatus.textContent = "Загружаю картинку...";
+
+          fetch(uploadForm.dataset.uploadEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
+            },
+            body: payload
+          })
+            .then(function (response) {
+              return response.json().then(function (json) {
+                if (!response.ok) {
+                  throw new Error(json.error || "upload failed");
+                }
+                return json;
+              });
+            })
+            .then(function (json) {
+              latestUploadPath = json.path || "";
+              uploadPathNode.textContent = latestUploadPath || "—";
+              uploadStatus.textContent = latestUploadPath ? "Картинка загружена. Можно вставлять в markdown." : "Загрузка завершена.";
+              uploadResult.hidden = !latestUploadPath;
+              uploadInput.value = "";
+            })
+            .catch(function (error) {
+              uploadStatus.textContent = error && error.message ? error.message : "Не удалось загрузить картинку.";
+              uploadResult.hidden = true;
+            })
+            .finally(function () {
+              if (uploadSubmitButton) {
+                uploadSubmitButton.disabled = false;
+              }
+            });
+        });
+
+        if (uploadInsertButton) {
+          uploadInsertButton.addEventListener("click", function () {
+            if (!latestUploadPath) {
+              return;
+            }
+
+            insertAtCursor(bodyInput, "\n![](" + latestUploadPath + ")\n");
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        }
+
+        if (uploadCopyButton) {
+          uploadCopyButton.addEventListener("click", function () {
+            if (!latestUploadPath) {
+              return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(latestUploadPath)
+                .then(function () {
+                  uploadStatus.textContent = "Путь скопирован.";
+                })
+                .catch(function () {
+                  uploadStatus.textContent = "Не удалось скопировать путь.";
+                });
+              return;
+            }
+
+            uploadStatus.textContent = "Буфер обмена в этом браузере недоступен.";
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
 {{end}}

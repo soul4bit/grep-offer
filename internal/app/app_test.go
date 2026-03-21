@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -1276,6 +1277,94 @@ func TestAdminArticlePreviewRendersMarkdown(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(payload.KindHint), "практика") {
 		t.Fatalf("unexpected kind hint: %s", payload.KindHint)
+	}
+}
+
+func TestAdminCanUploadEditorImage(t *testing.T) {
+	t.Parallel()
+
+	uploadsDir := filepath.Join(t.TempDir(), "uploads")
+	testApp, st := newTestApp(t, testAppOptions{
+		uploadsDir: uploadsDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-upload-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("image", "linux-diagram.png")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+
+	pngBytes := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+		0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
+		0x18, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+	if _, err := part.Write(pngBytes); err != nil {
+		t.Fatalf("write png payload: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/admin/uploads/images", &body)
+	if err != nil {
+		t.Fatalf("build upload request: %v", err)
+	}
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("upload request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected upload status: %d", response.StatusCode)
+	}
+
+	var payload struct {
+		Path     string `json:"path"`
+		Markdown string `json:"markdown"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode upload payload: %v", err)
+	}
+
+	if !strings.HasPrefix(payload.Path, "/uploads/editor/") {
+		t.Fatalf("unexpected upload path: %s", payload.Path)
+	}
+	if !strings.Contains(payload.Markdown, payload.Path) {
+		t.Fatalf("unexpected markdown payload: %s", payload.Markdown)
+	}
+
+	storedPath := filepath.Join(uploadsDir, filepath.FromSlash(strings.TrimPrefix(payload.Path, "/uploads/")))
+	if _, err := os.Stat(storedPath); err != nil {
+		t.Fatalf("expected uploaded file to exist at %s: %v", storedPath, err)
 	}
 }
 

@@ -4162,6 +4162,51 @@ button.dashboard-checkpoint-pill {
   overflow-wrap: anywhere;
 }
 
+.admin-editor-upload-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-editor-upload-status {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.64);
+  line-height: 1.5;
+}
+
+.admin-editor-upload-result {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 1.1rem;
+  background: rgba(5, 8, 7, 0.78);
+}
+
+.admin-editor-upload-meta {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.admin-editor-upload-meta span {
+  color: rgba(243, 239, 227, 0.58);
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-editor-upload-meta strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.admin-editor-upload-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 .admin-editor-preview-body {
   min-height: 24rem;
   max-height: 48rem;
@@ -4305,6 +4350,11 @@ button.dashboard-checkpoint-pill {
   .admin-editor-actions .ghost-button,
   .admin-editor-actions .primary-button {
     width: 100%;
+  }
+
+  .admin-editor-upload-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .lesson-footer-nav {

@@ -40,6 +40,7 @@ type App struct {
 	templates             map[string]*template.Template
 	static                http.Handler
 	uploads               http.Handler
+	uploadsDir            string
 	articles              *content.Library
 	registration          *RegistrationCoordinator
 	passwordReset         *PasswordResetCoordinator
@@ -319,6 +320,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		templates:             templates,
 		static:                http.FileServer(http.FS(staticFS)),
 		uploads:               uploads,
+		uploadsDir:            uploadsDir,
 		articles:              cfg.Articles,
 		registration:          cfg.Registration,
 		passwordReset:         cfg.PasswordReset,
@@ -350,6 +352,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
+	mux.HandleFunc("POST /admin/uploads/images", a.handleAdminImageUpload)
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
 	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
