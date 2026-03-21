@@ -3191,35 +3191,78 @@ button.dashboard-checkpoint-pill {
 }
 
 .admin-subnav {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
   margin-bottom: 1.1rem;
 }
 
 .admin-subnav-link {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  min-height: 2.8rem;
-  padding: 0.7rem 1rem;
+  gap: 0.8rem;
+  min-height: 5.5rem;
+  padding: 0.95rem 1rem;
   border: 1px solid rgba(243, 239, 227, 0.08);
-  border-radius: 999px;
-  background: rgba(8, 12, 10, 0.82);
-  color: rgba(243, 239, 227, 0.78);
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+  border-radius: 1.4rem;
+  background:
+    linear-gradient(180deg, rgba(20, 26, 22, 0.94), rgba(8, 12, 10, 0.88)),
+    rgba(8, 12, 10, 0.82);
+  color: rgba(243, 239, 227, 0.84);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .admin-subnav-link:hover,
 .admin-subnav-link.is-active {
-  transform: translateY(-1px);
-  border-color: rgba(215, 255, 100, 0.26);
+  transform: translateY(-2px);
+  border-color: rgba(215, 255, 100, 0.28);
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
 }
 
 .admin-subnav-link.is-active {
+  background:
+    linear-gradient(180deg, rgba(216, 255, 97, 0.14), rgba(8, 12, 10, 0.92)),
+    rgba(8, 12, 10, 0.82);
+  color: var(--text);
+}
+
+.admin-subnav-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(215, 255, 100, 0.18);
   background: rgba(215, 255, 100, 0.08);
   color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-subnav-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.admin-subnav-copy strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.admin-subnav-copy small {
+  color: rgba(243, 239, 227, 0.64);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .admin-table-head {
@@ -3380,6 +3423,10 @@ button.dashboard-checkpoint-pill {
 }
 
 @media (max-width: 780px) {
+  .admin-subnav {
+    grid-template-columns: 1fr;
+  }
+
   .admin-user-card {
     grid-template-columns: 1fr;
   }

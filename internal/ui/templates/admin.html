@@ -11,7 +11,21 @@
 
 <nav class="admin-subnav" aria-label="Разделы админки">
   {{range .AdminNav}}
-    <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}">{{.Label}}</a>
+    <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}">
+      <span class="admin-subnav-kicker">
+        {{if eq .Key "articles"}}01{{end}}
+        {{if eq .Key "users"}}02{{end}}
+        {{if eq .Key "logs"}}03{{end}}
+      </span>
+      <span class="admin-subnav-copy">
+        <strong>{{.Label}}</strong>
+        <small>
+          {{if eq .Key "articles"}}уроки, markdown и test-блоки{{end}}
+          {{if eq .Key "users"}}бан, роли и удаление аккаунтов{{end}}
+          {{if eq .Key "logs"}}аудит чувствительных действий{{end}}
+        </small>
+      </span>
+    </a>
   {{end}}
 </nav>
 
