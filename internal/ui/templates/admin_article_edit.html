@@ -34,185 +34,195 @@
 </section>
 
 <section class="admin-editor-shell">
-  <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview" data-global-next-module-order="{{.AdminArticleOptions.GlobalNextModuleOrder}}">
-    <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="admin-editor-main-wrap">
+    <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview" data-global-next-module-order="{{.AdminArticleOptions.GlobalNextModuleOrder}}">
+      <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-    {{if .Error}}
-      <div class="form-alert" role="alert">{{.Error}}</div>
-    {{end}}
+      {{if .Error}}
+        <div class="form-alert" role="alert">{{.Error}}</div>
+      {{end}}
 
-    <article class="admin-editor-card admin-editor-card-step">
-      <div class="admin-editor-step-head">
-        <span class="admin-editor-step-index">01</span>
-        <div>
-          <strong>Основа блока</strong>
-          <p>Это то, что увидят в списке уроков: название, slug и короткое объяснение, зачем сюда вообще заходить.</p>
-        </div>
-      </div>
-
-      <div class="admin-editor-grid admin-editor-grid-primary">
-        <label class="field">
-          <span>Название</span>
-          <input type="text" name="title" value="{{.AdminArticleForm.Title}}" required data-editor-title placeholder="Например: файловая система Linux">
-        </label>
-
-        <label class="field">
-          <span>Slug</span>
-          <input type="text" name="slug" value="{{.AdminArticleForm.Slug}}" placeholder="linux-filesystem-basics" data-editor-slug>
-          <small class="admin-editor-note">Если не трогать поле, slug соберется из названия автоматически.</small>
-        </label>
-      </div>
-
-      <label class="field">
-        <span>Краткое описание</span>
-        <textarea name="summary" rows="3" placeholder="Что именно закрывает этот блок и зачем его проходить">{{.AdminArticleForm.Summary}}</textarea>
-      </label>
-    </article>
-
-    <article class="admin-editor-card admin-editor-card-step">
-      <div class="admin-editor-step-head">
-        <span class="admin-editor-step-index">02</span>
-        <div>
-          <strong>Позиция в маршруте</strong>
-          <p>Здесь задаются категория, раздел, порядок и тип блока. Можно выбрать уже существующее или сразу создать новое.</p>
-        </div>
-      </div>
-
-      <div class="admin-editor-route-picker" data-editor-route-picker>
-        <div class="admin-editor-choice-group">
-          <div class="admin-editor-choice-head">
-            <div>
-              <strong>Категория</strong>
-              <p>Быстрый выбор из того, что уже есть в маршруте. Если нужно новое направление, просто введи его ниже.</p>
-            </div>
-            <button type="button" class="ghost-button admin-editor-choice-action" data-editor-stage-new>Новая категория</button>
-          </div>
-
-          <div class="admin-editor-chip-list" data-editor-stage-options>
-            {{range .AdminArticleOptions.Stages}}
-              <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}" data-stage-next-module="{{.NextModuleOrder}}">{{.Value}}</button>
-            {{else}}
-              <p class="admin-editor-choice-empty">Пока нет готовых категорий. Первую можно создать прямо в поле ниже.</p>
-            {{end}}
-          </div>
-
-          <label class="field">
-            <span>Текущая категория</span>
-            <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" data-editor-stage-input placeholder="Linux Base" autocomplete="off">
-            <small class="admin-editor-note">Сохранится в front matter как <code>stage</code>.</small>
-          </label>
-        </div>
-
-        <div class="admin-editor-choice-group">
-          <div class="admin-editor-choice-head">
-            <div>
-              <strong>Раздел</strong>
-              <p>Показываем подходящие разделы для выбранной категории. Если нужного нет, просто вводишь свой.</p>
-            </div>
-            <button type="button" class="ghost-button admin-editor-choice-action" data-editor-module-new>Новый раздел</button>
-          </div>
-
-          <div class="admin-editor-chip-list" data-editor-module-options>
-            {{range .AdminArticleOptions.Stages}}
-              {{$stage := .Value}}
-              {{range .Modules}}
-                <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .Value)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
-              {{end}}
-            {{end}}
-          </div>
-          <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этой категории пока нет готовых разделов. Можно создать свой.</p>
-
-          <label class="field">
-            <span>Текущий раздел</span>
-            <input type="text" name="module" value="{{.AdminArticleForm.Module}}" data-editor-module-input placeholder="Файловая система" autocomplete="off">
-            <small class="admin-editor-note">Сохранится в front matter как <code>module</code>.</small>
-          </label>
-        </div>
-      </div>
-
-      <div class="admin-editor-grid admin-editor-grid-route">
-        <label class="field">
-          <span>Badge</span>
-          <input type="text" name="badge" value="{{.AdminArticleForm.Badge}}" placeholder="linux">
-        </label>
-
-        <label class="field">
-          <span>Тип блока</span>
-          <select name="kind" data-editor-kind>
-            <option value="theory" {{if eq .AdminArticleForm.Kind "theory"}}selected{{end}}>theory</option>
-            <option value="practice" {{if eq .AdminArticleForm.Kind "practice"}}selected{{end}}>practice</option>
-            <option value="test" {{if eq .AdminArticleForm.Kind "test"}}selected{{end}}>test</option>
-          </select>
-        </label>
-
-        <label class="field">
-          <span>Порядок модуля</span>
-          <input type="number" min="0" name="module_order" value="{{.AdminArticleForm.ModuleOrder}}" data-editor-module-order>
-        </label>
-
-        <label class="field">
-          <span>Порядок блока</span>
-          <input type="number" min="0" name="block_order" value="{{.AdminArticleForm.BlockOrder}}" data-editor-block-order>
-        </label>
-      </div>
-
-      <p class="admin-editor-order-hint" data-editor-order-hint>Порядок подставляется по выбранной категории и разделу, но его можно переопределить вручную.</p>
-
-      <label class="admin-editor-publish-toggle">
-        <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}}>
-        <span class="admin-editor-publish-copy">
-          <strong>Сразу публиковать</strong>
-          <small>Если включено, блок сразу появится в маршруте у учеников. Если нет, останется draft.</small>
-        </span>
-      </label>
-    </article>
-
-    <article class="admin-editor-card admin-editor-card-step admin-editor-body-card">
-      <div class="admin-editor-step-head admin-editor-step-head-body">
-        <div>
-          <span class="admin-editor-step-index">03</span>
+      <article class="admin-editor-card admin-editor-card-step">
+        <div class="admin-editor-step-head">
+          <span class="admin-editor-step-index">01</span>
           <div>
-            <strong>Контент</strong>
-            <p>Пиши коротко и по делу: что понять, что сделать руками и как проверить, что блок действительно закрыт.</p>
+            <strong>Основа блока</strong>
+            <p>Это то, что увидят в списке уроков: название, slug и короткое объяснение, зачем сюда вообще заходить.</p>
           </div>
         </div>
 
-        <div class="admin-editor-toolbar">
-          <button type="button" class="ghost-button" data-markdown-template="heading">H2</button>
-          <button type="button" class="ghost-button" data-markdown-template="subheading">H3</button>
-          <button type="button" class="ghost-button" data-markdown-template="list">Список</button>
-          <button type="button" class="ghost-button" data-markdown-template="code">Код</button>
-          <button type="button" class="ghost-button" data-markdown-template="callout">Заметка</button>
-          <button type="button" class="ghost-button" data-markdown-template="command">Команда</button>
-          <button type="button" class="ghost-button" data-markdown-template="practice">Практика</button>
-          <button type="button" class="ghost-button" data-markdown-template="result">Итог</button>
+        <div class="admin-editor-grid admin-editor-grid-primary">
+          <label class="field">
+            <span>Название</span>
+            <input type="text" name="title" value="{{.AdminArticleForm.Title}}" required data-editor-title placeholder="Например: файловая система Linux">
+          </label>
+
+          <label class="field">
+            <span>Slug</span>
+            <input type="text" name="slug" value="{{.AdminArticleForm.Slug}}" placeholder="linux-filesystem-basics" data-editor-slug>
+            <small class="admin-editor-note">Если не трогать поле, slug соберется из названия автоматически.</small>
+          </label>
         </div>
+
+        <label class="field">
+          <span>Краткое описание</span>
+          <textarea name="summary" rows="3" placeholder="Что именно закрывает этот блок и зачем его проходить">{{.AdminArticleForm.Summary}}</textarea>
+        </label>
+      </article>
+
+      <article class="admin-editor-card admin-editor-card-step">
+        <div class="admin-editor-step-head">
+          <span class="admin-editor-step-index">02</span>
+          <div>
+            <strong>Позиция в маршруте</strong>
+            <p>Здесь задаются категория, раздел, порядок и тип блока. Можно выбрать уже существующее или сразу создать новое.</p>
+          </div>
+        </div>
+
+        <div class="admin-editor-route-picker" data-editor-route-picker>
+          <div class="admin-editor-choice-group">
+            <div class="admin-editor-choice-head">
+              <div>
+                <strong>Категория</strong>
+                <p>Быстрый выбор из того, что уже есть в маршруте. Если нужно новое направление, просто введи его ниже.</p>
+              </div>
+              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-stage-new>Новая категория</button>
+            </div>
+
+            <div class="admin-editor-chip-list" data-editor-stage-options>
+              {{range .AdminArticleOptions.Stages}}
+                <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}" data-stage-next-module="{{.NextModuleOrder}}">{{.Value}}</button>
+              {{else}}
+                <p class="admin-editor-choice-empty">Пока нет готовых категорий. Первую можно создать прямо в поле ниже.</p>
+              {{end}}
+            </div>
+
+            <label class="field">
+              <span>Текущая категория</span>
+              <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" data-editor-stage-input placeholder="Linux Base" autocomplete="off">
+              <small class="admin-editor-note">Сохранится в front matter как <code>stage</code>.</small>
+            </label>
+          </div>
+
+          <div class="admin-editor-choice-group">
+            <div class="admin-editor-choice-head">
+              <div>
+                <strong>Раздел</strong>
+                <p>Показываем подходящие разделы для выбранной категории. Если нужного нет, просто вводишь свой.</p>
+              </div>
+              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-module-new>Новый раздел</button>
+            </div>
+
+            <div class="admin-editor-chip-list" data-editor-module-options>
+              {{range .AdminArticleOptions.Stages}}
+                {{$stage := .Value}}
+                {{range .Modules}}
+                  <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .Value)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
+                {{end}}
+              {{end}}
+            </div>
+            <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этой категории пока нет готовых разделов. Можно создать свой.</p>
+
+            <label class="field">
+              <span>Текущий раздел</span>
+              <input type="text" name="module" value="{{.AdminArticleForm.Module}}" data-editor-module-input placeholder="Файловая система" autocomplete="off">
+              <small class="admin-editor-note">Сохранится в front matter как <code>module</code>.</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="admin-editor-grid admin-editor-grid-route">
+          <label class="field">
+            <span>Badge</span>
+            <input type="text" name="badge" value="{{.AdminArticleForm.Badge}}" placeholder="linux">
+          </label>
+
+          <label class="field">
+            <span>Тип блока</span>
+            <select name="kind" data-editor-kind>
+              <option value="theory" {{if eq .AdminArticleForm.Kind "theory"}}selected{{end}}>theory</option>
+              <option value="practice" {{if eq .AdminArticleForm.Kind "practice"}}selected{{end}}>practice</option>
+              <option value="test" {{if eq .AdminArticleForm.Kind "test"}}selected{{end}}>test</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Порядок модуля</span>
+            <input type="number" min="0" name="module_order" value="{{.AdminArticleForm.ModuleOrder}}" data-editor-module-order>
+          </label>
+
+          <label class="field">
+            <span>Порядок блока</span>
+            <input type="number" min="0" name="block_order" value="{{.AdminArticleForm.BlockOrder}}" data-editor-block-order>
+          </label>
+        </div>
+
+        <p class="admin-editor-order-hint" data-editor-order-hint>Порядок подставляется по выбранной категории и разделу, но его можно переопределить вручную.</p>
+
+        <label class="admin-editor-publish-toggle">
+          <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}} data-editor-published-input>
+          <span class="admin-editor-publish-copy">
+            <strong>Сразу публиковать</strong>
+            <small>Если включено, блок сразу появится в маршруте у учеников. Если нет, останется draft.</small>
+          </span>
+        </label>
+      </article>
+
+      <article class="admin-editor-card admin-editor-card-step admin-editor-body-card">
+        <div class="admin-editor-step-head admin-editor-step-head-body">
+          <div>
+            <span class="admin-editor-step-index">03</span>
+            <div>
+              <strong>Контент</strong>
+              <p>Пиши коротко и по делу: что понять, что сделать руками и как проверить, что блок действительно закрыт.</p>
+            </div>
+          </div>
+
+          <div class="admin-editor-toolbar">
+            <button type="button" class="ghost-button" data-markdown-template="heading">H2</button>
+            <button type="button" class="ghost-button" data-markdown-template="subheading">H3</button>
+            <button type="button" class="ghost-button" data-markdown-template="list">Список</button>
+            <button type="button" class="ghost-button" data-markdown-template="code">Код</button>
+            <button type="button" class="ghost-button" data-markdown-template="callout">Заметка</button>
+            <button type="button" class="ghost-button" data-markdown-template="command">Команда</button>
+            <button type="button" class="ghost-button" data-markdown-template="practice">Практика</button>
+            <button type="button" class="ghost-button" data-markdown-template="result">Итог</button>
+          </div>
+        </div>
+
+        <div class="admin-editor-body-head">
+          <p class="admin-editor-body-note">Markdown живет на сервере, картинки подключаются через <code>/uploads/...</code>, а превью справа обновляется автоматически.</p>
+        </div>
+
+        <label class="field admin-editor-body">
+          <span>Тело урока</span>
+          <textarea name="body" rows="26" required placeholder="# Новый блок" data-article-body>{{.AdminArticleForm.Body}}</textarea>
+        </label>
+      </article>
+
+      <div class="admin-editor-actions">
+        <a class="ghost-button" href="/admin/articles">Назад в статьи</a>
+        <a class="ghost-button {{if not .AdminArticleForm.OpenLearnPath}}is-disabled{{end}}" href="{{if .AdminArticleForm.OpenLearnPath}}{{.AdminArticleForm.OpenLearnPath}}{{else}}#{{end}}" {{if .AdminArticleForm.OpenLearnPath}}target="_blank" rel="noreferrer"{{else}}aria-disabled="true"{{end}}>Открыть сохраненную версию</a>
+        <button class="secondary-button" type="submit" name="after_save" value="open" data-editor-open-submit>Сохранить и открыть у ученика</button>
+        <button class="primary-button" type="submit">Сохранить урок</button>
       </div>
+    </form>
 
-      <div class="admin-editor-body-head">
-        <p class="admin-editor-body-note">Markdown живет на сервере, картинки подключаются через <code>/uploads/...</code>, а превью справа обновляется автоматически.</p>
-      </div>
-
-      <label class="field admin-editor-body">
-        <span>Тело урока</span>
-        <textarea name="body" rows="26" required placeholder="# Новый блок" data-article-body>{{.AdminArticleForm.Body}}</textarea>
-      </label>
-    </article>
-
-    <div class="admin-editor-actions">
-      <a class="ghost-button" href="/admin/articles">Назад в статьи</a>
-      <a class="ghost-button {{if not .AdminArticleForm.LearnPath}}is-disabled{{end}}" href="{{if .AdminArticleForm.LearnPath}}{{.AdminArticleForm.LearnPath}}{{else}}#{{end}}" {{if .AdminArticleForm.LearnPath}}target="_blank" rel="noreferrer"{{else}}aria-disabled="true"{{end}} data-editor-learn-link>Открыть как ученик</a>
-      <button class="primary-button" type="submit">Сохранить урок</button>
-    </div>
-  </form>
+    {{if .AdminArticleForm.OriginalSlug}}
+      <form method="post" action="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/delete" class="admin-editor-danger-form" data-confirm-submit="Удалить урок «{{.AdminArticleForm.Title}}»? Это удалит markdown-файл с сервера.">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="ghost-button ghost-button-danger" type="submit">Удалить урок</button>
+      </form>
+    {{end}}
+  </div>
 
   <aside class="admin-editor-side">
     <article class="admin-editor-card admin-editor-summary">
       <div class="admin-editor-card-head">
         <div>
           <strong>Сводка</strong>
-          <p>Быстрый контроль перед сохранением: файл, путь, тип блока и текущий смысл маршрута.</p>
+          <p>Быстрый контроль перед сохранением: файл, маршрут после save и текущий смысл блока.</p>
         </div>
       </div>
 
@@ -222,12 +232,13 @@
           <strong data-editor-file-name>{{.AdminArticleForm.FileName}}</strong>
         </div>
         <div>
-          <span>Маршрут</span>
+          <span>Маршрут после save</span>
           <strong data-editor-learn-path>{{if .AdminArticleForm.LearnPath}}{{.AdminArticleForm.LearnPath}}{{else}}появится после slug{{end}}</strong>
         </div>
       </div>
 
       <p class="admin-editor-kind-hint" data-editor-kind-hint>{{.AdminArticleForm.KindHint}}</p>
+      <p class="admin-editor-route-note" data-editor-open-note>{{if .AdminArticleForm.Published}}После сохранения можно сразу открыть урок глазами ученика.{{else}}Кнопка «Сохранить и открыть» сработает только для опубликованного урока.{{end}}</p>
     </article>
 
     <article class="admin-editor-card admin-editor-upload-card">
@@ -274,7 +285,7 @@
         <li>Название и summary читаются без контекста.</li>
         <li>Категория, раздел и порядок не ломают маршрут.</li>
         <li>Если это test, вопросы добавятся после сохранения.</li>
-        <li>Draft не уходит ученикам, пока ты сам не решишь.</li>
+        <li>Перед открытием как ученик блок лучше сохранить.</li>
       </ul>
     </article>
 

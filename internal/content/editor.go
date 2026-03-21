@@ -197,6 +197,26 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 	return l.EditableBySlug(slug)
 }
 
+func (l *Library) DeleteBySlug(slug string) error {
+	if l == nil || strings.TrimSpace(l.dir) == "" {
+		return errors.New("content directory is not configured")
+	}
+
+	path, err := l.articlePathBySlug(slug)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrArticleNotFound
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (l *Library) articlePathBySlug(slug string) (string, error) {
 	normalizedSlug := normalizeSlug(slug)
 	if normalizedSlug == "" {

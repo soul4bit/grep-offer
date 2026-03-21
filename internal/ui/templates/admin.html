@@ -71,8 +71,13 @@
                   </div>
                 </div>
 
-                <div class="admin-user-actions">
+                <div class="admin-user-actions admin-article-sort-actions">
+                  <a class="ghost-button {{if not .Published}}is-disabled{{end}}" href="{{if .Published}}/learn/{{.Slug}}{{else}}#{{end}}" {{if .Published}}target="_blank" rel="noreferrer"{{else}}aria-disabled="true"{{end}}>Открыть</a>
                   <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+                  <form method="post" action="/admin/articles/{{.Slug}}/delete" data-confirm-submit="Удалить урок «{{.Title}}»? Это удалит markdown-файл с сервера.">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
+                  </form>
                 </div>
               </article>
             {{end}}

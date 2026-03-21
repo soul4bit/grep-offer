@@ -267,6 +267,9 @@
         var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
         var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
         var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
+        var publishInput = form.querySelector("[data-editor-published-input]");
+        var openSubmitButton = form.querySelector("[data-editor-open-submit]");
+        var openNoteNode = shell && shell.querySelector("[data-editor-open-note]");
         var wordCountNode = shell && shell.querySelector("[data-editor-word-count]");
         var lineCountNode = shell && shell.querySelector("[data-editor-line-count]");
         var kindHintNode = shell && shell.querySelector("[data-editor-kind-hint]");
@@ -311,6 +314,22 @@
           learnLink.setAttribute("aria-disabled", "true");
           learnLink.removeAttribute("target");
           learnLink.removeAttribute("rel");
+        };
+
+        var syncOpenAction = function () {
+          if (!openSubmitButton) {
+            return;
+          }
+
+          var isPublished = !publishInput || publishInput.checked;
+          openSubmitButton.disabled = !isPublished;
+          openSubmitButton.classList.toggle("is-disabled", !isPublished);
+
+          if (openNoteNode) {
+            openNoteNode.textContent = isPublished
+              ? "После сохранения урок откроется сразу в ученическом режиме."
+              : "Сначала включи публикацию. Иначе урок сохранится как draft и в /learn не откроется.";
+          }
         };
 
         var syncRoutePicker = function () {
@@ -429,6 +448,8 @@
           } else if (fileNameNode) {
             fileNameNode.textContent = "new-lesson.md";
           }
+
+          syncOpenAction();
         };
 
         var renderPreview = debounce(function () {
@@ -619,6 +640,12 @@
           });
         });
 
+        if (publishInput) {
+          publishInput.addEventListener("change", function () {
+            syncOpenAction();
+          });
+        }
+
         form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
           button.addEventListener("click", function () {
             var snippet = editorSnippets[button.dataset.markdownTemplate];
@@ -633,6 +660,22 @@
         });
 
         refreshLocalSummary();
+      });
+    });
+  </script>
+  <script nonce="{{.CSPNonce}}">
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("form[data-confirm-submit]").forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+          var message = form.dataset.confirmSubmit;
+          if (!message) {
+            return;
+          }
+
+          if (!window.confirm(message)) {
+            event.preventDefault();
+          }
+        });
       });
     });
   </script>

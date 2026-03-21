@@ -3383,6 +3383,14 @@ button.dashboard-checkpoint-pill {
   flex: 1 1 320px;
 }
 
+.admin-article-sort-actions {
+  justify-content: flex-end;
+}
+
+.admin-article-sort-actions form {
+  margin: 0;
+}
+
 .admin-article-sort-status.is-error {
   color: var(--accent-2);
 }
@@ -4060,6 +4068,11 @@ button.dashboard-checkpoint-pill {
   align-items: start;
 }
 
+.admin-editor-main-wrap {
+  display: grid;
+  gap: 0.9rem;
+}
+
 .admin-editor-side {
   position: sticky;
   top: 1.2rem;
@@ -4343,6 +4356,12 @@ button.dashboard-checkpoint-pill {
   overflow-wrap: anywhere;
 }
 
+.admin-editor-route-note {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.64);
+  line-height: 1.55;
+}
+
 .admin-editor-upload-form {
   display: grid;
   gap: 0.9rem;
@@ -4425,6 +4444,16 @@ button.dashboard-checkpoint-pill {
 .ghost-button.is-disabled {
   opacity: 0.45;
   pointer-events: none;
+}
+
+.secondary-button.is-disabled {
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.admin-editor-danger-form {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .admin-test-form select,

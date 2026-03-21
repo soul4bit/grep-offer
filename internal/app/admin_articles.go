@@ -125,6 +125,16 @@ func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	if strings.TrimSpace(r.FormValue("after_save")) == "open" {
+		if saved.Published {
+			http.Redirect(w, r, "/learn/"+saved.Slug, http.StatusSeeOther)
+			return
+		}
+
+		http.Redirect(w, r, "/admin/articles/"+saved.Slug+"/edit?notice=article-open-requires-publish", http.StatusSeeOther)
+		return
+	}
+
 	http.Redirect(w, r, "/admin/articles/"+saved.Slug+"/edit?notice="+action, http.StatusSeeOther)
 }
 
@@ -164,6 +174,54 @@ func (a *App) handleAdminArticlePreview(w http.ResponseWriter, r *http.Request) 
 		LineCount: form.LineCount,
 		KindHint:  form.KindHint,
 	})
+}
+
+func (a *App) handleAdminArticleDelete(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	slug := strings.TrimSpace(r.PathValue("slug"))
+	if slug == "" {
+		http.Error(w, "invalid article slug", http.StatusBadRequest)
+		return
+	}
+
+	article, err := a.articles.EditableBySlug(slug)
+	if err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "load article failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := a.articles.DeleteBySlug(slug); err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "delete article failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "article_deleted",
+		TargetType: "lesson",
+		TargetKey:  article.Slug,
+		Details: map[string]string{
+			"title":  article.Title,
+			"module": article.Module,
+		},
+	})
+
+	http.Redirect(w, r, "/admin/articles?notice=article-deleted", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminArticleReorder(w http.ResponseWriter, r *http.Request) {
@@ -495,6 +553,9 @@ func hydrateAdminArticleForm(form AdminArticleForm) AdminArticleForm {
 	}
 
 	form.Slug = strings.TrimSpace(form.Slug)
+	if originalSlug := strings.TrimSpace(form.OriginalSlug); originalSlug != "" && form.Published {
+		form.OpenLearnPath = "/learn/" + originalSlug
+	}
 	form.FileName = content.SuggestedFileName(content.ArticleMeta{
 		Slug:        form.Slug,
 		ModuleOrder: form.ModuleOrder,

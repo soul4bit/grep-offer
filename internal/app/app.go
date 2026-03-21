@@ -204,25 +204,26 @@ type AdminArticleGroup struct {
 }
 
 type AdminArticleForm struct {
-	OriginalSlug string
-	Title        string
-	Slug         string
-	Summary      string
-	Badge        string
-	Stage        string
-	Module       string
-	Kind         string
-	Body         string
-	ModuleOrder  int
-	BlockOrder   int
-	Published    bool
-	ModeLabel    string
-	FileName     string
-	LearnPath    string
-	WordCount    int
-	LineCount    int
-	KindHint     string
-	PreviewHTML  template.HTML
+	OriginalSlug  string
+	Title         string
+	Slug          string
+	Summary       string
+	Badge         string
+	Stage         string
+	Module        string
+	Kind          string
+	Body          string
+	ModuleOrder   int
+	BlockOrder    int
+	Published     bool
+	ModeLabel     string
+	FileName      string
+	LearnPath     string
+	OpenLearnPath string
+	WordCount     int
+	LineCount     int
+	KindHint      string
+	PreviewHTML   template.HTML
 }
 
 type AdminArticleOptions struct {
@@ -385,6 +386,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
+	mux.HandleFunc("POST /admin/articles/{slug}/delete", a.handleAdminArticleDelete)
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
 	mux.HandleFunc("POST /admin/articles/reorder", a.handleAdminArticleReorder)
 	mux.HandleFunc("POST /admin/uploads/images", a.handleAdminImageUpload)
@@ -1186,6 +1188,10 @@ func noticeFromRequest(r *http.Request) string {
 		return "Урок создан. Теперь можно спокойно шлифовать markdown и порядок блока."
 	case "article-saved":
 		return "Урок сохранен. Маршрут подхватит обновление без магии."
+	case "article-open-requires-publish":
+		return "Чтобы открыть урок у ученика сразу после сохранения, сначала включи публикацию."
+	case "article-deleted":
+		return "Урок удален. Маршрут и админка уже без него."
 	default:
 		return ""
 	}
