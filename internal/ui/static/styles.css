@@ -1600,7 +1600,9 @@ p {
   text-transform: uppercase;
 }
 
-.field input {
+.field input,
+.field textarea,
+.field select {
   appearance: none;
   -webkit-appearance: none;
   width: 100%;
@@ -1619,19 +1621,35 @@ p {
     transform 180ms ease;
 }
 
-.field input:focus {
+.field textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+  line-height: 1.65;
+}
+
+.field select {
+  cursor: pointer;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
   border-color: rgba(216, 255, 97, 0.56);
   background: rgba(12, 17, 14, 0.92);
   box-shadow: 0 0 0 3px rgba(216, 255, 97, 0.08);
   transform: none;
 }
 
-.field.is-valid input {
+.field.is-valid input,
+.field.is-valid textarea,
+.field.is-valid select {
   border-color: rgba(101, 224, 178, 0.42);
   box-shadow: 0 0 0 3px rgba(101, 224, 178, 0.08);
 }
 
-.field.is-invalid input {
+.field.is-invalid input,
+.field.is-invalid textarea,
+.field.is-invalid select {
   border-color: rgba(255, 132, 90, 0.42);
   box-shadow: 0 0 0 3px rgba(255, 132, 90, 0.08);
 }
@@ -3870,10 +3888,42 @@ button.dashboard-checkpoint-pill {
 }
 
 .admin-editor-hero {
+  padding: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.admin-editor-hero-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  gap: 1.25rem;
   align-items: end;
+}
+
+.admin-editor-hero-copy {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.admin-editor-flow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.admin-editor-flow span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(243, 239, 227, 0.72);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .admin-editor-kpis {
@@ -3884,10 +3934,12 @@ button.dashboard-checkpoint-pill {
 
 .admin-editor-kpi,
 .admin-editor-card {
-  padding: 1.2rem;
+  padding: 1.25rem;
   border: 1px solid rgba(243, 239, 227, 0.08);
   border-radius: 24px;
-  background: rgba(8, 12, 10, 0.92);
+  background:
+    linear-gradient(180deg, rgba(17, 23, 19, 0.94), rgba(8, 12, 10, 0.9)),
+    rgba(8, 12, 10, 0.92);
 }
 
 .admin-editor-kpi {
@@ -3911,7 +3963,7 @@ button.dashboard-checkpoint-pill {
 .admin-editor-side,
 .admin-editor-meta {
   display: grid;
-  gap: 1rem;
+  gap: 1.05rem;
 }
 
 .admin-editor-shell {
@@ -3919,8 +3971,17 @@ button.dashboard-checkpoint-pill {
   align-items: start;
 }
 
+.admin-editor-side {
+  position: sticky;
+  top: 1.2rem;
+}
+
 .admin-editor-card {
   gap: 1rem;
+}
+
+.admin-editor-card-step {
+  padding: 1.35rem;
 }
 
 .admin-editor-card-head {
@@ -3937,11 +3998,58 @@ button.dashboard-checkpoint-pill {
 
 .admin-editor-card-head p,
 .admin-editor-note,
-.admin-editor-helper-list,
 .admin-editor-kind-hint {
   margin: 0;
   color: rgba(243, 239, 227, 0.7);
   line-height: 1.55;
+}
+
+.admin-editor-step-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.95rem;
+  align-items: start;
+}
+
+.admin-editor-step-head strong {
+  font-size: 1.06rem;
+}
+
+.admin-editor-step-head p {
+  margin: 0.22rem 0 0;
+  color: rgba(243, 239, 227, 0.68);
+  line-height: 1.58;
+}
+
+.admin-editor-step-head-body {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-editor-step-head-body > div:first-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.95rem;
+  align-items: start;
+}
+
+.admin-editor-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(216, 255, 97, 0.18);
+  background: rgba(216, 255, 97, 0.08);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .admin-editor-grid {
@@ -3954,8 +4062,40 @@ button.dashboard-checkpoint-pill {
   grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
 }
 
-.admin-editor-grid-compact {
+.admin-editor-grid-route {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-editor-publish-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 1.15rem;
+  background: rgba(5, 8, 7, 0.72);
+}
+
+.admin-editor-publish-toggle input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.2rem;
+}
+
+.admin-editor-publish-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.admin-editor-publish-copy strong {
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.admin-editor-publish-copy small {
+  color: rgba(243, 239, 227, 0.64);
+  line-height: 1.5;
 }
 
 .admin-editor-toolbar {
@@ -3968,14 +4108,37 @@ button.dashboard-checkpoint-pill {
 .admin-editor-toolbar .ghost-button {
   min-height: 2.5rem;
   padding-inline: 0.8rem;
+  border-radius: 0.95rem;
+}
+
+.admin-editor-body-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.admin-editor-body-note {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.66);
+  line-height: 1.55;
+}
+
+.admin-editor-body-note code {
+  font-family: var(--font-mono);
+  color: var(--accent);
 }
 
 .admin-editor-body textarea {
-  min-height: 34rem;
+  min-height: 36rem;
   resize: vertical;
   font-family: var(--font-mono);
   font-size: 0.94rem;
   line-height: 1.7;
+  background: rgba(4, 7, 6, 0.92);
+  border-color: rgba(243, 239, 227, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .admin-editor-meta div {
@@ -3999,14 +4162,8 @@ button.dashboard-checkpoint-pill {
   overflow-wrap: anywhere;
 }
 
-.admin-editor-helper-list {
-  padding-left: 1.1rem;
-  display: grid;
-  gap: 0.55rem;
-}
-
 .admin-editor-preview-body {
-  min-height: 21rem;
+  min-height: 24rem;
   max-height: 48rem;
   overflow: auto;
   padding: 1rem;
@@ -4020,12 +4177,23 @@ button.dashboard-checkpoint-pill {
   color: rgba(243, 239, 227, 0.6);
 }
 
+.admin-editor-checklist-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+  color: rgba(243, 239, 227, 0.76);
+  line-height: 1.55;
+}
+
 .admin-editor-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
+  margin-top: 0.1rem;
+  padding-top: 0.2rem;
 }
 
 .ghost-button.is-disabled {
@@ -4085,9 +4253,13 @@ button.dashboard-checkpoint-pill {
 @media (max-width: 1040px) {
   .course-hero-split,
   .lesson-layout,
-  .admin-editor-hero,
+  .admin-editor-hero-main,
   .admin-editor-shell {
     grid-template-columns: 1fr;
+  }
+
+  .admin-editor-side {
+    position: static;
   }
 
   .lesson-sidebar {
@@ -4103,7 +4275,7 @@ button.dashboard-checkpoint-pill {
   .admin-test-grid,
   .admin-editor-grid,
   .admin-editor-grid-primary,
-  .admin-editor-grid-compact,
+  .admin-editor-grid-route,
   .course-module-head-rich,
   .course-module-title-group,
   .lesson-progress-row {
@@ -4121,9 +4293,13 @@ button.dashboard-checkpoint-pill {
     min-width: 0;
   }
 
-  .admin-editor-kpis,
-  .admin-editor-actions {
+  .admin-editor-kpis {
     grid-template-columns: 1fr;
+  }
+
+  .admin-editor-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .admin-editor-actions .ghost-button,

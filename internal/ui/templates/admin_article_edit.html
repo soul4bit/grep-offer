@@ -2,25 +2,34 @@
 
 {{define "body"}}
 <section class="admin-hero admin-editor-hero">
-  <div>
-    <div class="eyebrow">content editor</div>
-    <h1 class="section-title">{{.AdminArticleForm.ModeLabel}}</h1>
-    <p class="lead">Пишешь урок один раз, а дальше он сам встраивается в маршрут. Markdown живет на сервере, картинки остаются в `/uploads/...`, репа при этом не светит реальный контент.</p>
-  </div>
+  <div class="admin-editor-hero-main">
+    <div class="admin-editor-hero-copy">
+      <div class="eyebrow">content editor</div>
+      <h1 class="section-title">{{.AdminArticleForm.ModeLabel}}</h1>
+      <p class="lead">Собираешь блок маршрута в четыре шага: называешь его, ставишь в нужное место, пишешь markdown и сразу проверяешь, как он выглядит у ученика.</p>
 
-  <div class="admin-editor-kpis">
-    <article class="admin-editor-kpi">
-      <strong data-editor-word-count>{{.AdminArticleForm.WordCount}}</strong>
-      <span>слов</span>
-    </article>
-    <article class="admin-editor-kpi">
-      <strong data-editor-line-count>{{.AdminArticleForm.LineCount}}</strong>
-      <span>строк</span>
-    </article>
-    <article class="admin-editor-kpi">
-      <strong>{{if .AdminArticleForm.Published}}live{{else}}draft{{end}}</strong>
-      <span>{{if .AdminArticleForm.Published}}виден в маршруте{{else}}скрыт от учеников{{end}}</span>
-    </article>
+      <div class="admin-editor-flow">
+        <span>1. Основа</span>
+        <span>2. Маршрут</span>
+        <span>3. Контент</span>
+        <span>4. Проверка</span>
+      </div>
+    </div>
+
+    <div class="admin-editor-kpis">
+      <article class="admin-editor-kpi">
+        <strong data-editor-word-count>{{.AdminArticleForm.WordCount}}</strong>
+        <span>слов</span>
+      </article>
+      <article class="admin-editor-kpi">
+        <strong data-editor-line-count>{{.AdminArticleForm.LineCount}}</strong>
+        <span>строк</span>
+      </article>
+      <article class="admin-editor-kpi">
+        <strong>{{if .AdminArticleForm.Published}}live{{else}}draft{{end}}</strong>
+        <span>{{if .AdminArticleForm.Published}}виден в маршруте{{else}}пока скрыт от учеников{{end}}</span>
+      </article>
+    </div>
   </div>
 </section>
 
@@ -33,25 +42,25 @@
       <div class="form-alert" role="alert">{{.Error}}</div>
     {{end}}
 
-    <article class="admin-editor-card">
-      <div class="admin-editor-card-head">
+    <article class="admin-editor-card admin-editor-card-step">
+      <div class="admin-editor-step-head">
+        <span class="admin-editor-step-index">01</span>
         <div>
-          <strong>Паспорт урока</strong>
-          <p>Эти поля управляют тем, где блок окажется в маршруте и как будет выглядеть в списке.</p>
+          <strong>Основа блока</strong>
+          <p>То, что увидят в списке уроков: название, slug и короткое объяснение, зачем сюда вообще заходить.</p>
         </div>
-        <span class="admin-pill">{{if .AdminArticleForm.Published}}published{{else}}draft{{end}}</span>
       </div>
 
       <div class="admin-editor-grid admin-editor-grid-primary">
         <label class="field">
           <span>Название</span>
-          <input type="text" name="title" value="{{.AdminArticleForm.Title}}" required data-editor-title placeholder="Например: Файловая система Linux">
+          <input type="text" name="title" value="{{.AdminArticleForm.Title}}" required data-editor-title placeholder="Например: файловая система Linux">
         </label>
 
         <label class="field">
           <span>Slug</span>
           <input type="text" name="slug" value="{{.AdminArticleForm.Slug}}" placeholder="linux-filesystem-basics" data-editor-slug>
-          <small class="admin-editor-note">Лучше коротко и без боли. Если не трогать поле, slug соберется из названия.</small>
+          <small class="admin-editor-note">Если не трогать поле, slug соберется из названия автоматически.</small>
         </label>
       </div>
 
@@ -59,6 +68,16 @@
         <span>Краткое описание</span>
         <textarea name="summary" rows="3" placeholder="Что именно закрывает этот блок и зачем его проходить">{{.AdminArticleForm.Summary}}</textarea>
       </label>
+    </article>
+
+    <article class="admin-editor-card admin-editor-card-step">
+      <div class="admin-editor-step-head">
+        <span class="admin-editor-step-index">02</span>
+        <div>
+          <strong>Позиция в маршруте</strong>
+          <p>Эта секция отвечает за модуль, порядок и тип блока: теория, практика или тест.</p>
+        </div>
+      </div>
 
       <div class="admin-editor-grid">
         <label class="field">
@@ -72,7 +91,7 @@
         </label>
       </div>
 
-      <div class="admin-editor-grid admin-editor-grid-compact">
+      <div class="admin-editor-grid admin-editor-grid-route">
         <label class="field">
           <span>Badge</span>
           <input type="text" name="badge" value="{{.AdminArticleForm.Badge}}" placeholder="linux">
@@ -98,17 +117,23 @@
         </label>
       </div>
 
-      <label class="admin-inline-check">
+      <label class="admin-editor-publish-toggle">
         <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}}>
-        <span>Сразу показывать блок ученикам в маршруте</span>
+        <span class="admin-editor-publish-copy">
+          <strong>Сразу публиковать</strong>
+          <small>Если включено, блок сразу появится в маршруте у учеников. Если нет, останется draft.</small>
+        </span>
       </label>
     </article>
 
-    <article class="admin-editor-card admin-editor-body-card">
-      <div class="admin-editor-card-head">
+    <article class="admin-editor-card admin-editor-card-step admin-editor-body-card">
+      <div class="admin-editor-step-head admin-editor-step-head-body">
         <div>
-          <strong>Markdown</strong>
-          <p>Держи блок коротким: зачем, что сделать руками, как понять что все ок.</p>
+          <span class="admin-editor-step-index">03</span>
+          <div>
+            <strong>Контент</strong>
+            <p>Пиши коротко и по делу: что понять, что сделать руками и как проверить, что блок действительно закрыт.</p>
+          </div>
         </div>
 
         <div class="admin-editor-toolbar">
@@ -118,6 +143,10 @@
           <button type="button" class="ghost-button" data-markdown-template="practice">Практика</button>
           <button type="button" class="ghost-button" data-markdown-template="result">Итог</button>
         </div>
+      </div>
+
+      <div class="admin-editor-body-head">
+        <p class="admin-editor-body-note">Markdown живет на сервере, картинки подключаются через <code>/uploads/...</code>, а превью справа обновляется автоматически.</p>
       </div>
 
       <label class="field admin-editor-body">
@@ -137,8 +166,8 @@
     <article class="admin-editor-card admin-editor-summary">
       <div class="admin-editor-card-head">
         <div>
-          <strong>Что получится</strong>
-          <p>Быстрая сводка без похода по файлам и путям.</p>
+          <strong>Сводка</strong>
+          <p>Быстрый контроль перед сохранением: файл, путь, тип блока и текущий смысл маршрута.</p>
         </div>
       </div>
 
@@ -154,11 +183,21 @@
       </div>
 
       <p class="admin-editor-kind-hint" data-editor-kind-hint>{{.AdminArticleForm.KindHint}}</p>
+    </article>
 
-      <ul class="admin-editor-helper-list">
-        <li>Если блок `test`, после сохранения добавь вопросы в секции test-блоков.</li>
-        <li>Картинки клади на сервер и вставляй как обычный markdown через `/uploads/...`.</li>
-        <li>Draft не светится ученикам, но уже доступен в админке и для редактирования.</li>
+    <article class="admin-editor-card admin-editor-checklist">
+      <div class="admin-editor-card-head">
+        <div>
+          <strong>Мини-чеклист</strong>
+          <p>То, что обычно экономит тебе лишний возврат к редактору через пять минут.</p>
+        </div>
+      </div>
+
+      <ul class="admin-editor-checklist-list">
+        <li>Название и summary читаются без контекста.</li>
+        <li>Порядок модуля и блока не ломает маршрут.</li>
+        <li>Если это test, вопросы добавятся после сохранения.</li>
+        <li>Draft не уходит ученикам, пока ты сам не решишь.</li>
       </ul>
     </article>
 
@@ -166,7 +205,7 @@
       <div class="admin-editor-card-head">
         <div>
           <strong>Live preview</strong>
-          <p>Так урок будет выглядеть внутри маршрута.</p>
+          <p>Так блок будет выглядеть внутри учебного маршрута.</p>
         </div>
       </div>
 
