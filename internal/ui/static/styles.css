@@ -3298,6 +3298,95 @@ button.dashboard-checkpoint-pill {
   gap: 0.9rem;
 }
 
+.admin-article-group-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-article-group-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.05rem 1.1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  background: rgba(8, 11, 10, 0.92);
+}
+
+.admin-article-group-head,
+.admin-article-group-meta,
+.admin-article-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.admin-article-group-copy,
+.admin-article-sort-main,
+.admin-article-sort-title {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-article-group-copy p,
+.admin-article-sort-status {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.66);
+  line-height: 1.5;
+}
+
+.admin-article-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.admin-article-group-title span,
+.admin-article-sort-title span {
+  color: rgba(243, 239, 227, 0.68);
+}
+
+.admin-article-sort-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-article-sort-item {
+  position: relative;
+  padding: 0.95rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  background: rgba(4, 7, 6, 0.78);
+}
+
+.admin-article-sort-item.is-dragging {
+  opacity: 0.58;
+  border-color: rgba(216, 255, 97, 0.22);
+}
+
+.admin-article-sort-item.is-drop-target {
+  box-shadow: inset 0 0 0 1px rgba(216, 255, 97, 0.18);
+}
+
+.admin-article-sort-grip {
+  color: rgba(243, 239, 227, 0.42);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: grab;
+  user-select: none;
+}
+
+.admin-article-sort-main {
+  flex: 1 1 320px;
+}
+
+.admin-article-sort-status.is-error {
+  color: var(--accent-2);
+}
+
 .admin-user-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4100,6 +4189,11 @@ button.dashboard-checkpoint-pill {
   line-height: 1.55;
 }
 
+.admin-editor-choice-action {
+  min-height: 2.55rem;
+  padding-inline: 0.95rem;
+}
+
 .admin-editor-chip-list {
   display: flex;
   align-items: center;
@@ -4144,6 +4238,12 @@ button.dashboard-checkpoint-pill {
 .admin-editor-choice-empty {
   margin: 0;
   color: rgba(243, 239, 227, 0.62);
+  line-height: 1.5;
+}
+
+.admin-editor-order-hint {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.64);
   line-height: 1.5;
 }
 

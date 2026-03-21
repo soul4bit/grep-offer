@@ -1286,6 +1286,223 @@ published: true
 	}
 }
 
+func TestAdminArticleOptionsSuggestNextOrders(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	files := map[string]string{
+		"02-01-linux-filesystem.md": `---
+title: "Файловая система"
+slug: "linux-filesystem"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Файловая система
+`,
+		"02-02-linux-permissions.md": `---
+title: "Права в Linux"
+slug: "linux-permissions"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 2
+kind: "practice"
+published: true
+---
+
+# Права в Linux
+`,
+		"03-01-network-basics.md": `---
+title: "Сеть"
+slug: "network-basics"
+stage: "Linux Base"
+module: "Сеть"
+module_order: 3
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Сеть
+`,
+		"04-01-docker.md": `---
+title: "Docker"
+slug: "docker-basics"
+stage: "Delivery"
+module: "Docker"
+module_order: 4
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Docker
+`,
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(contentDir, name), []byte(body), 0o644); err != nil {
+			t.Fatalf("write article %s: %v", name, err)
+		}
+	}
+
+	testApp, _ := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+
+	options := testApp.loadAdminArticleOptions()
+	if options.GlobalNextModuleOrder != 5 {
+		t.Fatalf("unexpected global next module order: %d", options.GlobalNextModuleOrder)
+	}
+	if len(options.Stages) != 2 {
+		t.Fatalf("unexpected stage count: %d", len(options.Stages))
+	}
+
+	var linuxStage AdminStageOption
+	for _, stage := range options.Stages {
+		if stage.Value == "Linux Base" {
+			linuxStage = stage
+			break
+		}
+	}
+	if linuxStage.Value == "" {
+		t.Fatalf("linux stage missing from options: %#v", options.Stages)
+	}
+	if linuxStage.NextModuleOrder != 4 {
+		t.Fatalf("unexpected linux next module order: %d", linuxStage.NextModuleOrder)
+	}
+	if len(linuxStage.Modules) != 2 {
+		t.Fatalf("unexpected linux module count: %d", len(linuxStage.Modules))
+	}
+
+	if linuxStage.Modules[0].Value != "Файловая система" || linuxStage.Modules[0].ModuleOrder != 2 || linuxStage.Modules[0].NextBlockOrder != 3 {
+		t.Fatalf("unexpected first linux module option: %#v", linuxStage.Modules[0])
+	}
+}
+
+func TestAdminArticleReorderPersistsBlockOrder(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	files := map[string]string{
+		"02-01-linux-filesystem.md": `---
+title: "Файловая система"
+slug: "linux-filesystem"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Файловая система
+`,
+		"02-02-linux-permissions.md": `---
+title: "Права в Linux"
+slug: "linux-permissions"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 2
+kind: "practice"
+published: true
+---
+
+# Права в Linux
+`,
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(contentDir, name), []byte(body), 0o644); err != nil {
+			t.Fatalf("write article %s: %v", name, err)
+		}
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-reorder-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	form := url.Values{
+		"slug":         {"linux-permissions", "linux-filesystem"},
+		"stage":        {"Linux Base"},
+		"module":       {"Файловая система"},
+		"module_order": {"2"},
+	}
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/reorder", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build reorder request: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("reorder request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected reorder status: %d", response.StatusCode)
+	}
+
+	var payload struct {
+		Items []struct {
+			Slug  string `json:"slug"`
+			Index string `json:"index"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode reorder payload: %v", err)
+	}
+	if len(payload.Items) != 2 || payload.Items[0].Slug != "linux-permissions" || payload.Items[0].Index != "2.1" {
+		t.Fatalf("unexpected reorder payload: %#v", payload.Items)
+	}
+
+	library := content.NewLibrary(contentDir)
+	first, err := library.EditableBySlug("linux-permissions")
+	if err != nil {
+		t.Fatalf("load reordered first article: %v", err)
+	}
+	second, err := library.EditableBySlug("linux-filesystem")
+	if err != nil {
+		t.Fatalf("load reordered second article: %v", err)
+	}
+
+	if first.BlockOrder != 1 || second.BlockOrder != 2 {
+		t.Fatalf("unexpected block orders after reorder: first=%d second=%d", first.BlockOrder, second.BlockOrder)
+	}
+}
+
 func TestAdminArticlePreviewRendersMarkdown(t *testing.T) {
 	t.Parallel()
 

@@ -166,6 +166,102 @@ func (a *App) handleAdminArticlePreview(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+func (a *App) handleAdminArticleReorder(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	slugs := r.Form["slug"]
+	if len(slugs) == 0 {
+		http.Error(w, "slugs are required", http.StatusBadRequest)
+		return
+	}
+
+	stage := strings.TrimSpace(r.FormValue("stage"))
+	module := strings.TrimSpace(r.FormValue("module"))
+	moduleOrder, err := parseAdminIntField(r.FormValue("module_order"))
+	if err != nil {
+		http.Error(w, "invalid module order", http.StatusBadRequest)
+		return
+	}
+
+	if stage == "" || module == "" || moduleOrder <= 0 {
+		http.Error(w, "stage, module and module order are required", http.StatusBadRequest)
+		return
+	}
+
+	updated := make([]struct {
+		Slug  string `json:"slug"`
+		Index string `json:"index"`
+	}, 0, len(slugs))
+
+	for i, rawSlug := range slugs {
+		slug := strings.TrimSpace(rawSlug)
+		if slug == "" {
+			http.Error(w, "slug is required", http.StatusBadRequest)
+			return
+		}
+
+		article, err := a.articles.EditableBySlug(slug)
+		if err != nil {
+			if errors.Is(err, content.ErrArticleNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "load article failed", http.StatusInternalServerError)
+			return
+		}
+
+		article.Stage = stage
+		article.Module = module
+		article.ModuleOrder = moduleOrder
+		article.BlockOrder = i + 1
+
+		saved, err := a.articles.SaveEditable(*article)
+		if err != nil {
+			http.Error(w, "reorder articles failed", http.StatusInternalServerError)
+			return
+		}
+
+		updated = append(updated, struct {
+			Slug  string `json:"slug"`
+			Index string `json:"index"`
+		}{
+			Slug:  saved.Slug,
+			Index: formatLessonIndex(saved.ModuleOrder, saved.BlockOrder),
+		})
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "article_reordered",
+		TargetType: "module",
+		TargetKey:  stage + "::" + module,
+		Details: map[string]string{
+			"module_order": strconv.Itoa(moduleOrder),
+			"lesson_count": strconv.Itoa(len(updated)),
+		},
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Items []struct {
+			Slug  string `json:"slug"`
+			Index string `json:"index"`
+		} `json:"items"`
+	}{
+		Items: updated,
+	})
+}
+
 func (a *App) renderAdminArticleEditor(w http.ResponseWriter, r *http.Request, status int, form AdminArticleForm) {
 	a.renderAdminArticleEditorWithError(w, r, status, form, "")
 }
@@ -184,22 +280,27 @@ func (a *App) renderAdminArticleEditorWithError(w http.ResponseWriter, r *http.R
 
 func (a *App) loadAdminArticleOptions() AdminArticleOptions {
 	if a.articles == nil {
-		return AdminArticleOptions{}
+		return AdminArticleOptions{GlobalNextModuleOrder: 1}
 	}
 
 	articles, err := a.articles.ListAll()
 	if err != nil {
-		return AdminArticleOptions{}
+		return AdminArticleOptions{GlobalNextModuleOrder: 1}
 	}
 
 	options := AdminArticleOptions{
-		Stages: make([]AdminStageOption, 0, len(articles)),
+		GlobalNextModuleOrder: 1,
+		Stages:                make([]AdminStageOption, 0, len(articles)),
 	}
 
 	stageIndexes := make(map[string]int)
-	moduleSeen := make(map[string]map[string]struct{})
+	moduleIndexes := make(map[string]map[string]int)
 
 	for _, article := range articles {
+		if article.ModuleOrder+1 > options.GlobalNextModuleOrder {
+			options.GlobalNextModuleOrder = article.ModuleOrder + 1
+		}
+
 		stage := strings.TrimSpace(article.Stage)
 		if stage == "" {
 			continue
@@ -210,8 +311,12 @@ func (a *App) loadAdminArticleOptions() AdminArticleOptions {
 			stageIndex = len(options.Stages)
 			stageIndexes[stage] = stageIndex
 			options.Stages = append(options.Stages, AdminStageOption{
-				Value: stage,
+				Value:           stage,
+				NextModuleOrder: max(article.ModuleOrder+1, 1),
 			})
+		}
+		if article.ModuleOrder+1 > options.Stages[stageIndex].NextModuleOrder {
+			options.Stages[stageIndex].NextModuleOrder = article.ModuleOrder + 1
 		}
 
 		module := strings.TrimSpace(article.Module)
@@ -219,15 +324,42 @@ func (a *App) loadAdminArticleOptions() AdminArticleOptions {
 			continue
 		}
 
-		if moduleSeen[stage] == nil {
-			moduleSeen[stage] = make(map[string]struct{})
-		}
-		if _, ok := moduleSeen[stage][module]; ok {
-			continue
+		if moduleIndexes[stage] == nil {
+			moduleIndexes[stage] = make(map[string]int)
 		}
 
-		moduleSeen[stage][module] = struct{}{}
-		options.Stages[stageIndex].Modules = append(options.Stages[stageIndex].Modules, module)
+		moduleIndex, ok := moduleIndexes[stage][module]
+		if !ok {
+			moduleIndex = len(options.Stages[stageIndex].Modules)
+			moduleIndexes[stage][module] = moduleIndex
+			options.Stages[stageIndex].Modules = append(options.Stages[stageIndex].Modules, AdminModuleOption{
+				Value:          module,
+				ModuleOrder:    article.ModuleOrder,
+				NextBlockOrder: max(article.BlockOrder+1, 1),
+			})
+		} else {
+			if article.ModuleOrder > 0 && (options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder == 0 || article.ModuleOrder < options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder) {
+				options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder = article.ModuleOrder
+			}
+			if article.BlockOrder+1 > options.Stages[stageIndex].Modules[moduleIndex].NextBlockOrder {
+				options.Stages[stageIndex].Modules[moduleIndex].NextBlockOrder = article.BlockOrder + 1
+			}
+		}
+	}
+
+	for i := range options.Stages {
+		stage := &options.Stages[i]
+		if stage.NextModuleOrder <= 0 {
+			stage.NextModuleOrder = options.GlobalNextModuleOrder
+		}
+		for j := range stage.Modules {
+			if stage.Modules[j].ModuleOrder <= 0 {
+				stage.Modules[j].ModuleOrder = stage.NextModuleOrder
+			}
+			if stage.Modules[j].NextBlockOrder <= 0 {
+				stage.Modules[j].NextBlockOrder = 1
+			}
+		}
 	}
 
 	return options
@@ -246,16 +378,58 @@ func (a *App) loadAdminArticles() ([]AdminArticleRow, error) {
 	rows := make([]AdminArticleRow, 0, len(articles))
 	for _, article := range articles {
 		rows = append(rows, AdminArticleRow{
+			Stage:        article.Stage,
 			Title:        article.Title,
 			Slug:         article.Slug,
 			Module:       article.Module,
+			KindKey:      article.Kind,
 			Kind:         lessonKindLabel(article.Kind),
+			Index:        formatLessonIndex(article.ModuleOrder, article.BlockOrder),
+			ModuleOrder:  article.ModuleOrder,
+			BlockOrder:   article.BlockOrder,
 			Published:    article.Published,
 			UpdatedLabel: article.UpdatedAt.In(time.FixedZone("MSK", 3*60*60)).Format("02.01.2006 15:04"),
 		})
 	}
 
 	return rows, nil
+}
+
+func (a *App) loadAdminArticleGroups() ([]AdminArticleGroup, error) {
+	if a.articles == nil {
+		return nil, nil
+	}
+
+	articles, err := a.loadAdminArticles()
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]AdminArticleGroup, 0, len(articles))
+	groupIndexes := make(map[string]int)
+
+	for _, article := range articles {
+		key := strconv.Itoa(article.ModuleOrder) + "::" + article.Stage + "::" + article.Module
+		groupIndex, ok := groupIndexes[key]
+		if !ok {
+			groupIndex = len(groups)
+			groupIndexes[key] = groupIndex
+			groups = append(groups, AdminArticleGroup{
+				Stage:       article.Stage,
+				Module:      article.Module,
+				ModuleOrder: article.ModuleOrder,
+				ModuleIndex: intString(article.ModuleOrder),
+			})
+		}
+
+		groups[groupIndex].Lessons = append(groups[groupIndex].Lessons, article)
+		groups[groupIndex].LessonCount++
+		if article.Published {
+			groups[groupIndex].PublishedCount++
+		}
+	}
+
+	return groups, nil
 }
 
 func adminArticleFormFromContent(article content.EditableArticle) AdminArticleForm {

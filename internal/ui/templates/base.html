@@ -259,6 +259,9 @@
         var stageInput = form.querySelector("[data-editor-stage-input]");
         var moduleInput = form.querySelector("[data-editor-module-input]");
         var moduleEmptyNode = form.querySelector("[data-editor-module-empty]");
+        var stageNewButton = form.querySelector("[data-editor-stage-new]");
+        var moduleNewButton = form.querySelector("[data-editor-module-new]");
+        var orderHintNode = form.querySelector("[data-editor-order-hint]");
         var stageChipButtons = form.querySelectorAll("[data-editor-stage-chip]");
         var moduleChipButtons = form.querySelectorAll("[data-editor-module-chip]");
         var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
@@ -269,7 +272,9 @@
         var kindHintNode = shell && shell.querySelector("[data-editor-kind-hint]");
         var previewNode = shell && shell.querySelector("[data-article-preview]");
         var previewEndpoint = form.dataset.previewEndpoint;
+        var globalNextModuleOrder = Number(form.dataset.globalNextModuleOrder || "1") || 1;
         var previewRequestID = 0;
+        var isEditing = Boolean(form.querySelector('input[name="original_slug"]') && form.querySelector('input[name="original_slug"]').value.trim());
 
         if (!titleInput || !slugInput || !bodyInput || !shell) {
           return;
@@ -277,6 +282,14 @@
 
         if (slugInput.value.trim()) {
           slugInput.dataset.manual = "1";
+        }
+        if (isEditing) {
+          if (moduleOrderInput) {
+            moduleOrderInput.dataset.manual = "1";
+          }
+          if (blockOrderInput) {
+            blockOrderInput.dataset.manual = "1";
+          }
         }
 
         var updateLearnLink = function (path) {
@@ -324,8 +337,65 @@
           }
         };
 
+        var suggestRouteOrder = function (force) {
+          if (!moduleOrderInput || !blockOrderInput) {
+            return;
+          }
+          if (!force && (moduleOrderInput.dataset.manual === "1" || blockOrderInput.dataset.manual === "1")) {
+            return;
+          }
+
+          var currentStage = stageInput ? stageInput.value.trim() : "";
+          var currentModule = moduleInput ? moduleInput.value.trim() : "";
+          var activeStageChip = null;
+          var activeModuleChip = null;
+          var suggestedModuleOrder = globalNextModuleOrder;
+          var suggestedBlockOrder = 1;
+          var hint = "Порядок подставляется автоматически по категории и разделу.";
+
+          stageChipButtons.forEach(function (button) {
+            if (button.dataset.stageValue === currentStage) {
+              activeStageChip = button;
+            }
+          });
+
+          moduleChipButtons.forEach(function (button) {
+            if (button.hidden) {
+              return;
+            }
+            if (button.dataset.moduleStage === currentStage && button.dataset.moduleValue === currentModule) {
+              activeModuleChip = button;
+            }
+          });
+
+          if (activeModuleChip) {
+            suggestedModuleOrder = Number(activeModuleChip.dataset.moduleOrder || suggestedModuleOrder) || suggestedModuleOrder;
+            suggestedBlockOrder = Number(activeModuleChip.dataset.moduleNextBlock || suggestedBlockOrder) || suggestedBlockOrder;
+            hint = "Для существующего раздела подставлен следующий block_order.";
+          } else if (activeStageChip) {
+            suggestedModuleOrder = Number(activeStageChip.dataset.stageNextModule || suggestedModuleOrder) || suggestedModuleOrder;
+            suggestedBlockOrder = 1;
+            hint = "Для новой секции внутри категории подставлен следующий module_order.";
+          } else {
+            suggestedModuleOrder = globalNextModuleOrder;
+            suggestedBlockOrder = 1;
+            hint = "Для новой категории подставлен следующий свободный module_order.";
+          }
+
+          if (force || moduleOrderInput.dataset.manual !== "1") {
+            moduleOrderInput.value = String(suggestedModuleOrder);
+          }
+          if (force || blockOrderInput.dataset.manual !== "1") {
+            blockOrderInput.value = String(suggestedBlockOrder);
+          }
+          if (orderHintNode) {
+            orderHintNode.textContent = hint;
+          }
+        };
+
         var refreshLocalSummary = function () {
           syncRoutePicker();
+          suggestRouteOrder(false);
 
           if (!slugInput.dataset.manual) {
             slugInput.value = slugify(titleInput.value);
@@ -452,6 +522,23 @@
             if (stageInput) {
               stageInput.value = button.dataset.stageValue || "";
             }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            if (moduleInput) {
+              var moduleExistsInStage = false;
+              moduleChipButtons.forEach(function (moduleButton) {
+                if (moduleButton.dataset.moduleStage === (button.dataset.stageValue || "") && moduleButton.dataset.moduleValue === moduleInput.value.trim()) {
+                  moduleExistsInStage = true;
+                }
+              });
+              if (!moduleExistsInStage) {
+                moduleInput.value = "";
+              }
+            }
             refreshLocalSummary();
             renderPreview();
           });
@@ -462,10 +549,53 @@
             if (moduleInput) {
               moduleInput.value = button.dataset.moduleValue || "";
             }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
             refreshLocalSummary();
             renderPreview();
           });
         });
+
+        if (stageNewButton) {
+          stageNewButton.addEventListener("click", function () {
+            if (stageInput) {
+              stageInput.value = "";
+              stageInput.focus();
+            }
+            if (moduleInput) {
+              moduleInput.value = "";
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            refreshLocalSummary();
+            renderPreview();
+          });
+        }
+
+        if (moduleNewButton) {
+          moduleNewButton.addEventListener("click", function () {
+            if (moduleInput) {
+              moduleInput.value = "";
+              moduleInput.focus();
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            refreshLocalSummary();
+            renderPreview();
+          });
+        }
 
         [bodyInput, kindInput, moduleOrderInput, blockOrderInput].forEach(function (input) {
           if (!input) {
@@ -473,11 +603,17 @@
           }
 
           input.addEventListener("input", function () {
+            if (input === moduleOrderInput || input === blockOrderInput) {
+              input.dataset.manual = input.value.trim() ? "1" : "";
+            }
             refreshLocalSummary();
             renderPreview();
           });
 
           input.addEventListener("change", function () {
+            if (input === moduleOrderInput || input === blockOrderInput) {
+              input.dataset.manual = input.value.trim() ? "1" : "";
+            }
             refreshLocalSummary();
             renderPreview();
           });
@@ -632,6 +768,151 @@
             uploadStatus.textContent = "Буфер обмена в этом браузере недоступен.";
           });
         }
+      });
+    });
+  </script>
+  <script nonce="{{.CSPNonce}}">
+    document.addEventListener("DOMContentLoaded", function () {
+      var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+      var getDragAfterElement = function (container, y) {
+        var items = Array.from(container.querySelectorAll("[data-admin-reorder-item]:not(.is-dragging)"));
+        var closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+        items.forEach(function (item) {
+          var box = item.getBoundingClientRect();
+          var offset = y - box.top - box.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            closest = { offset: offset, element: item };
+          }
+        });
+
+        return closest.element;
+      };
+
+      document.querySelectorAll("[data-admin-reorder-list]").forEach(function (list) {
+        var statusNode = list.parentElement && list.parentElement.querySelector("[data-admin-reorder-status]");
+        var draggingItem = null;
+        var lastSerializedOrder = "";
+
+        var syncSerializedOrder = function () {
+          lastSerializedOrder = Array.from(list.querySelectorAll("[data-admin-reorder-item]"))
+            .map(function (item) { return item.dataset.slug || ""; })
+            .join(",");
+        };
+
+        var sendOrder = function () {
+          var params = new URLSearchParams();
+          Array.from(list.querySelectorAll("[data-admin-reorder-item]")).forEach(function (item) {
+            params.append("slug", item.dataset.slug || "");
+          });
+          params.append("stage", list.dataset.stage || "");
+          params.append("module", list.dataset.module || "");
+          params.append("module_order", list.dataset.moduleOrder || "");
+
+          if (statusNode) {
+            statusNode.hidden = false;
+            statusNode.classList.remove("is-error");
+            statusNode.textContent = "Сохраняю новый порядок...";
+          }
+
+          fetch(list.dataset.reorderEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
+            },
+            body: params.toString()
+          })
+            .then(function (response) {
+              return response.json().then(function (json) {
+                if (!response.ok) {
+                  throw new Error(json.error || "reorder failed");
+                }
+                return json;
+              });
+            })
+            .then(function (payload) {
+              if (!payload.items) {
+                return;
+              }
+
+              payload.items.forEach(function (item) {
+                var node = list.querySelector('[data-admin-reorder-item][data-slug="' + item.slug + '"] .admin-article-sort-title strong');
+                if (!node) {
+                  return;
+                }
+                var title = node.textContent.replace(/^\d+\.\d+\s+/, "");
+                node.textContent = (item.index ? item.index + " " : "") + title;
+              });
+
+              syncSerializedOrder();
+              if (statusNode) {
+                statusNode.textContent = "Порядок сохранен.";
+              }
+            })
+            .catch(function (error) {
+              if (statusNode) {
+                statusNode.hidden = false;
+                statusNode.classList.add("is-error");
+                statusNode.textContent = error && error.message ? error.message : "Не удалось сохранить порядок.";
+              }
+            });
+        };
+
+        syncSerializedOrder();
+
+        list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+          item.addEventListener("dragstart", function () {
+            draggingItem = item;
+            item.classList.add("is-dragging");
+          });
+
+          item.addEventListener("dragend", function () {
+            item.classList.remove("is-dragging");
+            draggingItem = null;
+
+            var currentOrder = Array.from(list.querySelectorAll("[data-admin-reorder-item]"))
+              .map(function (node) { return node.dataset.slug || ""; })
+              .join(",");
+            if (currentOrder !== lastSerializedOrder) {
+              sendOrder();
+            }
+          });
+        });
+
+        list.addEventListener("dragover", function (event) {
+          if (!draggingItem) {
+            return;
+          }
+
+          event.preventDefault();
+          var afterElement = getDragAfterElement(list, event.clientY);
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+
+          if (!afterElement) {
+            list.appendChild(draggingItem);
+            return;
+          }
+
+          afterElement.classList.add("is-drop-target");
+          list.insertBefore(draggingItem, afterElement);
+        });
+
+        list.addEventListener("dragleave", function () {
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+        });
+
+        list.addEventListener("drop", function () {
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+        });
       });
     });
   </script>

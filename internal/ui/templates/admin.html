@@ -30,30 +30,55 @@
     <div class="admin-table-head">
       <div>
         <strong>Уроки в markdown</strong>
-        <p class="admin-section-copy">Приватный контент лежит на сервере, а тут ты управляешь порядком, типом блока и публикацией.</p>
+        <p class="admin-section-copy">Приватный контент лежит на сервере, а тут ты управляешь порядком, типом блока и публикацией. Блоки внутри раздела можно просто перетаскивать.</p>
       </div>
       <a class="ghost-button" href="/admin/articles/new">Новый урок</a>
     </div>
 
-    <div class="admin-user-list">
-      {{range .AdminArticles}}
-        <article class="admin-user-card">
-          <div class="admin-user-main">
-            <div class="admin-user-title">
-              <strong>{{.Title}}</strong>
-              <span>{{.Slug}}</span>
+    <div class="admin-article-group-list">
+      {{range .AdminArticleGroups}}
+        <article class="admin-article-group-card">
+          <div class="admin-article-group-head">
+            <div class="admin-article-group-copy">
+              <div class="admin-article-group-title">
+                <strong>{{.ModuleIndex}}. {{.Module}}</strong>
+                <span>{{.Stage}}</span>
+              </div>
+              <p>{{.PublishedCount}} из {{.LessonCount}} блоков уже видны ученикам.</p>
             </div>
-            <div class="admin-user-meta">
-              <span class="admin-pill">{{.Module}}</span>
-              <span class="admin-pill">{{.Kind}}</span>
-              <span class="admin-pill {{if .Published}}is-admin{{else}}is-banned{{end}}">{{if .Published}}published{{else}}draft{{end}}</span>
-              <span class="admin-created">{{.UpdatedLabel}}</span>
+
+            <div class="admin-article-group-meta">
+              <span class="admin-pill">module {{.ModuleOrder}}</span>
+              <span class="admin-pill">{{.LessonCount}} blocks</span>
             </div>
           </div>
 
-          <div class="admin-user-actions">
-            <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+          <div class="admin-article-sort-list" data-admin-reorder-list data-reorder-endpoint="/admin/articles/reorder" data-stage="{{.Stage}}" data-module="{{.Module}}" data-module-order="{{.ModuleOrder}}">
+            {{range .Lessons}}
+              <article class="admin-article-sort-item" draggable="true" data-admin-reorder-item data-slug="{{.Slug}}">
+                <div class="admin-article-sort-grip" aria-hidden="true">⋮⋮</div>
+
+                <div class="admin-article-sort-main">
+                  <div class="admin-article-sort-title">
+                    <strong>{{.Index}} {{.Title}}</strong>
+                    <span>{{.Slug}}</span>
+                  </div>
+
+                  <div class="admin-user-meta">
+                    <span class="admin-pill">{{.Kind}}</span>
+                    <span class="admin-pill {{if .Published}}is-admin{{else}}is-banned{{end}}">{{if .Published}}published{{else}}draft{{end}}</span>
+                    <span class="admin-created">{{.UpdatedLabel}}</span>
+                  </div>
+                </div>
+
+                <div class="admin-user-actions">
+                  <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+                </div>
+              </article>
+            {{end}}
           </div>
+
+          <p class="admin-article-sort-status" data-admin-reorder-status hidden></p>
         </article>
       {{else}}
         <article class="article-card article-card-empty">

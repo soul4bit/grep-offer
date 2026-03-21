@@ -34,6 +34,11 @@ func (a *App) handleAdminArticles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load articles failed", http.StatusInternalServerError)
 		return
 	}
+	articleGroups, err := a.loadAdminArticleGroups()
+	if err != nil {
+		http.Error(w, "load article groups failed", http.StatusInternalServerError)
+		return
+	}
 
 	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
 	if err != nil {
@@ -45,6 +50,7 @@ func (a *App) handleAdminArticles(w http.ResponseWriter, r *http.Request) {
 		Notice:             noticeFromRequest(r),
 		AdminSection:       "articles",
 		AdminArticles:      articles,
+		AdminArticleGroups: articleGroups,
 		AdminTestLessons:   testLessons,
 		AdminTestQuestions: testQuestions,
 	})

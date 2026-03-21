@@ -75,6 +75,7 @@ type ViewData struct {
 	Article             *ArticlePage
 	AdminUsers          []AdminUserRow
 	AdminArticles       []AdminArticleRow
+	AdminArticleGroups  []AdminArticleGroup
 	AdminArticleForm    AdminArticleForm
 	AdminArticleOptions AdminArticleOptions
 	AdminTestLessons    []AdminLessonOption
@@ -179,12 +180,27 @@ type AdminUserRow struct {
 }
 
 type AdminArticleRow struct {
+	Stage        string
 	Title        string
 	Slug         string
 	Module       string
+	KindKey      string
 	Kind         string
+	Index        string
+	ModuleOrder  int
+	BlockOrder   int
 	Published    bool
 	UpdatedLabel string
+}
+
+type AdminArticleGroup struct {
+	Stage          string
+	Module         string
+	ModuleOrder    int
+	ModuleIndex    string
+	LessonCount    int
+	PublishedCount int
+	Lessons        []AdminArticleRow
 }
 
 type AdminArticleForm struct {
@@ -210,12 +226,20 @@ type AdminArticleForm struct {
 }
 
 type AdminArticleOptions struct {
-	Stages []AdminStageOption
+	GlobalNextModuleOrder int
+	Stages                []AdminStageOption
 }
 
 type AdminStageOption struct {
-	Value   string
-	Modules []string
+	Value           string
+	NextModuleOrder int
+	Modules         []AdminModuleOption
+}
+
+type AdminModuleOption struct {
+	Value          string
+	ModuleOrder    int
+	NextBlockOrder int
 }
 
 type AdminLessonOption struct {
@@ -362,6 +386,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
+	mux.HandleFunc("POST /admin/articles/reorder", a.handleAdminArticleReorder)
 	mux.HandleFunc("POST /admin/uploads/images", a.handleAdminImageUpload)
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)

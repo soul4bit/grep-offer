@@ -34,7 +34,7 @@
 </section>
 
 <section class="admin-editor-shell">
-  <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview">
+  <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview" data-global-next-module-order="{{.AdminArticleOptions.GlobalNextModuleOrder}}">
     <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
@@ -86,11 +86,12 @@
               <strong>Категория</strong>
               <p>Быстрый выбор из того, что уже есть в маршруте. Если нужно новое направление, просто введи его ниже.</p>
             </div>
+            <button type="button" class="ghost-button admin-editor-choice-action" data-editor-stage-new>Новая категория</button>
           </div>
 
           <div class="admin-editor-chip-list" data-editor-stage-options>
             {{range .AdminArticleOptions.Stages}}
-              <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}">{{.Value}}</button>
+              <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}" data-stage-next-module="{{.NextModuleOrder}}">{{.Value}}</button>
             {{else}}
               <p class="admin-editor-choice-empty">Пока нет готовых категорий. Первую можно создать прямо в поле ниже.</p>
             {{end}}
@@ -109,13 +110,14 @@
               <strong>Раздел</strong>
               <p>Показываем подходящие разделы для выбранной категории. Если нужного нет, просто вводишь свой.</p>
             </div>
+            <button type="button" class="ghost-button admin-editor-choice-action" data-editor-module-new>Новый раздел</button>
           </div>
 
           <div class="admin-editor-chip-list" data-editor-module-options>
             {{range .AdminArticleOptions.Stages}}
               {{$stage := .Value}}
               {{range .Modules}}
-                <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.}}">{{.}}</button>
+                <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .Value)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
               {{end}}
             {{end}}
           </div>
@@ -154,6 +156,8 @@
           <input type="number" min="0" name="block_order" value="{{.AdminArticleForm.BlockOrder}}" data-editor-block-order>
         </label>
       </div>
+
+      <p class="admin-editor-order-hint" data-editor-order-hint>Порядок подставляется по выбранной категории и разделу, но его можно переопределить вручную.</p>
 
       <label class="admin-editor-publish-toggle">
         <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}}>
