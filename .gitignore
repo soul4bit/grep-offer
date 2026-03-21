@@ -4,3 +4,5 @@ bin/
 *.db-shm
 *.db-wal
 *.exe
+content/articles/*.md
+!content/articles/_template.lesson.md
