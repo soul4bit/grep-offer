@@ -11,6 +11,41 @@
 
 <section class="admin-table-shell">
   <div class="admin-table-head">
+    <strong>Уроки в markdown</strong>
+    <a class="ghost-button" href="/admin/articles/new">Новый урок</a>
+  </div>
+
+  <div class="admin-user-list">
+    {{range .AdminArticles}}
+      <article class="admin-user-card">
+        <div class="admin-user-main">
+          <div class="admin-user-title">
+            <strong>{{.Title}}</strong>
+            <span>{{.Slug}}</span>
+          </div>
+          <div class="admin-user-meta">
+            <span class="admin-pill">{{.Module}}</span>
+            <span class="admin-pill">{{.Kind}}</span>
+            <span class="admin-pill {{if .Published}}is-admin{{else}}is-banned{{end}}">{{if .Published}}published{{else}}draft{{end}}</span>
+            <span class="admin-created">{{.UpdatedLabel}}</span>
+          </div>
+        </div>
+
+        <div class="admin-user-actions">
+          <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+        </div>
+      </article>
+    {{else}}
+      <article class="article-card article-card-empty">
+        <h2>Пока без уроков</h2>
+        <p>Создай первый markdown-блок через админку, и он появится в маршруте.</p>
+      </article>
+    {{end}}
+  </div>
+</section>
+
+<section class="admin-table-shell">
+  <div class="admin-table-head">
     <strong>Пользователи</strong>
     <span>{{len .AdminUsers}} всего</span>
   </div>

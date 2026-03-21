@@ -17,7 +17,7 @@ fi
 
 sudo install -d -m 755 "$APP_ROOT"
 sudo install -d -m 755 "$APP_ROOT/releases"
-sudo install -d -m 775 -o "$APP_USER" -g "$APP_GROUP" "$APP_ROOT/shared" "$APP_ROOT/shared/data" "$APP_ROOT/shared/uploads"
+sudo install -d -m 775 -o "$APP_USER" -g "$APP_GROUP" "$APP_ROOT/shared" "$APP_ROOT/shared/data" "$APP_ROOT/shared/uploads" "$APP_ROOT/shared/content" "$APP_ROOT/shared/content/articles"
 sudo chown "$RUNNER_USER":"$RUNNER_USER" "$APP_ROOT" "$APP_ROOT/releases"
 
 SERVICE_TMP="$(mktemp)"

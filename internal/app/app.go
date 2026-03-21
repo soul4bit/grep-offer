@@ -68,6 +68,8 @@ type ViewData struct {
 	Articles           []ArticleCard
 	Article            *ArticlePage
 	AdminUsers         []AdminUserRow
+	AdminArticles      []AdminArticleRow
+	AdminArticleForm   AdminArticleForm
 	AdminTestLessons   []AdminLessonOption
 	AdminTestQuestions []AdminTestQuestionRow
 	DashboardStats     []DashboardStat
@@ -166,6 +168,31 @@ type AdminUserRow struct {
 	IsBanned      bool
 	IsCurrentUser bool
 	CreatedLabel  string
+}
+
+type AdminArticleRow struct {
+	Title        string
+	Slug         string
+	Module       string
+	Kind         string
+	Published    bool
+	UpdatedLabel string
+}
+
+type AdminArticleForm struct {
+	OriginalSlug string
+	Title        string
+	Slug         string
+	Summary      string
+	Badge        string
+	Stage        string
+	Module       string
+	Kind         string
+	Body         string
+	ModuleOrder  int
+	BlockOrder   int
+	Published    bool
+	ModeLabel    string
 }
 
 type AdminLessonOption struct {
@@ -284,6 +311,9 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
 	mux.HandleFunc("POST /dashboard/checkpoints", a.handleDashboardCheckpointToggle)
 	mux.HandleFunc("GET /admin", a.handleAdminDashboard)
+	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
+	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
+	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
 	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
@@ -827,7 +857,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 
 func loadTemplates() (map[string]*template.Template, error) {
 	cache := make(map[string]*template.Template)
-	pages := []string{"home", "login", "register", "forgot_password", "reset_password", "dashboard", "articles", "article", "admin"}
+	pages := []string{"home", "login", "register", "forgot_password", "reset_password", "dashboard", "articles", "article", "admin", "admin_article_edit"}
 
 	for _, page := range pages {
 		tmpl, err := template.ParseFS(

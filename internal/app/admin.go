@@ -37,6 +37,12 @@ func (a *App) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	articles, err := a.loadAdminArticles()
+	if err != nil {
+		http.Error(w, "load articles failed", http.StatusInternalServerError)
+		return
+	}
+
 	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
 	if err != nil {
 		http.Error(w, "load tests failed", http.StatusInternalServerError)
@@ -46,6 +52,7 @@ func (a *App) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "admin", ViewData{
 		Notice:             noticeFromRequest(r),
 		AdminUsers:         rows,
+		AdminArticles:      articles,
 		AdminTestLessons:   testLessons,
 		AdminTestQuestions: testQuestions,
 	})
@@ -313,7 +320,7 @@ func (a *App) adminTestLessons(ctx context.Context) (map[string]content.ArticleM
 		return lessonMap, nil, nil
 	}
 
-	articles, err := a.articles.List()
+	articles, err := a.articles.ListAll()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -324,7 +331,7 @@ func (a *App) adminTestLessons(ctx context.Context) (map[string]content.ArticleM
 			continue
 		}
 
-		lessonMap[article.Slug] = article
+		lessonMap[article.Slug] = article.ArticleMeta
 		options = append(options, AdminLessonOption{
 			Slug:  article.Slug,
 			Title: formatLessonIndex(article.ModuleOrder, article.BlockOrder) + " " + article.Title,
@@ -339,14 +346,15 @@ func (a *App) adminTestLessonBySlug(ctx context.Context, slug string) (*content.
 		return nil, content.ErrArticleNotFound
 	}
 
-	articles, err := a.articles.List()
+	articles, err := a.articles.ListAll()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, article := range articles {
 		if article.Slug == strings.TrimSpace(slug) {
-			return &article, nil
+			meta := article.ArticleMeta
+			return &meta, nil
 		}
 	}
 

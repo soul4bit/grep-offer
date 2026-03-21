@@ -1,0 +1,91 @@
+{{define "title"}}Редактор урока{{end}}
+
+{{define "body"}}
+<section class="admin-hero">
+  <div>
+    <div class="eyebrow">content editor</div>
+    <h1 class="section-title">{{.AdminArticleForm.ModeLabel}}</h1>
+    <p class="lead">Урок сохраняется в `.md` в `CONTENT_DIR`. Картинки держи в `/uploads/...`, а в тексте просто вставляй обычный markdown.</p>
+  </div>
+</section>
+
+<section class="admin-table-shell">
+  <div class="admin-table-head">
+    <strong>Поля урока</strong>
+    <a class="ghost-button" href="/admin">Назад в админку</a>
+  </div>
+
+  <article class="admin-test-form-card">
+    <form method="post" action="/admin/articles" class="admin-test-form">
+      <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
+
+      <label class="field">
+        <span>Название</span>
+        <input type="text" name="title" value="{{.AdminArticleForm.Title}}" required>
+      </label>
+
+      <label class="field">
+        <span>Slug</span>
+        <input type="text" name="slug" value="{{.AdminArticleForm.Slug}}" placeholder="linux-filesystem-basics">
+      </label>
+
+      <label class="field">
+        <span>Краткое описание</span>
+        <textarea name="summary" rows="3" placeholder="Что именно закрывает этот блок">{{.AdminArticleForm.Summary}}</textarea>
+      </label>
+
+      <div class="admin-test-grid">
+        <label class="field">
+          <span>Badge</span>
+          <input type="text" name="badge" value="{{.AdminArticleForm.Badge}}" placeholder="linux">
+        </label>
+
+        <label class="field">
+          <span>Тип</span>
+          <select name="kind">
+            <option value="theory" {{if eq .AdminArticleForm.Kind "theory"}}selected{{end}}>theory</option>
+            <option value="practice" {{if eq .AdminArticleForm.Kind "practice"}}selected{{end}}>practice</option>
+            <option value="test" {{if eq .AdminArticleForm.Kind "test"}}selected{{end}}>test</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="admin-test-grid">
+        <label class="field">
+          <span>Stage</span>
+          <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" placeholder="Linux Base">
+        </label>
+
+        <label class="field">
+          <span>Module</span>
+          <input type="text" name="module" value="{{.AdminArticleForm.Module}}" placeholder="Файловая система">
+        </label>
+      </div>
+
+      <div class="admin-test-grid">
+        <label class="field">
+          <span>Порядок модуля</span>
+          <input type="number" min="0" name="module_order" value="{{.AdminArticleForm.ModuleOrder}}">
+        </label>
+
+        <label class="field">
+          <span>Порядок блока</span>
+          <input type="number" min="0" name="block_order" value="{{.AdminArticleForm.BlockOrder}}">
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Markdown</span>
+        <textarea name="body" rows="20" required placeholder="# Новый блок">{{.AdminArticleForm.Body}}</textarea>
+      </label>
+
+      <label class="admin-inline-check">
+        <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}}>
+        <span>Сразу публиковать в маршруте</span>
+      </label>
+
+      <button class="primary-button" type="submit">Сохранить урок</button>
+    </form>
+  </article>
+</section>
+{{end}}

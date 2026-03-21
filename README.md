@@ -196,13 +196,13 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 
 Теперь в проекте есть еще два слоя:
 
-- `content/articles` — markdown-статьи по этапам роадмапа
+- `shared/content/articles` — приватные markdown-уроки, которые читает приложение
 - `shared/uploads` — картинки и другие файлы, которые отдаются с `/uploads/...`
 
 По умолчанию приложение читает:
 
 ```env
-CONTENT_DIR=content/articles
+CONTENT_DIR=/var/www/grep-offer/shared/content/articles
 UPLOADS_DIR=/var/www/grep-offer/shared/uploads
 ADMIN_EMAILS=admin@example.com
 ```
@@ -213,7 +213,7 @@ ADMIN_EMAILS=admin@example.com
 - `UPLOADS_DIR` — откуда отдавать изображения и вложения
 - `ADMIN_EMAILS` — список email через запятую; если пользователь с таким email существует, ему автоматически поднимается `is_admin`
 
-На сервере релиз теперь копирует папку `content` вместе с бинарем, а `setup-server.sh` создает еще и `/var/www/grep-offer/shared/uploads`.
+На сервере `setup-server.sh` создает `/var/www/grep-offer/shared/content/articles` и `/var/www/grep-offer/shared/uploads`, так что контент можно держать вне публичного GitHub-репозитория.
 
 Админка доступна по `/admin` и умеет:
 
@@ -221,14 +221,11 @@ ADMIN_EMAILS=admin@example.com
 - выдавать и снимать админку
 - банить и разбанивать
 - удалять аккаунт
+- создавать и редактировать уроки в markdown
 
 ### Как добавлять учебные блоки
 
-Сейчас контент сделан не через браузерный редактор, а через markdown-файлы. Это осознанно: так контент остается в git, проходит review и не теряется при деплое.
-
-Шаблон лежит в:
-
-- `content/articles/_template.lesson.md`
+Теперь основной способ — через админку. Админ создает урок по `/admin/articles/new`, а приложение сохраняет его как `.md` в `CONTENT_DIR`.
 
 Каждый блок в Linux-маршруте это отдельный `.md`-файл с frontmatter:
 

@@ -3681,6 +3681,18 @@ button.dashboard-checkpoint-pill {
   gap: 0.45rem;
 }
 
+.admin-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: rgba(243, 239, 227, 0.82);
+  font-size: 0.95rem;
+}
+
+.admin-inline-check input {
+  width: auto;
+}
+
 .admin-test-form select,
 .admin-test-form textarea,
 .admin-test-form input {

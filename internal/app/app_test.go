@@ -1000,6 +1000,86 @@ published: true
 	}
 }
 
+func TestAdminCanCreateMarkdownLesson(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-article-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	form := url.Values{
+		"title":        {"Файловая система Linux"},
+		"slug":         {"linux-filesystem"},
+		"summary":      {"Базовая карта каталогов и зачем она нужна."},
+		"badge":        {"linux"},
+		"stage":        {"Linux Base"},
+		"module":       {"Файловая система"},
+		"kind":         {"theory"},
+		"module_order": {"2"},
+		"block_order":  {"3"},
+		"published":    {"1"},
+		"body":         {"# Файловая система Linux\n\nКороткий текст.\n"},
+	}
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build admin article request: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("admin article request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected create article status: %d", response.StatusCode)
+	}
+
+	library := content.NewLibrary(contentDir)
+	article, err := library.EditableBySlug("linux-filesystem")
+	if err != nil {
+		t.Fatalf("load created article: %v", err)
+	}
+	if article.Title != "Файловая система Linux" {
+		t.Fatalf("unexpected article title: %#v", article)
+	}
+	if !article.Published {
+		t.Fatalf("expected article to be published")
+	}
+	if !strings.Contains(article.Body, "Короткий текст.") {
+		t.Fatalf("unexpected article body: %q", article.Body)
+	}
+}
+
 func TestAdminCanManageUsers(t *testing.T) {
 	t.Parallel()
 

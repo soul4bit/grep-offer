@@ -29,6 +29,9 @@ func main() {
 
 	driverName := "pgx"
 	dsn := databaseURL()
+	if err := os.MkdirAll(contentDir, 0o775); err != nil {
+		log.Fatalf("create content dir: %v", err)
+	}
 	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
 		log.Fatalf("create uploads dir: %v", err)
 	}
