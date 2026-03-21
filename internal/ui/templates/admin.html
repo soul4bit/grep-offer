@@ -9,25 +9,21 @@
   </div>
 </section>
 
-<nav class="admin-subnav" aria-label="Разделы админки">
-  {{range .AdminNav}}
-    <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}">
-      <span class="admin-subnav-kicker">
-        {{if eq .Key "articles"}}01{{end}}
-        {{if eq .Key "users"}}02{{end}}
-        {{if eq .Key "logs"}}03{{end}}
-      </span>
-      <span class="admin-subnav-copy">
-        <strong>{{.Label}}</strong>
-        <small>
-          {{if eq .Key "articles"}}уроки, markdown и test-блоки{{end}}
-          {{if eq .Key "users"}}бан, роли и удаление аккаунтов{{end}}
-          {{if eq .Key "logs"}}аудит чувствительных действий{{end}}
-        </small>
-      </span>
-    </a>
-  {{end}}
-</nav>
+<section class="admin-subnav-shell">
+  <nav class="admin-subnav" aria-label="Разделы админки">
+    {{range .AdminNav}}
+      <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}" {{if .Active}}aria-current="page"{{end}}>
+        <span class="admin-subnav-label">{{.Label}}</span>
+      </a>
+    {{end}}
+  </nav>
+
+  <p class="admin-subnav-summary">
+    {{if eq .AdminSection "articles"}}Здесь живут уроки, markdown и test-блоки.{{end}}
+    {{if eq .AdminSection "users"}}Здесь управление ролями, баном и удалением аккаунтов.{{end}}
+    {{if eq .AdminSection "logs"}}Здесь журнал admin-действий и чувствительных событий.{{end}}
+  </p>
+</section>
 
 {{if eq .AdminSection "articles"}}
   <section class="admin-table-shell">
