@@ -64,6 +64,7 @@
 
           {{if .Quiz}}
             <form method="post" action="/learn/tests/{{.Slug}}" class="lesson-quiz-form">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               {{range .Quiz.Questions}}
                 {{$question := .}}
                 <fieldset class="lesson-quiz-question">

@@ -71,16 +71,19 @@
         <div class="admin-user-actions">
           {{if not .IsCurrentUser}}
             <form method="post" action="/admin/users/{{.ID}}/admin">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="value" value="{{if .IsAdmin}}0{{else}}1{{end}}">
               <button class="ghost-button" type="submit">{{if .IsAdmin}}Снять админку{{else}}Выдать админку{{end}}</button>
             </form>
 
             <form method="post" action="/admin/users/{{.ID}}/ban">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="value" value="{{if .IsBanned}}0{{else}}1{{end}}">
               <button class="ghost-button" type="submit">{{if .IsBanned}}Разбанить{{else}}Забанить{{end}}</button>
             </form>
 
             <form method="post" action="/admin/users/{{.ID}}/delete">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
             </form>
           {{else}}
@@ -107,6 +110,7 @@
     <article class="admin-test-form-card">
       <h2>Добавить вопрос</h2>
       <form method="post" action="/admin/tests/questions" class="admin-test-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <label class="field">
           <span>Тестовый урок</span>
           <select name="lesson_slug" required>
@@ -150,6 +154,7 @@
               <span>{{.LessonSlug}}</span>
             </div>
             <form method="post" action="/admin/tests/questions/{{.ID}}/delete">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
             </form>
           </div>

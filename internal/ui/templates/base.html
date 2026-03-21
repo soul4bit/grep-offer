@@ -7,6 +7,7 @@
   <title>{{template "title" .}} | grep-offer.ru</title>
   <meta name="description" content="Рофл-роадмап до DevOps: этапы, курс, прогресс и нормальный маршрут без карго-культа.">
   <meta name="theme-color" content="#0f1311">
+  <meta name="csrf-token" content="{{.CSRFToken}}">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,6 +37,7 @@
             <a class="nav-link" href="/admin">Админка</a>
           {{end}}
           <form action="/logout" method="post">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <button class="ghost-button" type="submit">Выйти</button>
           </form>
         {{else}}
@@ -54,7 +56,7 @@
     </main>
   </div>
 
-  <script>
+  <script nonce="{{.CSPNonce}}">
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll(".anti-autofill-input").forEach(function (input) {
         var unlock = function () {
@@ -246,6 +248,7 @@
       };
 
       document.querySelectorAll("[data-article-editor]").forEach(function (form) {
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
         var shell = form.closest(".admin-editor-shell");
         var titleInput = form.querySelector("[data-editor-title]");
         var slugInput = form.querySelector("[data-editor-slug]");
@@ -343,7 +346,8 @@
             method: "POST",
             credentials: "same-origin",
             headers: {
-              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
             },
             body: params.toString()
           })

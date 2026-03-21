@@ -56,6 +56,12 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "create embedded postgres dir: %v\n", err)
 		os.Exit(1)
 	}
+	cacheDir := filepath.Join(os.TempDir(), "grep-offer-embedded-postgres-cache")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "create embedded postgres cache dir: %v\n", err)
+		_ = os.RemoveAll(rootDir)
+		os.Exit(1)
+	}
 
 	testPostgresConfig = embeddedpostgres.DefaultConfig().
 		Version(embeddedpostgres.V16).
@@ -67,7 +73,7 @@ func TestMain(m *testing.M) {
 		RuntimePath(filepath.Join(rootDir, "runtime")).
 		DataPath(filepath.Join(rootDir, "data")).
 		BinariesPath(filepath.Join(rootDir, "binaries")).
-		CachePath(filepath.Join(rootDir, "cache")).
+		CachePath(cacheDir).
 		StartTimeout(60 * time.Second).
 		Logger(io.Discard)
 
@@ -116,7 +122,7 @@ func TestRegistrationApprovalFlow(t *testing.T) {
 		"confirm_password": {"supersecret123"},
 	}
 
-	registerResponse, err := client.PostForm(server.URL+"/register", form)
+	registerResponse, err := postFormWithCSRF(client, server.URL+"/register", form)
 	if err != nil {
 		t.Fatalf("register request: %v", err)
 	}
@@ -214,7 +220,7 @@ func TestLoginShowsPendingRegistrationMessage(t *testing.T) {
 		"confirm_password": {"supersecret123"},
 	}
 
-	registerResponse, err := client.PostForm(server.URL+"/register", registerForm)
+	registerResponse, err := postFormWithCSRF(client, server.URL+"/register", registerForm)
 	if err != nil {
 		t.Fatalf("register request: %v", err)
 	}
@@ -225,7 +231,7 @@ func TestLoginShowsPendingRegistrationMessage(t *testing.T) {
 		"password": {"supersecret123"},
 	}
 
-	loginResponse, err := client.PostForm(server.URL+"/login", loginForm)
+	loginResponse, err := postFormWithCSRF(client, server.URL+"/login", loginForm)
 	if err != nil {
 		t.Fatalf("login request: %v", err)
 	}
@@ -254,7 +260,7 @@ func TestRegisterRejectsMismatchedPasswords(t *testing.T) {
 		"confirm_password": {"supersecret321"},
 	}
 
-	response, err := server.Client().PostForm(server.URL+"/register", form)
+	response, err := postFormWithCSRF(server.Client(), server.URL+"/register", form)
 	if err != nil {
 		t.Fatalf("register request: %v", err)
 	}
@@ -292,7 +298,7 @@ func TestRegisterRejectsTakenUsernameFromExistingUser(t *testing.T) {
 		"confirm_password": {"supersecret123"},
 	}
 
-	response, err := server.Client().PostForm(server.URL+"/register", form)
+	response, err := postFormWithCSRF(server.Client(), server.URL+"/register", form)
 	if err != nil {
 		t.Fatalf("register request: %v", err)
 	}
@@ -326,7 +332,7 @@ func TestRegisterRejectsTakenUsernameFromPendingRequest(t *testing.T) {
 		"confirm_password": {"supersecret123"},
 	}
 
-	firstResponse, err := server.Client().PostForm(server.URL+"/register", firstForm)
+	firstResponse, err := postFormWithCSRF(server.Client(), server.URL+"/register", firstForm)
 	if err != nil {
 		t.Fatalf("first register request: %v", err)
 	}
@@ -343,7 +349,7 @@ func TestRegisterRejectsTakenUsernameFromPendingRequest(t *testing.T) {
 		"confirm_password": {"supersecret123"},
 	}
 
-	secondResponse, err := server.Client().PostForm(server.URL+"/register", secondForm)
+	secondResponse, err := postFormWithCSRF(server.Client(), server.URL+"/register", secondForm)
 	if err != nil {
 		t.Fatalf("second register request: %v", err)
 	}
@@ -386,7 +392,7 @@ func TestForgotPasswordFlow(t *testing.T) {
 	client := server.Client()
 	client.Jar = jar
 
-	requestResponse, err := client.PostForm(server.URL+"/password/forgot", url.Values{
+	requestResponse, err := postFormWithCSRF(client, server.URL+"/password/forgot", url.Values{
 		"email": {"reset@example.com"},
 	})
 	if err != nil {
@@ -427,7 +433,7 @@ func TestForgotPasswordFlow(t *testing.T) {
 		t.Fatalf("unexpected reset form status: %d", resetFormResponse.StatusCode)
 	}
 
-	resetResponse, err := client.PostForm(server.URL+"/password/reset", url.Values{
+	resetResponse, err := postFormWithCSRF(client, server.URL+"/password/reset", url.Values{
 		"token":            {token},
 		"password":         {"newsecret123"},
 		"confirm_password": {"newsecret123"},
@@ -477,6 +483,59 @@ func TestHealthz(t *testing.T) {
 
 	if body := readBody(t, response.Body); body != "ok" {
 		t.Fatalf("unexpected health body: %q", body)
+	}
+}
+
+func TestLoginRejectsMissingCSRF(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := server.Client().PostForm(server.URL+"/login", url.Values{
+		"email":    {"nobody@example.com"},
+		"password": {"whatever123"},
+	})
+	if err != nil {
+		t.Fatalf("login request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("unexpected status without csrf: %d", response.StatusCode)
+	}
+}
+
+func TestLoginFormSetsSecurityHeadersAndCSRFCookie(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := server.Client().Get(server.URL + "/login")
+	if err != nil {
+		t.Fatalf("login form request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if got := response.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("unexpected nosniff header: %q", got)
+	}
+	if got := response.Header.Get("Content-Security-Policy"); !strings.Contains(got, "script-src 'self' 'nonce-") {
+		t.Fatalf("unexpected csp header: %q", got)
+	}
+
+	foundCSRFCookie := false
+	for _, cookie := range response.Cookies() {
+		if cookie.Name == csrfCookieName {
+			foundCSRFCookie = true
+			break
+		}
+	}
+	if !foundCSRFCookie {
+		t.Fatalf("csrf cookie missing")
 	}
 }
 
@@ -546,6 +605,7 @@ func TestDashboardCheckpointTogglePersists(t *testing.T) {
 	}
 	toggleRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	toggleRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(toggleRequest)
 
 	toggleResponse, err := client.Do(toggleRequest)
 	if err != nil {
@@ -859,6 +919,7 @@ published: true
 	}
 	failRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	failRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(failRequest)
 
 	failResponse, err := client.Do(failRequest)
 	if err != nil {
@@ -899,6 +960,7 @@ published: true
 	}
 	passRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	passRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(passRequest)
 
 	passResponse, err := client.Do(passRequest)
 	if err != nil {
@@ -1040,6 +1102,7 @@ published: true
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -1116,6 +1179,7 @@ func TestAdminCanCreateMarkdownLesson(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -1179,6 +1243,7 @@ func TestAdminArticlePreviewRendersMarkdown(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
 
 	response, err := server.Client().Do(request)
 	if err != nil {
@@ -1271,6 +1336,7 @@ func TestAdminCanManageUsers(t *testing.T) {
 	}
 	promoteRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	promoteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(promoteRequest)
 
 	promoteResponse, err := client.Do(promoteRequest)
 	if err != nil {
@@ -1296,6 +1362,7 @@ func TestAdminCanManageUsers(t *testing.T) {
 	}
 	banRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	banRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(banRequest)
 
 	banResponse, err := client.Do(banRequest)
 	if err != nil {
@@ -1320,6 +1387,7 @@ func TestAdminCanManageUsers(t *testing.T) {
 		t.Fatalf("build delete request: %v", err)
 	}
 	deleteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(deleteRequest)
 
 	deleteResponse, err := client.Do(deleteRequest)
 	if err != nil {
@@ -1356,7 +1424,7 @@ func TestBannedUserCannotLogin(t *testing.T) {
 		t.Fatalf("ban user: %v", err)
 	}
 
-	response, err := server.Client().PostForm(server.URL+"/login", url.Values{
+	response, err := postFormWithCSRF(server.Client(), server.URL+"/login", url.Values{
 		"email":    {"banned@example.com"},
 		"password": {"supersecret123"},
 	})
@@ -1510,6 +1578,30 @@ func readBody(t *testing.T, body io.Reader) string {
 	}
 
 	return string(content)
+}
+
+func postFormWithCSRF(client *http.Client, targetURL string, form url.Values) (*http.Response, error) {
+	if form == nil {
+		form = url.Values{}
+	}
+
+	request, err := http.NewRequest(http.MethodPost, targetURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	addCSRFCookieAndHeader(request)
+	return client.Do(request)
+}
+
+func addCSRFCookieAndHeader(request *http.Request) {
+	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: testCSRFToken()})
+	request.Header.Set(csrfHeaderName, testCSRFToken())
+}
+
+func testCSRFToken() string {
+	return "csrf-token-for-tests-only-1234567890"
 }
 
 type fakeConfirmationMailer struct {

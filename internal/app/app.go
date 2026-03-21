@@ -59,6 +59,8 @@ type ViewData struct {
 	CurrentUser        *store.User
 	Error              string
 	Notice             string
+	CSRFToken          string
+	CSPNonce           string
 	Form               AuthForm
 	PasswordResetToken string
 	LandingRoadmap     []LandingStage
@@ -303,9 +305,9 @@ func New(st *store.Store, cfg Config) (*App, error) {
 
 func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", http.StripPrefix("/static/", a.static))
+	mux.Handle("GET /static/", a.withCacheControl("public, max-age=3600", http.StripPrefix("/static/", a.static)))
 	if a.uploads != nil {
-		mux.Handle("GET /uploads/", a.requireAuthenticatedHandler(http.StripPrefix("/uploads/", a.uploads)))
+		mux.Handle("GET /uploads/", a.requireAuthenticatedHandler(a.withCacheControl("private, max-age=3600", http.StripPrefix("/uploads/", a.uploads))))
 	}
 	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /", a.handleHome)
@@ -337,7 +339,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /password/reset", a.handlePasswordResetSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
-	return a.withCurrentUser(mux)
+	return a.withSecurityHeaders(a.withCSRFProtection(a.withCurrentUser(mux)))
 }
 
 func (a *App) requireAuthenticatedHandler(next http.Handler) http.Handler {
@@ -847,6 +849,17 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 	if data.CurrentUser == nil {
 		data.CurrentUser = a.currentUser(r)
 	}
+	if data.CSRFToken == "" {
+		data.CSRFToken = a.ensureCSRFCookie(w, r)
+	}
+	if data.CSPNonce == "" {
+		nonce, err := generateSessionToken()
+		if err != nil {
+			http.Error(w, "render failed", http.StatusInternalServerError)
+			return
+		}
+		data.CSPNonce = nonce
+	}
 
 	var buffer bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buffer, "base", data); err != nil {
@@ -855,6 +868,8 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 		return
 	}
 
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Security-Policy", contentSecurityPolicy(data.CSPNonce))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if _, err := buffer.WriteTo(w); err != nil {

@@ -35,6 +35,7 @@
     {{end}}
 
     <form action="/register" method="post" class="auth-form auth-form-validated" autocomplete="off" data-auth-form="register" novalidate>
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="autofill-decoy" aria-hidden="true">
         <input type="text" tabindex="-1" autocomplete="username">
         <input type="email" tabindex="-1" autocomplete="email">

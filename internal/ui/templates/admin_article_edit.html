@@ -27,6 +27,7 @@
 <section class="admin-editor-shell">
   <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview">
     <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
     {{if .Error}}
       <div class="form-alert" role="alert">{{.Error}}</div>
