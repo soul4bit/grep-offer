@@ -44,7 +44,7 @@ cat <<EOF
 Bootstrap finished.
 
 Next steps:
-1. Edit /etc/${APP_NAME}.env if your port or DB path should differ.
+1. Edit /etc/${APP_NAME}.env if your port, PostgreSQL DSN or content paths should differ.
 2. Allow ${RUNNER_USER} to restart the service without a password:
    sudo visudo -f /etc/sudoers.d/${APP_NAME}
    ${RUNNER_USER} ALL=NOPASSWD: /usr/bin/systemctl restart ${APP_NAME}, /usr/bin/systemctl is-active ${APP_NAME}

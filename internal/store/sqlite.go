@@ -25,7 +25,8 @@ var (
 )
 
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect Dialect
 }
 
 type User struct {
@@ -42,99 +43,26 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func New(db *sql.DB) *Store {
-	return &Store{db: db}
+func New(db *sql.DB, driverNames ...string) *Store {
+	driverName := "sqlite"
+	if len(driverNames) > 0 {
+		driverName = driverNames[0]
+	}
+
+	return &Store{
+		db:      db,
+		dialect: detectDialect(driverName),
+	}
 }
 
 func (s *Store) Init(ctx context.Context) error {
-	statements := []string{
-		`PRAGMA foreign_keys = ON;`,
-		`PRAGMA journal_mode = WAL;`,
-		`CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			is_admin INTEGER NOT NULL DEFAULT 0,
-			is_banned INTEGER NOT NULL DEFAULT 0,
-			created_at INTEGER NOT NULL
-		);`,
-		`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;`,
-		`ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0;`,
-		`CREATE TABLE IF NOT EXISTS sessions (
-			token_hash TEXT PRIMARY KEY,
-			user_id INTEGER NOT NULL,
-			expires_at INTEGER NOT NULL,
-			created_at INTEGER NOT NULL,
-			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);`,
-		`CREATE TABLE IF NOT EXISTS registration_requests (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			verification_token_hash TEXT,
-			verification_expires_at INTEGER,
-			approved_at INTEGER,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_registration_requests_email ON registration_requests(email);`,
-		`CREATE INDEX IF NOT EXISTS idx_registration_requests_verification_token_hash ON registration_requests(verification_token_hash);`,
-		`CREATE TABLE IF NOT EXISTS password_reset_tokens (
-			token_hash TEXT PRIMARY KEY,
-			user_id INTEGER NOT NULL,
-			expires_at INTEGER NOT NULL,
-			created_at INTEGER NOT NULL,
-			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);`,
-		`CREATE TABLE IF NOT EXISTS user_roadmap_progress (
-			user_id INTEGER NOT NULL,
-			checkpoint_key TEXT NOT NULL,
-			done INTEGER NOT NULL DEFAULT 0,
-			updated_at INTEGER NOT NULL,
-			PRIMARY KEY (user_id, checkpoint_key),
-			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_user_roadmap_progress_user_id ON user_roadmap_progress(user_id);`,
-		`CREATE TABLE IF NOT EXISTS user_lesson_progress (
-			user_id INTEGER NOT NULL,
-			lesson_slug TEXT NOT NULL,
-			done INTEGER NOT NULL DEFAULT 0,
-			updated_at INTEGER NOT NULL,
-			PRIMARY KEY (user_id, lesson_slug),
-			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id);`,
-		`CREATE TABLE IF NOT EXISTS lesson_test_questions (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			lesson_slug TEXT NOT NULL,
-			prompt TEXT NOT NULL,
-			options_json TEXT NOT NULL,
-			correct_option INTEGER NOT NULL,
-			explanation TEXT NOT NULL DEFAULT '',
-			order_index INTEGER NOT NULL DEFAULT 0,
-			created_at INTEGER NOT NULL
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_lesson_test_questions_lesson_slug ON lesson_test_questions(lesson_slug, order_index, id);`,
-		`CREATE TABLE IF NOT EXISTS user_lesson_test_results (
-			user_id INTEGER NOT NULL,
-			lesson_slug TEXT NOT NULL,
-			attempts_count INTEGER NOT NULL DEFAULT 0,
-			last_wrong_answers INTEGER NOT NULL DEFAULT 0,
-			passed INTEGER NOT NULL DEFAULT 0,
-			updated_at INTEGER NOT NULL,
-			PRIMARY KEY (user_id, lesson_slug),
-			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_user_lesson_test_results_user_id ON user_lesson_test_results(user_id);`,
+	statements := sqliteInitStatements()
+	if s.dialect == PostgresDialect {
+		statements = postgresInitStatements()
 	}
 
 	for _, statement := range statements {
-		if _, err := s.db.ExecContext(ctx, statement); err != nil {
+		if _, err := s.db.ExecContext(ctx, s.bind(statement)); err != nil {
 			if isIgnorableMigrationError(err) {
 				continue
 			}
@@ -156,23 +84,22 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 		return nil, err
 	}
 
-	result, err := s.db.ExecContext(
+	userID, err := s.insertID(
 		ctx,
-		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)`,
+		s.db,
+		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		username,
 		email,
 		passwordHash,
 		now.Unix(),
 	)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+		if isUsernameConstraintError(err) {
+			return nil, ErrUsernameTaken
+		}
+		if isUniqueConstraintError(err) {
 			return nil, ErrEmailTaken
 		}
-		return nil, err
-	}
-
-	userID, err := result.LastInsertId()
-	if err != nil {
 		return nil, err
 	}
 
@@ -188,7 +115,7 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 func (s *Store) UserByEmail(ctx context.Context, email string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE email = ?`,
+		s.bind(`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE email = ?`),
 		normalizeEmail(email),
 	)
 
@@ -206,7 +133,7 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (*User, error) {
 func (s *Store) UserByUsername(ctx context.Context, username string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE lower(username) = ?`,
+		s.bind(`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE lower(username) = ?`),
 		normalizeUsername(username),
 	)
 
@@ -224,10 +151,10 @@ func (s *Store) UserByUsername(ctx context.Context, username string) (*User, err
 func (s *Store) UserBySession(ctx context.Context, rawToken string) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT u.id, u.username, u.email, u.password_hash, u.is_admin, u.is_banned, u.created_at
+		s.bind(`SELECT u.id, u.username, u.email, u.password_hash, u.is_admin, u.is_banned, u.created_at
 		FROM sessions s
 		INNER JOIN users u ON u.id = s.user_id
-		WHERE s.token_hash = ? AND s.expires_at > ?`,
+		WHERE s.token_hash = ? AND s.expires_at > ?`),
 		hashToken(rawToken),
 		time.Now().UTC().Unix(),
 	)
@@ -246,7 +173,7 @@ func (s *Store) UserBySession(ctx context.Context, rawToken string) (*User, erro
 func (s *Store) CreateSession(ctx context.Context, userID int64, rawToken string, expiresAt time.Time) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+		s.bind(`INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`),
 		hashToken(rawToken),
 		userID,
 		expiresAt.UTC().Unix(),
@@ -256,7 +183,7 @@ func (s *Store) CreateSession(ctx context.Context, userID int64, rawToken string
 }
 
 func (s *Store) DeleteSession(ctx context.Context, rawToken string) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hashToken(rawToken))
+	result, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM sessions WHERE token_hash = ?`), hashToken(rawToken))
 	if err != nil {
 		return err
 	}
@@ -274,12 +201,12 @@ func (s *Store) DeleteSession(ctx context.Context, rawToken string) error {
 }
 
 func (s *Store) DeleteSessionsByUserID(ctx context.Context, userID int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM sessions WHERE user_id = ?`), userID)
 	return err
 }
 
 func (s *Store) DeleteExpiredSessions(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, time.Now().UTC().Unix())
+	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM sessions WHERE expires_at <= ?`), time.Now().UTC().Unix())
 	return err
 }
 
@@ -316,5 +243,140 @@ func hashToken(rawToken string) string {
 
 func isIgnorableMigrationError(err error) bool {
 	message := strings.ToLower(err.Error())
-	return strings.Contains(message, "duplicate column name")
+	return strings.Contains(message, "duplicate column name") || strings.Contains(message, "already exists")
+}
+
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique") || strings.Contains(message, "duplicate")
+}
+
+func isUsernameConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "lower_username") ||
+		strings.Contains(message, "username") && strings.Contains(message, "unique")
+}
+
+func sqliteInitStatements() []string {
+	base := []string{
+		`PRAGMA foreign_keys = ON;`,
+		`PRAGMA journal_mode = WAL;`,
+		`CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0,
+			is_banned INTEGER NOT NULL DEFAULT 0,
+			created_at INTEGER NOT NULL
+		);`,
+		`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;`,
+		`ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0;`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lower_username ON users(lower(username));`,
+	}
+
+	return append(base, commonInitTables("INTEGER PRIMARY KEY AUTOINCREMENT")...)
+}
+
+func postgresInitStatements() []string {
+	base := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id BIGSERIAL PRIMARY KEY,
+			username TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0,
+			is_banned INTEGER NOT NULL DEFAULT 0,
+			created_at BIGINT NOT NULL
+		);`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin INTEGER NOT NULL DEFAULT 0;`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned INTEGER NOT NULL DEFAULT 0;`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lower_username ON users(lower(username));`,
+	}
+
+	return append(base, commonInitTables("BIGSERIAL PRIMARY KEY")...)
+}
+
+func commonInitTables(idDefinition string) []string {
+	return []string{
+		`CREATE TABLE IF NOT EXISTS sessions (
+			token_hash TEXT PRIMARY KEY,
+			user_id BIGINT NOT NULL,
+			expires_at BIGINT NOT NULL,
+			created_at BIGINT NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);`,
+		`CREATE TABLE IF NOT EXISTS registration_requests (
+			id ` + idDefinition + `,
+			username TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			verification_token_hash TEXT,
+			verification_expires_at BIGINT,
+			approved_at BIGINT,
+			created_at BIGINT NOT NULL,
+			updated_at BIGINT NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_registration_requests_email ON registration_requests(email);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_registration_requests_lower_username ON registration_requests(lower(username));`,
+		`CREATE INDEX IF NOT EXISTS idx_registration_requests_verification_token_hash ON registration_requests(verification_token_hash);`,
+		`CREATE TABLE IF NOT EXISTS password_reset_tokens (
+			token_hash TEXT PRIMARY KEY,
+			user_id BIGINT NOT NULL,
+			expires_at BIGINT NOT NULL,
+			created_at BIGINT NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);`,
+		`CREATE TABLE IF NOT EXISTS user_roadmap_progress (
+			user_id BIGINT NOT NULL,
+			checkpoint_key TEXT NOT NULL,
+			done INTEGER NOT NULL DEFAULT 0,
+			updated_at BIGINT NOT NULL,
+			PRIMARY KEY (user_id, checkpoint_key),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_roadmap_progress_user_id ON user_roadmap_progress(user_id);`,
+		`CREATE TABLE IF NOT EXISTS user_lesson_progress (
+			user_id BIGINT NOT NULL,
+			lesson_slug TEXT NOT NULL,
+			done INTEGER NOT NULL DEFAULT 0,
+			updated_at BIGINT NOT NULL,
+			PRIMARY KEY (user_id, lesson_slug),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id);`,
+		`CREATE TABLE IF NOT EXISTS lesson_test_questions (
+			id ` + idDefinition + `,
+			lesson_slug TEXT NOT NULL,
+			prompt TEXT NOT NULL,
+			options_json TEXT NOT NULL,
+			correct_option INTEGER NOT NULL,
+			explanation TEXT NOT NULL DEFAULT '',
+			order_index INTEGER NOT NULL DEFAULT 0,
+			created_at BIGINT NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_lesson_test_questions_lesson_slug ON lesson_test_questions(lesson_slug, order_index, id);`,
+		`CREATE TABLE IF NOT EXISTS user_lesson_test_results (
+			user_id BIGINT NOT NULL,
+			lesson_slug TEXT NOT NULL,
+			attempts_count INTEGER NOT NULL DEFAULT 0,
+			last_wrong_answers INTEGER NOT NULL DEFAULT 0,
+			passed INTEGER NOT NULL DEFAULT 0,
+			updated_at BIGINT NOT NULL,
+			PRIMARY KEY (user_id, lesson_slug),
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_lesson_test_results_user_id ON user_lesson_test_results(user_id);`,
+	}
 }

@@ -6,7 +6,7 @@
 
 - сервер на `net/http`
 - серверный рендер через `html/template`
-- `SQLite` для пользователей и сессий
+- `PostgreSQL` для прод-данных и `SQLite` как локальный fallback
 - регистрация с approve через Telegram и подтверждением по email
 - вход и выход
 - стартовая визуальная система для рофл-роадмапа в DevOps
@@ -27,7 +27,8 @@ go run ./cmd/grep-offer
 Переменные окружения:
 
 - `ADDR` по умолчанию `:8080`
-- `DB_PATH` по умолчанию `data/grep-offer.db`
+- `DATABASE_URL` например `postgres://grep_offer:secret@db.example.com:5432/grep_offer?sslmode=require`
+- `DB_PATH` по умолчанию `data/grep-offer.db`, если `DATABASE_URL` не задан
 - `APP_BASE_URL` например `https://grep-offer.ru`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`
@@ -74,7 +75,7 @@ bash deploy/setup-server.sh
 Скрипт:
 
 - создает `/var/www/grep-offer/releases`
-- создает `/var/www/grep-offer/shared/data`
+- создает `/var/www/grep-offer/shared/data` для локального SQLite-fallback, если он когда-нибудь понадобится
 - ставит systemd unit
 - создает `/etc/grep-offer.env`, если его еще нет
 
@@ -89,7 +90,8 @@ bash deploy/setup-server.sh
 
 ```env
 ADDR=127.0.0.1:8080
-DB_PATH=/var/www/grep-offer/shared/data/grep-offer.db
+DATABASE_URL=postgres://grep_offer:change-me@db.example.com:5432/grep_offer?sslmode=require
+# DB_PATH=/var/www/grep-offer/shared/data/grep-offer.db
 APP_BASE_URL=https://grep-offer.ru
 SMTP_HOST=smtp.example.com
 SMTP_PORT=465
@@ -168,6 +170,7 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 - Автодеплой срабатывает на `push` в `main`, а не на локальный `git commit`. Без `git push` GitHub Actions не стартует.
 - Для проверки после рестарта добавлен endpoint `/healthz`.
 - В `/var/www/grep-offer` должны лежать только `current`, `releases` и `shared`. Клон репозитория лучше хранить отдельно, например в `/home/deploy/grep-offer`.
+- Если `DATABASE_URL` задан, приложение использует PostgreSQL. `DB_PATH` нужен только для локального SQLite-режима.
 ## Контент и админка
 
 Теперь в проекте есть еще два слоя:

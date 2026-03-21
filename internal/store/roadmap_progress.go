@@ -29,9 +29,9 @@ func (s *Store) EnsureRoadmapProgress(ctx context.Context, userID int64, checkpo
 	nowUnix := time.Now().UTC().Unix()
 	stmt, err := tx.PrepareContext(
 		ctx,
-		`INSERT INTO user_roadmap_progress (user_id, checkpoint_key, done, updated_at)
+		s.bind(`INSERT INTO user_roadmap_progress (user_id, checkpoint_key, done, updated_at)
 		VALUES (?, ?, ?, ?)
-		ON CONFLICT(user_id, checkpoint_key) DO NOTHING`,
+		ON CONFLICT(user_id, checkpoint_key) DO NOTHING`),
 	)
 	if err != nil {
 		return err
@@ -55,9 +55,9 @@ func (s *Store) EnsureRoadmapProgress(ctx context.Context, userID int64, checkpo
 func (s *Store) RoadmapProgress(ctx context.Context, userID int64) (map[string]bool, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT checkpoint_key, done
+		s.bind(`SELECT checkpoint_key, done
 		FROM user_roadmap_progress
-		WHERE user_id = ?`,
+		WHERE user_id = ?`),
 		userID,
 	)
 	if err != nil {
@@ -89,11 +89,11 @@ func (s *Store) RoadmapProgress(ctx context.Context, userID int64) (map[string]b
 func (s *Store) SetRoadmapCheckpoint(ctx context.Context, userID int64, checkpointKey string, done bool) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO user_roadmap_progress (user_id, checkpoint_key, done, updated_at)
+		s.bind(`INSERT INTO user_roadmap_progress (user_id, checkpoint_key, done, updated_at)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT(user_id, checkpoint_key) DO UPDATE SET
 			done = excluded.done,
-			updated_at = excluded.updated_at`,
+			updated_at = excluded.updated_at`),
 		userID,
 		checkpointKey,
 		boolToInt(done),

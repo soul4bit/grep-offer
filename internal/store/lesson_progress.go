@@ -8,9 +8,9 @@ import (
 func (s *Store) LessonProgress(ctx context.Context, userID int64) (map[string]bool, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT lesson_slug, done
+		s.bind(`SELECT lesson_slug, done
 		FROM user_lesson_progress
-		WHERE user_id = ?`,
+		WHERE user_id = ?`),
 		userID,
 	)
 	if err != nil {
@@ -42,11 +42,11 @@ func (s *Store) LessonProgress(ctx context.Context, userID int64) (map[string]bo
 func (s *Store) SetLessonProgress(ctx context.Context, userID int64, lessonSlug string, done bool) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO user_lesson_progress (user_id, lesson_slug, done, updated_at)
+		s.bind(`INSERT INTO user_lesson_progress (user_id, lesson_slug, done, updated_at)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT(user_id, lesson_slug) DO UPDATE SET
 			done = excluded.done,
-			updated_at = excluded.updated_at`,
+			updated_at = excluded.updated_at`),
 		userID,
 		lessonSlug,
 		boolToInt(done),

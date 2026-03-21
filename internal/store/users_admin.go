@@ -9,9 +9,9 @@ import (
 func (s *Store) UserByID(ctx context.Context, userID int64) (*User, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, is_admin, is_banned, created_at
+		s.bind(`SELECT id, username, email, password_hash, is_admin, is_banned, created_at
 		FROM users
-		WHERE id = ?`,
+		WHERE id = ?`),
 		userID,
 	)
 
@@ -57,7 +57,7 @@ func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
 func (s *Store) SetUserAdmin(ctx context.Context, userID int64, isAdmin bool) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`UPDATE users SET is_admin = ? WHERE id = ?`,
+		s.bind(`UPDATE users SET is_admin = ? WHERE id = ?`),
 		boolToInt(isAdmin),
 		userID,
 	)
@@ -67,7 +67,7 @@ func (s *Store) SetUserAdmin(ctx context.Context, userID int64, isAdmin bool) er
 func (s *Store) SetUserBanned(ctx context.Context, userID int64, isBanned bool) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`UPDATE users SET is_banned = ? WHERE id = ?`,
+		s.bind(`UPDATE users SET is_banned = ? WHERE id = ?`),
 		boolToInt(isBanned),
 		userID,
 	)
@@ -75,7 +75,7 @@ func (s *Store) SetUserBanned(ctx context.Context, userID int64, isBanned bool) 
 }
 
 func (s *Store) DeleteUser(ctx context.Context, userID int64) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
+	result, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM users WHERE id = ?`), userID)
 	if err != nil {
 		return err
 	}

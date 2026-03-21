@@ -19,29 +19,38 @@ import (
 	"grep-offer/internal/notify"
 	"grep-offer/internal/store"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 )
 
 func main() {
 	addr := envOrDefault("ADDR", ":8080")
-	dbPath := envOrDefault("DB_PATH", filepath.Join("data", "grep-offer.db"))
 	contentDir := envOrDefault("CONTENT_DIR", filepath.Join("content", "articles"))
 	uploadsDir := envOrDefault("UPLOADS_DIR", filepath.Join("shared", "uploads"))
 
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		log.Fatalf("create data dir: %v", err)
+	driverName, dsn := databaseConfig()
+	if driverName == "sqlite" {
+		if err := os.MkdirAll(filepath.Dir(dsn), 0o755); err != nil {
+			log.Fatalf("create data dir: %v", err)
+		}
 	}
 	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
 		log.Fatalf("create uploads dir: %v", err)
 	}
 
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open(driverName, dsn)
 	if err != nil {
-		log.Fatalf("open sqlite: %v", err)
+		log.Fatalf("open %s: %v", driverName, err)
 	}
 	defer db.Close()
 
-	db.SetMaxOpenConns(1)
+	if driverName == "sqlite" {
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+	} else {
+		db.SetMaxOpenConns(10)
+		db.SetMaxIdleConns(5)
+	}
 	db.SetConnMaxIdleTime(3 * time.Minute)
 	db.SetConnMaxLifetime(30 * time.Minute)
 
@@ -49,10 +58,10 @@ func main() {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		log.Fatalf("ping sqlite: %v", err)
+		log.Fatalf("ping %s: %v", driverName, err)
 	}
 
-	st := store.New(db)
+	st := store.New(db, driverName)
 	if err := st.Init(ctx); err != nil {
 		log.Fatalf("init store: %v", err)
 	}
@@ -132,6 +141,14 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func databaseConfig() (string, string) {
+	if databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); databaseURL != "" {
+		return "pgx", databaseURL
+	}
+
+	return "sqlite", envOrDefault("DB_PATH", filepath.Join("data", "grep-offer.db"))
 }
 
 func parseCSVEnv(key string) []string {

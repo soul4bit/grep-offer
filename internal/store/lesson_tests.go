@@ -31,10 +31,10 @@ type LessonTestResult struct {
 func (s *Store) LessonTestQuestions(ctx context.Context, lessonSlug string) ([]LessonTestQuestion, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT id, lesson_slug, prompt, options_json, correct_option, explanation, order_index
+		s.bind(`SELECT id, lesson_slug, prompt, options_json, correct_option, explanation, order_index
 		FROM lesson_test_questions
 		WHERE lesson_slug = ?
-		ORDER BY order_index ASC, id ASC`,
+		ORDER BY order_index ASC, id ASC`),
 		strings.TrimSpace(lessonSlug),
 	)
 	if err != nil {
@@ -96,14 +96,15 @@ func (s *Store) CreateLessonTestQuestion(ctx context.Context, lessonSlug, prompt
 	var nextOrder int
 	if err := s.db.QueryRowContext(
 		ctx,
-		`SELECT COALESCE(MAX(order_index), 0) + 1 FROM lesson_test_questions WHERE lesson_slug = ?`,
+		s.bind(`SELECT COALESCE(MAX(order_index), 0) + 1 FROM lesson_test_questions WHERE lesson_slug = ?`),
 		strings.TrimSpace(lessonSlug),
 	).Scan(&nextOrder); err != nil {
 		return 0, err
 	}
 
-	result, err := s.db.ExecContext(
+	return s.insertID(
 		ctx,
+		s.db,
 		`INSERT INTO lesson_test_questions (
 			lesson_slug,
 			prompt,
@@ -112,7 +113,7 @@ func (s *Store) CreateLessonTestQuestion(ctx context.Context, lessonSlug, prompt
 			explanation,
 			order_index,
 			created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
 		strings.TrimSpace(lessonSlug),
 		strings.TrimSpace(prompt),
 		string(optionsJSON),
@@ -121,15 +122,10 @@ func (s *Store) CreateLessonTestQuestion(ctx context.Context, lessonSlug, prompt
 		nextOrder,
 		time.Now().UTC().Unix(),
 	)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.LastInsertId()
 }
 
 func (s *Store) DeleteLessonTestQuestion(ctx context.Context, questionID int64) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM lesson_test_questions WHERE id = ?`, questionID)
+	result, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM lesson_test_questions WHERE id = ?`), questionID)
 	if err != nil {
 		return err
 	}
@@ -148,9 +144,9 @@ func (s *Store) DeleteLessonTestQuestion(ctx context.Context, questionID int64) 
 func (s *Store) LessonTestResults(ctx context.Context, userID int64) (map[string]LessonTestResult, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT lesson_slug, attempts_count, last_wrong_answers, passed
+		s.bind(`SELECT lesson_slug, attempts_count, last_wrong_answers, passed
 		FROM user_lesson_test_results
-		WHERE user_id = ?`,
+		WHERE user_id = ?`),
 		userID,
 	)
 	if err != nil {
@@ -181,7 +177,7 @@ func (s *Store) LessonTestResults(ctx context.Context, userID int64) (map[string
 func (s *Store) UpsertLessonTestResult(ctx context.Context, userID int64, lessonSlug string, wrongAnswers int, passed bool) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO user_lesson_test_results (
+		s.bind(`INSERT INTO user_lesson_test_results (
 			user_id,
 			lesson_slug,
 			attempts_count,
@@ -193,7 +189,7 @@ func (s *Store) UpsertLessonTestResult(ctx context.Context, userID int64, lesson
 			attempts_count = user_lesson_test_results.attempts_count + 1,
 			last_wrong_answers = excluded.last_wrong_answers,
 			passed = excluded.passed,
-			updated_at = excluded.updated_at`,
+			updated_at = excluded.updated_at`),
 		userID,
 		strings.TrimSpace(lessonSlug),
 		wrongAnswers,

@@ -45,10 +45,11 @@ func (s *Store) CreateRegistrationRequest(ctx context.Context, username, email, 
 		return nil, err
 	}
 
-	result, err := s.db.ExecContext(
+	id, err := s.insertID(
 		ctx,
+		s.db,
 		`INSERT INTO registration_requests (username, email, password_hash, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?) RETURNING id`,
 		username,
 		email,
 		passwordHash,
@@ -56,14 +57,12 @@ func (s *Store) CreateRegistrationRequest(ctx context.Context, username, email, 
 		now.Unix(),
 	)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+		if isUsernameConstraintError(err) {
+			return nil, ErrUsernameTaken
+		}
+		if isUniqueConstraintError(err) {
 			return nil, ErrRegistrationPending
 		}
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
 		return nil, err
 	}
 
@@ -80,9 +79,9 @@ func (s *Store) CreateRegistrationRequest(ctx context.Context, username, email, 
 func (s *Store) RegistrationRequestByEmail(ctx context.Context, email string) (*RegistrationRequest, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
+		s.bind(`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
 		FROM registration_requests
-		WHERE email = ?`,
+		WHERE email = ?`),
 		normalizeEmail(email),
 	)
 
@@ -100,9 +99,9 @@ func (s *Store) RegistrationRequestByEmail(ctx context.Context, email string) (*
 func (s *Store) RegistrationRequestByUsername(ctx context.Context, username string) (*RegistrationRequest, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
+		s.bind(`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
 		FROM registration_requests
-		WHERE lower(username) = ?`,
+		WHERE lower(username) = ?`),
 		normalizeUsername(username),
 	)
 
@@ -120,9 +119,9 @@ func (s *Store) RegistrationRequestByUsername(ctx context.Context, username stri
 func (s *Store) RegistrationRequestByID(ctx context.Context, id int64) (*RegistrationRequest, error) {
 	row := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
+		s.bind(`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
 		FROM registration_requests
-		WHERE id = ?`,
+		WHERE id = ?`),
 		id,
 	)
 
@@ -141,9 +140,9 @@ func (s *Store) ApproveRegistrationRequest(ctx context.Context, id int64, rawVer
 	now := time.Now().UTC()
 	result, err := s.db.ExecContext(
 		ctx,
-		`UPDATE registration_requests
+		s.bind(`UPDATE registration_requests
 		SET verification_token_hash = ?, verification_expires_at = ?, approved_at = ?, updated_at = ?
-		WHERE id = ? AND approved_at IS NULL`,
+		WHERE id = ? AND approved_at IS NULL`),
 		hashToken(rawVerificationToken),
 		expiresAt.UTC().Unix(),
 		now.Unix(),
@@ -176,9 +175,9 @@ func (s *Store) ApproveRegistrationRequest(ctx context.Context, id int64, rawVer
 func (s *Store) ResetRegistrationApproval(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`UPDATE registration_requests
+		s.bind(`UPDATE registration_requests
 		SET verification_token_hash = NULL, verification_expires_at = NULL, approved_at = NULL, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ?`),
 		time.Now().UTC().Unix(),
 		id,
 	)
@@ -186,7 +185,7 @@ func (s *Store) ResetRegistrationApproval(ctx context.Context, id int64) error {
 }
 
 func (s *Store) DeleteRegistrationRequest(ctx context.Context, id int64) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM registration_requests WHERE id = ?`, id)
+	result, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM registration_requests WHERE id = ?`), id)
 	if err != nil {
 		return err
 	}
@@ -218,9 +217,9 @@ func (s *Store) ConsumeRegistrationRequest(ctx context.Context, rawVerificationT
 	nowUnix := time.Now().UTC().Unix()
 	row := tx.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
+		s.bind(`SELECT id, username, email, password_hash, verification_token_hash, verification_expires_at, approved_at, created_at, updated_at
 		FROM registration_requests
-		WHERE verification_token_hash = ? AND verification_expires_at > ?`,
+		WHERE verification_token_hash = ? AND verification_expires_at > ?`),
 		hashToken(rawVerificationToken),
 		nowUnix,
 	)
@@ -244,16 +243,21 @@ func (s *Store) ConsumeRegistrationRequest(ctx context.Context, rawVerificationT
 		return nil, err
 	}
 
-	result, execErr := tx.ExecContext(
+	userID, execErr := s.insertID(
 		ctx,
-		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)`,
+		tx,
+		`INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		request.Username,
 		request.Email,
 		request.PasswordHash,
 		userCreatedAt.Unix(),
 	)
 	if execErr != nil {
-		if strings.Contains(strings.ToLower(execErr.Error()), "unique") {
+		if isUsernameConstraintError(execErr) {
+			err = ErrUsernameTaken
+			return nil, err
+		}
+		if isUniqueConstraintError(execErr) {
 			err = ErrEmailTaken
 			return nil, err
 		}
@@ -261,13 +265,7 @@ func (s *Store) ConsumeRegistrationRequest(ctx context.Context, rawVerificationT
 		return nil, err
 	}
 
-	userID, idErr := result.LastInsertId()
-	if idErr != nil {
-		err = idErr
-		return nil, err
-	}
-
-	if _, execErr = tx.ExecContext(ctx, `DELETE FROM registration_requests WHERE id = ?`, request.ID); execErr != nil {
+	if _, execErr = tx.ExecContext(ctx, s.bind(`DELETE FROM registration_requests WHERE id = ?`), request.ID); execErr != nil {
 		err = execErr
 		return nil, err
 	}
@@ -332,7 +330,7 @@ func scanRegistrationRequest(row scanner) (*RegistrationRequest, error) {
 func (s *Store) userByUsernameTx(ctx context.Context, tx *sql.Tx, username string) (*User, error) {
 	row := tx.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, created_at FROM users WHERE lower(username) = ?`,
+		s.bind(`SELECT id, username, email, password_hash, is_admin, is_banned, created_at FROM users WHERE lower(username) = ?`),
 		normalizeUsername(username),
 	)
 
