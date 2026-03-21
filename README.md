@@ -1,38 +1,92 @@
 # grep-offer
 
-Стартовый каркас сайта на Go для `grep-offer.ru`.
+`grep-offer.ru` — это рофл-роадмап до DevOps в формате продукта: с маршрутом, уроками, тестами, прогрессом, админкой и приватным контентом вне публичного репозитория.
 
-Сейчас уже есть:
+## Что уже есть
 
-- сервер на `net/http`
-- серверный рендер через `html/template`
-- `PostgreSQL` как основная база приложения
 - регистрация с approve через Telegram и подтверждением по email
-- вход и выход
-- стартовая визуальная система для рофл-роадмапа в DevOps
+- вход, выход и сброс пароля
+- маршрут обучения с прогрессом по урокам и тестам
+- приватные markdown-уроки на сервере
+- редактор уроков в админке
+- загрузка картинок в редакторе прямо в `UPLOADS_DIR`
+- управление пользователями: admin, ban, delete
+- audit log для admin-действий и чувствительных событий
+- прод на `PostgreSQL`
+- автодеплой через GitHub Actions + self-hosted runner на Ubuntu
 
-Палитра первого захода:
+## Стек
 
-- графитовый фон `#0f1311`
-- кислотный лайм `#d7ff64`
-- коралл `#ff7a59`
-- теплый светлый текст `#f3efe3`
+- `Go`
+- `net/http`
+- `html/template`
+- `PostgreSQL`
+- `systemd`
+- `nginx`
+- `GitHub Actions`
 
-Запуск локально:
+## Локальный запуск
+
+Нужны:
+
+- `Go`
+- доступный `PostgreSQL`
+
+Минимальный набор переменных:
+
+```env
+ADDR=:8080
+DATABASE_URL=postgres://grep_offer:secret@localhost:5432/grep_offer?sslmode=disable
+CONTENT_DIR=content/articles
+UPLOADS_DIR=shared/uploads
+APP_BASE_URL=http://localhost:8080
+```
+
+Запуск:
 
 ```bash
 go run ./cmd/grep-offer
 ```
 
-Переменные окружения:
+Приложение само:
 
-- `ADDR` по умолчанию `:8080`
-- `DATABASE_URL` например `postgres://grep_offer:secret@db.example.com:5432/grep_offer?sslmode=require`
-- `APP_BASE_URL` например `https://grep-offer.ru`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`
+- создаст недостающие таблицы
+- создаст директории для контента и uploads
+- поднимет HTTP-сервер
 
-Если SMTP и Telegram env не заданы, approval-flow регистрации отключается.
+## Основные env-переменные
+
+### База и приложение
+
+```env
+ADDR=127.0.0.1:8080
+DATABASE_URL=postgres://grep_offer:change-me@db.example.com:5432/grep_offer?sslmode=require
+APP_BASE_URL=https://grep-offer.ru
+CONTENT_DIR=/var/www/grep-offer/shared/content/articles
+UPLOADS_DIR=/var/www/grep-offer/shared/uploads
+ADMIN_EMAILS=admin@example.com
+```
+
+### SMTP
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USERNAME=registration@example.com
+SMTP_PASSWORD=change-me
+MAIL_FROM=registration@example.com
+```
+
+### Telegram approve-flow
+
+```env
+TELEGRAM_BOT_TOKEN=change-me
+TELEGRAM_ADMIN_CHAT_ID=123456789
+TELEGRAM_WEBHOOK_SECRET=change-me
+```
+
+Полный пример лежит в [deploy/grep-offer.env.example](/d:/work/proj/github/grep-offer/deploy/grep-offer.env.example).
 
 ## Регистрация
 
@@ -40,173 +94,55 @@ go run ./cmd/grep-offer
 
 1. Пользователь отправляет форму регистрации.
 2. Заявка уходит в Telegram-бота админу.
-3. Админ жмет approve.
-4. Пользователю уходит письмо с ссылкой подтверждения.
-5. После перехода по ссылке аккаунт создается и пользователь автоматически входит в кабинет.
+3. Админ жмет `Approve`.
+4. Пользователь получает письмо с подтверждением.
+5. После перехода по ссылке аккаунт подтверждается и пользователь автоматически входит.
 
-## Автодеплой
+Если SMTP или Telegram не настроены, approval-flow не включается.
 
-Схема деплоя сделана через GitHub Actions с `self-hosted runner` на Ubuntu-сервере:
+## Контент
 
-- любой пуш в `main` запускает тесты
-- после тестов job `deploy` запускается прямо на сервере
-- на сервере локально собирается Linux-бинарь
-- переключается `current`-релиз в `/var/www/grep-offer`
-- сервис `grep-offer` перезапускается через `systemd`
+Публичный GitHub-репозиторий хранит код, но не реальные уроки.
 
-Почему так, а не `git pull` в `/var/www/grep-offer`:
+Рабочий контент живет на сервере:
 
-- код всегда приходит через checkout GitHub Actions, а не через ручной git на проде
-- релизы остаются разложенными по папкам `/var/www/grep-offer/releases/<sha>`
-- рабочий путь приложения стабилен: `/var/www/grep-offer/current`
-- не нужны SSH secrets для копирования артефактов на сервер
+- `CONTENT_DIR` — markdown-уроки
+- `UPLOADS_DIR` — картинки и вложения
 
-Текущий workflow лежит в `.github/workflows/deploy.yml`.
+Типовая прод-схема:
 
-### Первый запуск на сервере
-
-На сервере один раз выполни из репозитория:
-
-```bash
-bash deploy/setup-server.sh
+```text
+/var/www/grep-offer/
+  current/
+  releases/
+  shared/
+    content/articles/
+    uploads/
 ```
 
-Скрипт:
+Это значит:
 
-- создает `/var/www/grep-offer/releases`
-- создает `/var/www/grep-offer/shared/content/articles` и `/var/www/grep-offer/shared/uploads`
-- ставит systemd unit
-- создает `/etc/grep-offer.env`, если его еще нет
+- уроки не светятся в открытом репозитории
+- картинки не лежат в git
+- редактор пишет прямо в server-side storage
 
-Шаблоны для этого лежат в:
+## Редактор уроков
 
-- `deploy/systemd/grep-offer.service.tmpl`
-- `deploy/grep-offer.env.example`
+Админский редактор доступен по `/admin/articles/new` и `/admin/articles/{slug}/edit`.
 
-После этого проверь `/etc/grep-offer.env`.
+Он умеет:
 
-По умолчанию там:
+- создавать и редактировать markdown-уроки
+- ставить `stage`, `module`, `kind`, порядок модуля и блока
+- сохранять `draft` или `published`
+- показывать live preview
+- загружать картинки в `/uploads/editor/...`
+- вставлять путь картинки в markdown
+- добавлять вопросы для `test`-уроков
 
-```env
-ADDR=127.0.0.1:8080
-DATABASE_URL=postgres://grep_offer:change-me@db.example.com:5432/grep_offer?sslmode=require
-APP_BASE_URL=https://grep-offer.ru
-SMTP_HOST=smtp.example.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USERNAME=registration@example.com
-SMTP_PASSWORD=change-me
-MAIL_FROM=registration@example.com
-TELEGRAM_BOT_TOKEN=change-me
-TELEGRAM_ADMIN_CHAT_ID=123456789
-TELEGRAM_WEBHOOK_SECRET=change-me
-```
+### Frontmatter урока
 
-### GitHub Runner
-
-На Ubuntu нужно один раз установить self-hosted runner для этого репозитория.
-
-Базовая схема такая:
-
-1. В GitHub открой `Settings -> Actions -> Runners -> New self-hosted runner`.
-2. Выбери `Linux` и `x64`.
-3. Выполни на сервере команды, которые даст GitHub для скачивания и регистрации runner.
-4. Поставь runner как service, чтобы он стартовал после перезагрузки.
-
-Практически это будет выглядеть примерно так:
-
-```bash
-mkdir -p ~/actions-runner && cd ~/actions-runner
-curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-linux-x64.tar.gz
-tar xzf ./actions-runner-linux-x64.tar.gz
-./config.sh --url https://github.com/soul4bit/grep-offer --token <TOKEN>
-sudo ./svc.sh install
-sudo ./svc.sh start
-```
-
-После регистрации runner должен иметь стандартные labels:
-
-- `self-hosted`
-- `Linux`
-- `X64`
-
-### sudo для runner
-
-Пользователь, под которым работает runner, должен уметь без пароля выполнять:
-
-```bash
-sudo /usr/bin/systemctl restart grep-offer
-sudo /usr/bin/systemctl is-active grep-offer
-```
-
-Пример для `visudo`, если runner крутится от пользователя `deploy`:
-
-```sudoers
-deploy ALL=NOPASSWD: /usr/bin/systemctl restart grep-offer, /usr/bin/systemctl is-active grep-offer
-```
-
-### Telegram webhook
-
-После того как домен и HTTPS уже работают, один раз выставь webhook для бота:
-
-```bash
-curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
-  -d "url=https://grep-offer.ru/telegram/webhook" \
-  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
-```
-
-Проверить можно так:
-
-```bash
-curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
-```
-
-### Что еще важно
-
-- Workflow сейчас ждет runner с labels `self-hosted`, `Linux`, `X64`. Если сервер на ARM, поменяй `GOARCH` в `.github/workflows/deploy.yml` на `arm64` и labels тоже под ARM-раннер.
-- Runner должен быть установлен на том же Ubuntu-сервере, где лежит `/var/www/grep-offer`.
-- Автодеплой срабатывает на `push` в `main`, а не на локальный `git commit`. Без `git push` GitHub Actions не стартует.
-- Для проверки после рестарта добавлен endpoint `/healthz`.
-- В `/var/www/grep-offer` должны лежать только `current`, `releases` и `shared`. Клон репозитория лучше хранить отдельно, например в `/home/deploy/grep-offer`.
-- Приложение стартует только с `DATABASE_URL`. Рантайм и деплой полностью работают через PostgreSQL.
-## Контент и админка
-
-Теперь в проекте есть еще два слоя:
-
-- `shared/content/articles` — приватные markdown-уроки, которые читает приложение
-- `shared/uploads` — картинки и другие файлы, которые отдаются с `/uploads/...`
-
-По умолчанию приложение читает:
-
-```env
-CONTENT_DIR=/var/www/grep-offer/shared/content/articles
-UPLOADS_DIR=/var/www/grep-offer/shared/uploads
-ADMIN_EMAILS=admin@example.com
-```
-
-Что это значит:
-
-- `CONTENT_DIR` — откуда читать markdown-статьи
-- `UPLOADS_DIR` — откуда отдавать изображения и вложения
-- `ADMIN_EMAILS` — список email через запятую; если пользователь с таким email существует, ему автоматически поднимается `is_admin`
-
-На сервере `setup-server.sh` создает `/var/www/grep-offer/shared/content/articles` и `/var/www/grep-offer/shared/uploads`, так что контент можно держать вне публичного GitHub-репозитория.
-
-Админка доступна по `/admin` и умеет:
-
-- смотреть список пользователей
-- выдавать и снимать админку
-- банить и разбанивать
-- удалять аккаунт
-- создавать и редактировать уроки в markdown
-
-### Как добавлять учебные блоки
-
-Теперь основной способ — через админку. Админ создает урок по `/admin/articles/new`, а приложение сохраняет его как `.md` в `CONTENT_DIR`.
-
-В публичном репозитории мы больше не держим реальные уроки. В `content/articles` остается только `_template.lesson.md`, чтобы было от чего оттолкнуться локально. Рабочий контент живет на сервере в `CONTENT_DIR`.
-
-Каждый блок в Linux-маршруте это отдельный `.md`-файл с frontmatter:
+Каждый урок хранится как `.md` с frontmatter:
 
 ```yaml
 title: "Название блока"
@@ -221,4 +157,117 @@ kind: "theory" # theory | practice | test
 published: true
 ```
 
-После этого блок автоматически попадет в `/learn` и встроится в порядок маршрута.
+В публичной репе оставлен только шаблон: [content/articles/_template.lesson.md](/d:/work/proj/github/grep-offer/content/articles/_template.lesson.md).
+
+## Админка
+
+Админка разбита на три секции:
+
+- `/admin/articles` — уроки, markdown и test-блоки
+- `/admin/users` — пользователи, admin, ban, delete
+- `/admin/logs` — audit log
+
+Audit log хранит:
+
+- admin-действия
+- логины и logout
+- события регистрации
+- approve/reject через Telegram
+- запросы и завершение password reset
+- загрузки изображений из редактора
+
+## Деплой
+
+Прод-схема такая:
+
+- push в `main`
+- GitHub Actions прогоняет тесты
+- deploy job работает на self-hosted runner на Ubuntu
+- на сервере собирается релиз
+- обновляется `/var/www/grep-offer/current`
+- `systemd` перезапускает `grep-offer`
+
+Workflow лежит в [deploy.yml](/d:/work/proj/github/grep-offer/.github/workflows/deploy.yml).
+
+### Первый запуск на сервере
+
+Один раз выполни:
+
+```bash
+bash deploy/setup-server.sh
+```
+
+Скрипт:
+
+- создает `releases`
+- создает `shared/content/articles`
+- создает `shared/uploads`
+- ставит `systemd` unit
+- создает `/etc/grep-offer.env`, если его еще нет
+
+## GitHub Runner
+
+Для прод-деплоя нужен self-hosted runner на Ubuntu-сервере.
+
+Базовый сценарий:
+
+1. `Settings -> Actions -> Runners -> New self-hosted runner`
+2. выбрать `Linux` и `x64`
+3. выполнить команды GitHub на сервере
+4. поставить runner как service
+
+Runner должен иметь labels:
+
+- `self-hosted`
+- `Linux`
+- `X64`
+
+## sudo для runner
+
+Пользователь runner-а должен без пароля уметь выполнять:
+
+```bash
+sudo /usr/bin/systemctl restart grep-offer
+sudo /usr/bin/systemctl is-active grep-offer
+```
+
+Пример `sudoers`:
+
+```sudoers
+deploy ALL=NOPASSWD: /usr/bin/systemctl restart grep-offer, /usr/bin/systemctl is-active grep-offer
+```
+
+## Telegram webhook
+
+После того как домен и HTTPS уже работают:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -d "url=https://grep-offer.ru/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+```
+
+Проверка:
+
+```bash
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+```
+
+## Что важно держать в голове
+
+- рантайм полностью работает через `PostgreSQL`
+- реальный контент не должен лежать в публичном git
+- uploads сейчас хранятся на сервере, не в S3
+- автодеплой срабатывает на `push` в `main`, не на локальный `git commit`
+- в `/var/www/grep-offer` должны жить только `current`, `releases`, `shared`
+- клон репозитория лучше держать отдельно, например в `/home/deploy/grep-offer`
+
+## Полезные пути
+
+- `/` — главная
+- `/dashboard` — кабинет
+- `/learn` — маршрут
+- `/admin/articles` — уроки и тесты
+- `/admin/users` — пользователи
+- `/admin/logs` — audit log
+- `/healthz` — healthcheck
