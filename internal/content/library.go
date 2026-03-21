@@ -420,6 +420,10 @@ func normalizeSlug(value string) string {
 	return strings.Trim(builder.String(), "-")
 }
 
+func NormalizeSlug(value string) string {
+	return normalizeSlug(value)
+}
+
 func normalizeKind(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "practice":

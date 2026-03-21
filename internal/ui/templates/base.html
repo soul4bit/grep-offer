@@ -252,6 +252,8 @@
         var shell = form.closest(".admin-editor-shell");
         var titleInput = form.querySelector("[data-editor-title]");
         var slugInput = form.querySelector("[data-editor-slug]");
+        var summaryInput = form.querySelector('textarea[name="summary"]');
+        var badgeInput = form.querySelector('input[name="badge"]');
         var kindInput = form.querySelector("[data-editor-kind]");
         var bodyInput = form.querySelector("[data-article-body]");
         var moduleOrderInput = form.querySelector("[data-editor-module-order]");
@@ -270,14 +272,30 @@
         var publishInput = form.querySelector("[data-editor-published-input]");
         var openSubmitButton = form.querySelector("[data-editor-open-submit]");
         var openNoteNode = shell && shell.querySelector("[data-editor-open-note]");
+        var draftStatusNode = shell && shell.querySelector("[data-editor-draft-status]");
+        var slugStatusNode = form.querySelector("[data-editor-slug-status]");
         var wordCountNode = shell && shell.querySelector("[data-editor-word-count]");
         var lineCountNode = shell && shell.querySelector("[data-editor-line-count]");
         var kindHintNode = shell && shell.querySelector("[data-editor-kind-hint]");
         var previewNode = shell && shell.querySelector("[data-article-preview]");
         var previewEndpoint = form.dataset.previewEndpoint;
+        var slugCheckEndpoint = form.dataset.slugCheckEndpoint;
+        var draftStorageKey = "grep-offer-editor:" + (form.dataset.draftKey || "lesson:new");
         var globalNextModuleOrder = Number(form.dataset.globalNextModuleOrder || "1") || 1;
         var previewRequestID = 0;
+        var slugCheckRequestID = 0;
         var isEditing = Boolean(form.querySelector('input[name="original_slug"]') && form.querySelector('input[name="original_slug"]').value.trim());
+        var originalSlugInput = form.querySelector('input[name="original_slug"]');
+        var lastSubmitButton = null;
+        var isSubmitting = false;
+        var isDirty = false;
+        var initialSnapshot = "";
+        var autosaveTimer = 0;
+        var slugCheckState = {
+          normalizedSlug: "",
+          available: false,
+          pending: false
+        };
 
         if (!titleInput || !slugInput || !bodyInput || !shell) {
           return;
@@ -315,6 +333,263 @@
           learnLink.removeAttribute("target");
           learnLink.removeAttribute("rel");
         };
+
+        var setSlugStatus = function (text, tone) {
+          if (!slugStatusNode) {
+            return;
+          }
+
+          slugStatusNode.textContent = text || "";
+          slugStatusNode.classList.remove("is-ok", "is-error", "is-pending");
+          if (tone) {
+            slugStatusNode.classList.add("is-" + tone);
+          }
+        };
+
+        var setDraftStatus = function (text, tone) {
+          if (!draftStatusNode) {
+            return;
+          }
+
+          draftStatusNode.textContent = text || "";
+          draftStatusNode.classList.remove("is-ok", "is-error", "is-pending", "is-dirty");
+          if (tone) {
+            draftStatusNode.classList.add("is-" + tone);
+          }
+        };
+
+        var editorState = function () {
+          return {
+            title: titleInput ? titleInput.value : "",
+            slug: slugInput ? slugInput.value : "",
+            summary: summaryInput ? summaryInput.value : "",
+            badge: badgeInput ? badgeInput.value : "",
+            stage: stageInput ? stageInput.value : "",
+            module: moduleInput ? moduleInput.value : "",
+            kind: kindInput ? kindInput.value : "",
+            body: bodyInput ? bodyInput.value : "",
+            module_order: moduleOrderInput ? moduleOrderInput.value : "",
+            block_order: blockOrderInput ? blockOrderInput.value : "",
+            published: publishInput ? publishInput.checked : false
+          };
+        };
+
+        var applyEditorState = function (state) {
+          if (!state) {
+            return;
+          }
+
+          if (titleInput && typeof state.title === "string") {
+            titleInput.value = state.title;
+          }
+          if (slugInput && typeof state.slug === "string") {
+            slugInput.value = state.slug;
+            slugInput.dataset.manual = state.slug.trim() ? "1" : "";
+          }
+          if (summaryInput && typeof state.summary === "string") {
+            summaryInput.value = state.summary;
+          }
+          if (badgeInput && typeof state.badge === "string") {
+            badgeInput.value = state.badge;
+          }
+          if (stageInput && typeof state.stage === "string") {
+            stageInput.value = state.stage;
+          }
+          if (moduleInput && typeof state.module === "string") {
+            moduleInput.value = state.module;
+          }
+          if (kindInput && typeof state.kind === "string") {
+            kindInput.value = state.kind;
+          }
+          if (bodyInput && typeof state.body === "string") {
+            bodyInput.value = state.body;
+          }
+          if (moduleOrderInput && typeof state.module_order === "string") {
+            moduleOrderInput.value = state.module_order;
+            moduleOrderInput.dataset.manual = state.module_order.trim() ? "1" : "";
+          }
+          if (blockOrderInput && typeof state.block_order === "string") {
+            blockOrderInput.value = state.block_order;
+            blockOrderInput.dataset.manual = state.block_order.trim() ? "1" : "";
+          }
+          if (publishInput && typeof state.published === "boolean") {
+            publishInput.checked = state.published;
+          }
+        };
+
+        var snapshotState = function () {
+          return JSON.stringify(editorState());
+        };
+
+        var syncDirtyState = function () {
+          isDirty = snapshotState() !== initialSnapshot;
+          if (!isDirty) {
+            window.clearTimeout(autosaveTimer);
+            try {
+              window.localStorage.removeItem(draftStorageKey);
+            } catch (_error) {
+            }
+            setDraftStatus("Изменения совпадают с сохраненной версией.", "ok");
+            return;
+          }
+
+          setDraftStatus("Есть несохраненные изменения. Черновик сохранится автоматически.", "dirty");
+        };
+
+        var formatDraftTime = function (value) {
+          try {
+            return new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          } catch (_error) {
+            return "";
+          }
+        };
+
+        var saveDraftToLocal = function () {
+          if (!isDirty) {
+            return;
+          }
+
+          try {
+            var payload = {
+              saved_at: Date.now(),
+              state: editorState()
+            };
+            window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+            setDraftStatus("Черновик сохранен в браузере в " + formatDraftTime(payload.saved_at) + ".", "ok");
+          } catch (_error) {
+            setDraftStatus("Не удалось сохранить локальный черновик.", "error");
+          }
+        };
+
+        var scheduleAutosave = function () {
+          syncDirtyState();
+          if (!isDirty) {
+            return;
+          }
+
+          window.clearTimeout(autosaveTimer);
+          setDraftStatus("Есть несохраненные изменения. Автосохранение...", "pending");
+          autosaveTimer = window.setTimeout(saveDraftToLocal, 900);
+        };
+
+        var restoreDraft = function () {
+          var rawDraft = "";
+          try {
+            rawDraft = window.localStorage.getItem(draftStorageKey) || "";
+          } catch (_error) {
+            return;
+          }
+          if (!rawDraft) {
+            return;
+          }
+
+          try {
+            var payload = JSON.parse(rawDraft);
+            if (!payload || !payload.state) {
+              return;
+            }
+
+            var currentSnapshot = snapshotState();
+            var savedSnapshot = JSON.stringify(payload.state);
+            if (!savedSnapshot || savedSnapshot === currentSnapshot) {
+              window.localStorage.removeItem(draftStorageKey);
+              return;
+            }
+
+            applyEditorState(payload.state);
+            setDraftStatus("Локальный черновик восстановлен из браузера.", "ok");
+          } catch (_error) {
+            window.localStorage.removeItem(draftStorageKey);
+          }
+        };
+
+        var runSlugCheck = function () {
+          if (!slugInput) {
+            return Promise.resolve(slugCheckState);
+          }
+
+          var rawSlug = slugInput.value.trim();
+          var originalSlug = originalSlugInput ? originalSlugInput.value.trim() : "";
+          if (!rawSlug) {
+            slugCheckState = {
+              normalizedSlug: "",
+              available: false,
+              pending: false
+            };
+            setSlugStatus("Нужен slug.", "error");
+            return Promise.resolve(slugCheckState);
+          }
+
+          if (!slugCheckEndpoint) {
+            slugCheckState = {
+              normalizedSlug: rawSlug,
+              available: true,
+              pending: false
+            };
+            setSlugStatus("Slug готов к сохранению.", "ok");
+            return Promise.resolve(slugCheckState);
+          }
+
+          var requestID = ++slugCheckRequestID;
+          slugCheckState.pending = true;
+          setSlugStatus("Проверяю slug...", "pending");
+
+          var endpoint = new URL(slugCheckEndpoint, window.location.origin);
+          endpoint.searchParams.set("slug", rawSlug);
+          if (originalSlug) {
+            endpoint.searchParams.set("original_slug", originalSlug);
+          }
+
+          return fetch(endpoint.toString(), {
+            method: "GET",
+            credentials: "same-origin"
+          })
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error("slug check failed");
+              }
+              return response.json();
+            })
+            .then(function (payload) {
+              if (requestID !== slugCheckRequestID) {
+                return slugCheckState;
+              }
+
+              var normalizedSlug = payload.normalized_slug || rawSlug;
+              if (normalizedSlug !== rawSlug) {
+                slugInput.value = normalizedSlug;
+                slugInput.dataset.manual = normalizedSlug.trim() ? "1" : "";
+                refreshLocalSummary();
+              }
+
+              slugCheckState = {
+                normalizedSlug: normalizedSlug,
+                available: Boolean(payload.available),
+                pending: false
+              };
+
+              var statusMessage = payload.message || "";
+              if (payload.available && normalizedSlug !== rawSlug) {
+                statusMessage = "Slug нормализован и свободен: " + normalizedSlug;
+              }
+
+              setSlugStatus(statusMessage, payload.available ? "ok" : "error");
+              return slugCheckState;
+            })
+            .catch(function () {
+              slugCheckState = {
+                normalizedSlug: rawSlug,
+                available: false,
+                pending: false
+              };
+              setSlugStatus("Не удалось проверить slug прямо сейчас.", "error");
+              return slugCheckState;
+            });
+        };
+
+        var debouncedSlugCheck = debounce(function () {
+          runSlugCheck();
+        }, 220);
 
         var syncOpenAction = function () {
           if (!openSubmitButton) {
@@ -509,22 +784,41 @@
             });
         }, 250);
 
-        titleInput.addEventListener("input", function () {
+        var touchEditorState = function (checkSlugNow) {
           refreshLocalSummary();
           renderPreview();
+          scheduleAutosave();
+          if (checkSlugNow) {
+            debouncedSlugCheck();
+          }
+        };
+
+        titleInput.addEventListener("input", function () {
+          touchEditorState(true);
         });
 
         slugInput.addEventListener("input", function () {
           slugInput.dataset.manual = slugInput.value.trim() ? "1" : "";
-          refreshLocalSummary();
-          renderPreview();
+          touchEditorState(true);
+        });
+
+        [summaryInput, badgeInput].forEach(function (input) {
+          if (!input) {
+            return;
+          }
+
+          input.addEventListener("input", function () {
+            touchEditorState(false);
+          });
+          input.addEventListener("change", function () {
+            touchEditorState(false);
+          });
         });
 
         if (stageInput) {
           ["input", "change"].forEach(function (eventName) {
             stageInput.addEventListener(eventName, function () {
-              refreshLocalSummary();
-              renderPreview();
+              touchEditorState(false);
             });
           });
         }
@@ -532,8 +826,7 @@
         if (moduleInput) {
           ["input", "change"].forEach(function (eventName) {
             moduleInput.addEventListener(eventName, function () {
-              refreshLocalSummary();
-              renderPreview();
+              touchEditorState(false);
             });
           });
         }
@@ -560,8 +853,7 @@
                 moduleInput.value = "";
               }
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
         });
 
@@ -576,8 +868,7 @@
             if (blockOrderInput) {
               blockOrderInput.dataset.manual = "";
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
         });
 
@@ -596,8 +887,7 @@
             if (blockOrderInput) {
               blockOrderInput.dataset.manual = "";
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
         }
 
@@ -613,8 +903,7 @@
             if (blockOrderInput) {
               blockOrderInput.dataset.manual = "";
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
         }
 
@@ -627,24 +916,83 @@
             if (input === moduleOrderInput || input === blockOrderInput) {
               input.dataset.manual = input.value.trim() ? "1" : "";
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
 
           input.addEventListener("change", function () {
             if (input === moduleOrderInput || input === blockOrderInput) {
               input.dataset.manual = input.value.trim() ? "1" : "";
             }
-            refreshLocalSummary();
-            renderPreview();
+            touchEditorState(false);
           });
         });
 
         if (publishInput) {
           publishInput.addEventListener("change", function () {
-            syncOpenAction();
+            touchEditorState(false);
           });
         }
+
+        form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+          button.addEventListener("click", function () {
+            lastSubmitButton = button;
+          });
+        });
+
+        var beforeUnloadHandler = function (event) {
+          if (!isDirty || isSubmitting) {
+            return;
+          }
+
+          event.preventDefault();
+          event.returnValue = "";
+          return "";
+        };
+
+        window.addEventListener("beforeunload", beforeUnloadHandler);
+
+        form.addEventListener("submit", function (event) {
+          if (isSubmitting) {
+            return;
+          }
+
+          event.preventDefault();
+
+          runSlugCheck().then(function (result) {
+            if (!result.available) {
+              setDraftStatus("Исправь slug перед сохранением.", "error");
+              slugInput.focus();
+              return;
+            }
+
+            isSubmitting = true;
+            window.clearTimeout(autosaveTimer);
+            window.removeEventListener("beforeunload", beforeUnloadHandler);
+
+            try {
+              window.localStorage.removeItem(draftStorageKey);
+            } catch (_error) {
+            }
+
+            var submitForwarder = form.querySelector("[data-editor-submit-forwarder]");
+            if (!submitForwarder) {
+              submitForwarder = document.createElement("input");
+              submitForwarder.type = "hidden";
+              submitForwarder.dataset.editorSubmitForwarder = "1";
+              form.appendChild(submitForwarder);
+            }
+
+            if (lastSubmitButton && lastSubmitButton.name) {
+              submitForwarder.name = lastSubmitButton.name;
+              submitForwarder.value = lastSubmitButton.value || "";
+            } else {
+              submitForwarder.removeAttribute("name");
+              submitForwarder.value = "";
+            }
+
+            form.submit();
+          });
+        });
 
         form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
           button.addEventListener("click", function () {
@@ -660,6 +1008,11 @@
         });
 
         refreshLocalSummary();
+        initialSnapshot = snapshotState();
+        restoreDraft();
+        refreshLocalSummary();
+        syncDirtyState();
+        runSlugCheck();
       });
     });
   </script>

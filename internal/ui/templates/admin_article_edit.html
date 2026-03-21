@@ -35,7 +35,7 @@
 
 <section class="admin-editor-shell">
   <div class="admin-editor-main-wrap">
-    <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview" data-global-next-module-order="{{.AdminArticleOptions.GlobalNextModuleOrder}}">
+    <form method="post" action="/admin/articles" class="admin-editor-main" data-article-editor data-preview-endpoint="/admin/articles/preview" data-slug-check-endpoint="/admin/articles/slug-check" data-draft-key="{{if .AdminArticleForm.OriginalSlug}}lesson:{{.AdminArticleForm.OriginalSlug}}{{else if .AdminArticleForm.Slug}}lesson:new:{{.AdminArticleForm.Slug}}{{else}}lesson:new{{end}}" data-global-next-module-order="{{.AdminArticleOptions.GlobalNextModuleOrder}}">
       <input type="hidden" name="original_slug" value="{{.AdminArticleForm.OriginalSlug}}">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
@@ -62,6 +62,7 @@
             <span>Slug</span>
             <input type="text" name="slug" value="{{.AdminArticleForm.Slug}}" placeholder="linux-filesystem-basics" data-editor-slug>
             <small class="admin-editor-note">Если не трогать поле, slug соберется из названия автоматически.</small>
+            <small class="admin-editor-slug-status" data-editor-slug-status></small>
           </label>
         </div>
 
@@ -203,6 +204,9 @@
 
       <div class="admin-editor-actions">
         <a class="ghost-button" href="/admin/articles">Назад в статьи</a>
+        {{if .AdminArticleForm.OriginalSlug}}
+          <a class="ghost-button" href="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/duplicate">Дублировать урок</a>
+        {{end}}
         <a class="ghost-button {{if not .AdminArticleForm.OpenLearnPath}}is-disabled{{end}}" href="{{if .AdminArticleForm.OpenLearnPath}}{{.AdminArticleForm.OpenLearnPath}}{{else}}#{{end}}" {{if .AdminArticleForm.OpenLearnPath}}target="_blank" rel="noreferrer"{{else}}aria-disabled="true"{{end}}>Открыть сохраненную версию</a>
         <button class="secondary-button" type="submit" name="after_save" value="open" data-editor-open-submit>Сохранить и открыть у ученика</button>
         <button class="primary-button" type="submit">Сохранить урок</button>
@@ -239,6 +243,7 @@
 
       <p class="admin-editor-kind-hint" data-editor-kind-hint>{{.AdminArticleForm.KindHint}}</p>
       <p class="admin-editor-route-note" data-editor-open-note>{{if .AdminArticleForm.Published}}После сохранения можно сразу открыть урок глазами ученика.{{else}}Кнопка «Сохранить и открыть» сработает только для опубликованного урока.{{end}}</p>
+      <div class="admin-editor-draft-status" data-editor-draft-status>Черновик синхронизируется в браузере.</div>
     </article>
 
     <article class="admin-editor-card admin-editor-upload-card">

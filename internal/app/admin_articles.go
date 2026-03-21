@@ -52,6 +52,82 @@ func (a *App) handleAdminArticleEdit(w http.ResponseWriter, r *http.Request) {
 	a.renderAdminArticleEditor(w, r, http.StatusOK, adminArticleFormFromContent(*article))
 }
 
+func (a *App) handleAdminArticleDuplicate(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	article, err := a.articles.EditableBySlug(r.PathValue("slug"))
+	if err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "load article failed", http.StatusInternalServerError)
+		return
+	}
+
+	duplicateSlug, err := a.nextDuplicateSlug(article.Slug)
+	if err != nil {
+		http.Error(w, "prepare duplicate failed", http.StatusInternalServerError)
+		return
+	}
+
+	form := adminArticleFormFromContent(*article)
+	form.OriginalSlug = ""
+	form.Title = duplicateArticleTitle(article.Title)
+	form.Slug = duplicateSlug
+	form.Published = false
+	form.ModeLabel = "Дубликат урока"
+	form.OpenLearnPath = ""
+
+	a.renderAdminArticleEditor(w, r, http.StatusOK, form)
+}
+
+func (a *App) handleAdminArticleSlugCheck(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	slug := strings.TrimSpace(r.URL.Query().Get("slug"))
+	originalSlug := strings.TrimSpace(r.URL.Query().Get("original_slug"))
+
+	normalizedSlug, available, err := a.articles.SlugAvailable(slug, originalSlug)
+	if err != nil {
+		http.Error(w, "slug check failed", http.StatusInternalServerError)
+		return
+	}
+
+	message := "Нужен slug."
+	switch {
+	case normalizedSlug == "":
+		message = "Нужен slug."
+	case available:
+		message = "Slug свободен."
+	default:
+		message = "Slug уже занят другим уроком."
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		NormalizedSlug string `json:"normalized_slug"`
+		Available      bool   `json:"available"`
+		Message        string `json:"message"`
+	}{
+		NormalizedSlug: normalizedSlug,
+		Available:      available,
+		Message:        message,
+	})
+}
+
 func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 	if a.requireAdmin(w, r) == nil {
 		return
@@ -602,4 +678,36 @@ func editorKindHint(kind string) string {
 	default:
 		return "Теория помечается как прочитанная при открытии. Держи блок коротким и без лекции на полторы жизни."
 	}
+}
+
+func (a *App) nextDuplicateSlug(slug string) (string, error) {
+	baseSlug := content.NormalizeSlug(slug)
+	if baseSlug == "" {
+		baseSlug = "lesson"
+	}
+
+	candidateBase := baseSlug + "-copy"
+	candidate := candidateBase
+
+	for suffix := 2; suffix < 1000; suffix++ {
+		normalizedSlug, available, err := a.articles.SlugAvailable(candidate, "")
+		if err != nil {
+			return "", err
+		}
+		if available {
+			return normalizedSlug, nil
+		}
+		candidate = candidateBase + "-" + strconv.Itoa(suffix)
+	}
+
+	return "", errors.New("no free duplicate slug")
+}
+
+func duplicateArticleTitle(title string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "Новый урок (копия)"
+	}
+
+	return title + " (копия)"
 }

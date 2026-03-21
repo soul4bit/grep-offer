@@ -217,6 +217,36 @@ func (l *Library) DeleteBySlug(slug string) error {
 	return nil
 }
 
+func (l *Library) SlugAvailable(slug, originalSlug string) (string, bool, error) {
+	normalizedSlug := normalizeSlug(slug)
+	if normalizedSlug == "" {
+		return "", false, nil
+	}
+
+	existingPath, err := l.articlePathBySlug(normalizedSlug)
+	if err != nil {
+		if errors.Is(err, ErrArticleNotFound) {
+			return normalizedSlug, true, nil
+		}
+		return normalizedSlug, false, err
+	}
+
+	normalizedOriginal := normalizeSlug(originalSlug)
+	if normalizedOriginal == "" {
+		return normalizedSlug, false, nil
+	}
+
+	currentPath, err := l.articlePathBySlug(normalizedOriginal)
+	if err != nil {
+		if errors.Is(err, ErrArticleNotFound) {
+			return normalizedSlug, false, nil
+		}
+		return normalizedSlug, false, err
+	}
+
+	return normalizedSlug, samePath(existingPath, currentPath), nil
+}
+
 func (l *Library) articlePathBySlug(slug string) (string, error) {
 	normalizedSlug := normalizeSlug(slug)
 	if normalizedSlug == "" {

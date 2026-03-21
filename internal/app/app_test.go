@@ -1358,6 +1358,172 @@ published: true
 	}
 }
 
+func TestAdminCanOpenDuplicateLessonEditor(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	seed := `---
+title: "Файловая система Linux"
+slug: "linux-filesystem"
+summary: "Базовый блок про каталоги."
+badge: "linux"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Файловая система Linux
+
+Короткий текст.
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "02-01-linux-filesystem.md"), []byte(seed), 0o644); err != nil {
+		t.Fatalf("write seed article: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-article-duplicate-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/admin/articles/linux-filesystem/duplicate", nil)
+	if err != nil {
+		t.Fatalf("build duplicate request: %v", err)
+	}
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("duplicate request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected duplicate status: %d", response.StatusCode)
+	}
+
+	body := readBody(t, response.Body)
+	for _, fragment := range []string{
+		"Дубликат урока",
+		"Файловая система Linux (копия)",
+		"linux-filesystem-copy",
+	} {
+		if !strings.Contains(body, fragment) {
+			t.Fatalf("expected duplicate editor to contain %q, got: %s", fragment, body)
+		}
+	}
+}
+
+func TestAdminArticleSlugCheckEndpoint(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	seed := `---
+title: "Файловая система Linux"
+slug: "linux-filesystem"
+summary: "Базовый блок про каталоги."
+badge: "linux"
+stage: "Linux Base"
+module: "Файловая система"
+module_order: 2
+block_order: 1
+kind: "theory"
+published: true
+---
+
+# Файловая система Linux
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "02-01-linux-filesystem.md"), []byte(seed), 0o644); err != nil {
+		t.Fatalf("write seed article: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-article-slug-check-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name          string
+		query         string
+		wantAvailable bool
+	}{
+		{name: "taken", query: "?slug=linux-filesystem", wantAvailable: false},
+		{name: "same-original", query: "?slug=linux-filesystem&original_slug=linux-filesystem", wantAvailable: true},
+		{name: "free", query: "?slug=linux-journalctl", wantAvailable: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request, err := http.NewRequest(http.MethodGet, server.URL+"/admin/articles/slug-check"+tc.query, nil)
+			if err != nil {
+				t.Fatalf("build slug check request: %v", err)
+			}
+			request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+			response, err := server.Client().Do(request)
+			if err != nil {
+				t.Fatalf("slug check request: %v", err)
+			}
+			defer response.Body.Close()
+
+			if response.StatusCode != http.StatusOK {
+				t.Fatalf("unexpected slug check status: %d", response.StatusCode)
+			}
+
+			var payload struct {
+				NormalizedSlug string `json:"normalized_slug"`
+				Available      bool   `json:"available"`
+				Message        string `json:"message"`
+			}
+			if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode slug check payload: %v", err)
+			}
+
+			if payload.Available != tc.wantAvailable {
+				t.Fatalf("unexpected slug availability for %s: %#v", tc.name, payload)
+			}
+		})
+	}
+}
+
 func TestAdminArticleEditorShowsExistingRouteOptions(t *testing.T) {
 	t.Parallel()
 

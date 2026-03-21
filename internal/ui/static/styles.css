@@ -4106,6 +4106,30 @@ button.dashboard-checkpoint-pill {
   line-height: 1.55;
 }
 
+.admin-editor-slug-status,
+.admin-editor-draft-status {
+  display: block;
+  margin: 0;
+  color: rgba(243, 239, 227, 0.64);
+  line-height: 1.5;
+}
+
+.admin-editor-slug-status.is-ok,
+.admin-editor-draft-status.is-ok {
+  color: var(--accent-3);
+}
+
+.admin-editor-slug-status.is-error,
+.admin-editor-draft-status.is-error {
+  color: var(--accent-2);
+}
+
+.admin-editor-slug-status.is-pending,
+.admin-editor-draft-status.is-pending,
+.admin-editor-draft-status.is-dirty {
+  color: #ffd47d;
+}
+
 .admin-editor-step-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

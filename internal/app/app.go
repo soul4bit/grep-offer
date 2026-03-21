@@ -384,7 +384,9 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/users", a.handleAdminUsers)
 	mux.HandleFunc("GET /admin/logs", a.handleAdminLogs)
 	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
+	mux.HandleFunc("GET /admin/articles/slug-check", a.handleAdminArticleSlugCheck)
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
+	mux.HandleFunc("GET /admin/articles/{slug}/duplicate", a.handleAdminArticleDuplicate)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
 	mux.HandleFunc("POST /admin/articles/{slug}/delete", a.handleAdminArticleDelete)
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
@@ -1188,6 +1190,8 @@ func noticeFromRequest(r *http.Request) string {
 		return "Урок создан. Теперь можно спокойно шлифовать markdown и порядок блока."
 	case "article-saved":
 		return "Урок сохранен. Маршрут подхватит обновление без магии."
+	case "article-duplicated":
+		return "Создана копия урока. Можно править ее отдельно, не ломая оригинал."
 	case "article-open-requires-publish":
 		return "Чтобы открыть урок у ученика сразу после сохранения, сначала включи публикацию."
 	case "article-deleted":
