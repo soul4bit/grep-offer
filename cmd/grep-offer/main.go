@@ -20,7 +20,6 @@ import (
 	"grep-offer/internal/store"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -28,12 +27,8 @@ func main() {
 	contentDir := envOrDefault("CONTENT_DIR", filepath.Join("content", "articles"))
 	uploadsDir := envOrDefault("UPLOADS_DIR", filepath.Join("shared", "uploads"))
 
-	driverName, dsn := databaseConfig()
-	if driverName == "sqlite" {
-		if err := os.MkdirAll(filepath.Dir(dsn), 0o755); err != nil {
-			log.Fatalf("create data dir: %v", err)
-		}
-	}
+	driverName := "pgx"
+	dsn := databaseURL()
 	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
 		log.Fatalf("create uploads dir: %v", err)
 	}
@@ -44,13 +39,8 @@ func main() {
 	}
 	defer db.Close()
 
-	if driverName == "sqlite" {
-		db.SetMaxOpenConns(1)
-		db.SetMaxIdleConns(1)
-	} else {
-		db.SetMaxOpenConns(10)
-		db.SetMaxIdleConns(5)
-	}
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxIdleTime(3 * time.Minute)
 	db.SetConnMaxLifetime(30 * time.Minute)
 
@@ -143,12 +133,13 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-func databaseConfig() (string, string) {
+func databaseURL() string {
 	if databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); databaseURL != "" {
-		return "pgx", databaseURL
+		return databaseURL
 	}
 
-	return "sqlite", envOrDefault("DB_PATH", filepath.Join("data", "grep-offer.db"))
+	log.Fatal("DATABASE_URL is required")
+	return ""
 }
 
 func parseCSVEnv(key string) []string {

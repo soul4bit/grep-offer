@@ -60,6 +60,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags="-s -w" -o "dist/$APP_NAME" ./cmd/grep-offer
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags="-s -w" -o "dist/${APP_NAME}-migrate" ./cmd/migrate-sqlite-to-postgres
 
       - name: Activate release on server
         run: |
@@ -72,6 +73,7 @@ jobs:
           mkdir -p "$RELEASE_DIR"
 
           install -m 755 "dist/$APP_NAME" "$RELEASE_DIR/$APP_NAME"
+          install -m 755 "dist/${APP_NAME}-migrate" "$RELEASE_DIR/${APP_NAME}-migrate"
           cp -R content "$RELEASE_DIR/"
           ln -sfn "$RELEASE_DIR" "$RELEASE_ROOT/current"
 
