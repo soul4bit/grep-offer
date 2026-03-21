@@ -12,7 +12,7 @@
 <section class="admin-subnav-shell">
   <nav class="admin-subnav" aria-label="Разделы админки">
     {{range .AdminNav}}
-      <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}" {{if .Active}}aria-current="page"{{end}}>
+      <a class="nav-link admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}" {{if .Active}}aria-current="page"{{end}}>
         <span class="admin-subnav-label">{{.Label}}</span>
       </a>
     {{end}}
