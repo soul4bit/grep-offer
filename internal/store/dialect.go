@@ -7,28 +7,12 @@ import (
 	"strings"
 )
 
-type Dialect string
-
-const (
-	SQLiteDialect   Dialect = "sqlite"
-	PostgresDialect Dialect = "postgres"
-)
-
 type txQueryRower interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func detectDialect(driverName string) Dialect {
-	switch strings.ToLower(strings.TrimSpace(driverName)) {
-	case "postgres", "postgresql", "pgx", "pgx/v5":
-		return PostgresDialect
-	default:
-		return SQLiteDialect
-	}
-}
-
 func (s *Store) bind(query string) string {
-	if s == nil || s.dialect != PostgresDialect {
+	if s == nil {
 		return query
 	}
 

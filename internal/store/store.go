@@ -25,8 +25,7 @@ var (
 )
 
 type Store struct {
-	db      *sql.DB
-	dialect Dialect
+	db *sql.DB
 }
 
 type User struct {
@@ -43,25 +42,12 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func New(db *sql.DB, driverNames ...string) *Store {
-	driverName := "sqlite"
-	if len(driverNames) > 0 {
-		driverName = driverNames[0]
-	}
-
-	return &Store{
-		db:      db,
-		dialect: detectDialect(driverName),
-	}
+func New(db *sql.DB) *Store {
+	return &Store{db: db}
 }
 
 func (s *Store) Init(ctx context.Context) error {
-	statements := sqliteInitStatements()
-	if s.dialect == PostgresDialect {
-		statements = postgresInitStatements()
-	}
-
-	for _, statement := range statements {
+	for _, statement := range postgresInitStatements() {
 		if _, err := s.db.ExecContext(ctx, s.bind(statement)); err != nil {
 			if isIgnorableMigrationError(err) {
 				continue
@@ -263,27 +249,6 @@ func isUsernameConstraintError(err error) bool {
 	message := strings.ToLower(err.Error())
 	return strings.Contains(message, "lower_username") ||
 		strings.Contains(message, "username") && strings.Contains(message, "unique")
-}
-
-func sqliteInitStatements() []string {
-	base := []string{
-		`PRAGMA foreign_keys = ON;`,
-		`PRAGMA journal_mode = WAL;`,
-		`CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			is_admin INTEGER NOT NULL DEFAULT 0,
-			is_banned INTEGER NOT NULL DEFAULT 0,
-			created_at INTEGER NOT NULL
-		);`,
-		`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;`,
-		`ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0;`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lower_username ON users(lower(username));`,
-	}
-
-	return append(base, commonInitTables("INTEGER PRIMARY KEY AUTOINCREMENT")...)
 }
 
 func postgresInitStatements() []string {

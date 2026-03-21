@@ -261,6 +261,15 @@ func marshalEditableArticle(meta ArticleMeta, body string) ([]byte, error) {
 	return []byte(document), nil
 }
 
+func SuggestedFileName(meta ArticleMeta) string {
+	meta.Slug = normalizeSlug(meta.Slug)
+	if meta.Slug == "" {
+		meta.Slug = "new-lesson"
+	}
+
+	return fileNameForArticle(meta)
+}
+
 func fileNameForArticle(meta ArticleMeta) string {
 	base := normalizeSlug(meta.Slug)
 	if meta.ModuleOrder > 0 && meta.BlockOrder > 0 {

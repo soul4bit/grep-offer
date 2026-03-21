@@ -6,7 +6,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -15,15 +17,76 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"grep-offer/internal/content"
 	"grep-offer/internal/store"
 
+	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
-	_ "modernc.org/sqlite"
 )
+
+const testPostgresPort uint32 = 55439
+
+var (
+	testPostgres       *embeddedpostgres.EmbeddedPostgres
+	testPostgresConfig embeddedpostgres.Config
+	testDatabaseCount  atomic.Uint64
+)
+
+func TestMain(m *testing.M) {
+	http.DefaultTransport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     false,
+		MaxIdleConns:          32,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+	}
+
+	rootDir, err := os.MkdirTemp("", "grep-offer-embedded-postgres-*")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "create embedded postgres dir: %v\n", err)
+		os.Exit(1)
+	}
+
+	testPostgresConfig = embeddedpostgres.DefaultConfig().
+		Version(embeddedpostgres.V16).
+		Port(testPostgresPort).
+		Username("postgres").
+		Password("postgres").
+		Database("postgres").
+		BinaryRepositoryURL("https://repo.maven.apache.org/maven2").
+		RuntimePath(filepath.Join(rootDir, "runtime")).
+		DataPath(filepath.Join(rootDir, "data")).
+		BinariesPath(filepath.Join(rootDir, "binaries")).
+		CachePath(filepath.Join(rootDir, "cache")).
+		StartTimeout(60 * time.Second).
+		Logger(io.Discard)
+
+	testPostgres = embeddedpostgres.NewDatabase(testPostgresConfig)
+	if err := testPostgres.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "start embedded postgres: %v\n", err)
+		_ = os.RemoveAll(rootDir)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+
+	if err := testPostgres.Stop(); err != nil {
+		fmt.Fprintf(os.Stderr, "stop embedded postgres: %v\n", err)
+	}
+	_ = os.RemoveAll(rootDir)
+
+	os.Exit(code)
+}
 
 func TestRegistrationApprovalFlow(t *testing.T) {
 	t.Parallel()
@@ -1080,6 +1143,77 @@ func TestAdminCanCreateMarkdownLesson(t *testing.T) {
 	}
 }
 
+func TestAdminArticlePreviewRendersMarkdown(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-preview-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	form := url.Values{
+		"title":        {"Файловая система Linux"},
+		"slug":         {"linux-filesystem"},
+		"kind":         {"practice"},
+		"module_order": {"2"},
+		"block_order":  {"3"},
+		"body":         {"# Файловая система Linux\n\n## Минимум руками\n\n1. Открой `/etc`.\n"},
+	}
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/preview", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build preview request: %v", err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("preview request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected preview status: %d", response.StatusCode)
+	}
+
+	var payload struct {
+		HTML      string `json:"html"`
+		FileName  string `json:"file_name"`
+		LearnPath string `json:"learn_path"`
+		KindHint  string `json:"kind_hint"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode preview payload: %v", err)
+	}
+
+	if !strings.Contains(payload.HTML, "<h1>Файловая система Linux</h1>") {
+		t.Fatalf("preview html missing heading: %s", payload.HTML)
+	}
+	if payload.FileName != "02-03-linux-filesystem.md" {
+		t.Fatalf("unexpected preview file name: %s", payload.FileName)
+	}
+	if payload.LearnPath != "/learn/linux-filesystem" {
+		t.Fatalf("unexpected preview path: %s", payload.LearnPath)
+	}
+	if !strings.Contains(strings.ToLower(payload.KindHint), "практика") {
+		t.Fatalf("unexpected kind hint: %s", payload.KindHint)
+	}
+}
+
 func TestAdminCanManageUsers(t *testing.T) {
 	t.Parallel()
 
@@ -1251,17 +1385,7 @@ type testAppOptions struct {
 func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-
-	t.Cleanup(func() {
-		_ = db.Close()
-	})
-
-	db.SetMaxOpenConns(1)
+	db := openTestDatabase(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -1315,6 +1439,66 @@ func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 	}
 
 	return app, st
+}
+
+func openTestDatabase(t *testing.T) *sql.DB {
+	t.Helper()
+
+	adminDB, err := sql.Open("pgx", testPostgresConfig.GetConnectionURL())
+	if err != nil {
+		t.Fatalf("open postgres admin db: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := adminDB.PingContext(ctx); err != nil {
+		_ = adminDB.Close()
+		t.Fatalf("ping postgres admin db: %v", err)
+	}
+
+	dbName := fmt.Sprintf("grep_offer_test_%d", testDatabaseCount.Add(1))
+	if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)); err != nil {
+		_ = adminDB.Close()
+		t.Fatalf("create postgres test database %s: %v", dbName, err)
+	}
+	if err := adminDB.Close(); err != nil {
+		t.Fatalf("close postgres admin db: %v", err)
+	}
+
+	databaseConfig := testPostgresConfig.Database(dbName)
+	db, err := sql.Open("pgx", databaseConfig.GetConnectionURL())
+	if err != nil {
+		t.Fatalf("open postgres test db: %v", err)
+	}
+
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		t.Fatalf("ping postgres test db: %v", err)
+	}
+
+	t.Cleanup(func() {
+		dropCtx, dropCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer dropCancel()
+
+		adminDB, err := sql.Open("pgx", testPostgresConfig.GetConnectionURL())
+		if err != nil {
+			return
+		}
+		defer adminDB.Close()
+
+		if _, err := adminDB.ExecContext(dropCtx, fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, dbName)); err == nil {
+			return
+		}
+
+		_, _ = adminDB.ExecContext(dropCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, dbName)
+		_, _ = adminDB.ExecContext(dropCtx, fmt.Sprintf(`DROP DATABASE IF EXISTS "%s"`, dbName))
+	})
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	return db
 }
 
 func readBody(t *testing.T, body io.Reader) string {

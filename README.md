@@ -74,7 +74,7 @@ bash deploy/setup-server.sh
 Скрипт:
 
 - создает `/var/www/grep-offer/releases`
-- создает `/var/www/grep-offer/shared/data`, если нужно забрать старый SQLite-файл для одноразовой миграции
+- создает `/var/www/grep-offer/shared/content/articles` и `/var/www/grep-offer/shared/uploads`
 - ставит systemd unit
 - создает `/etc/grep-offer.env`, если его еще нет
 
@@ -168,30 +168,7 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 - Автодеплой срабатывает на `push` в `main`, а не на локальный `git commit`. Без `git push` GitHub Actions не стартует.
 - Для проверки после рестарта добавлен endpoint `/healthz`.
 - В `/var/www/grep-offer` должны лежать только `current`, `releases` и `shared`. Клон репозитория лучше хранить отдельно, например в `/home/deploy/grep-offer`.
-- Приложение стартует только с `DATABASE_URL`. Старый SQLite нужен только как источник для одноразовой миграции.
-
-### Миграция из SQLite в PostgreSQL
-
-Если у тебя уже была рабочая SQLite-база, после деплоя в релизе появится отдельный бинарь:
-
-```bash
-/var/www/grep-offer/current/grep-offer-migrate \
-  -sqlite /var/www/grep-offer/shared/data/grep-offer.db \
-  -postgres "$DATABASE_URL"
-```
-
-Он переносит:
-
-- пользователей
-- сессии
-- pending-регистрации
-- reset-токены
-- roadmap progress
-- lesson progress
-- test questions
-- test results
-
-По умолчанию migrator требует пустую PostgreSQL-базу. Если тебе нужно повторно залить данные в уже заполненную БД, запусти его с `-force`.
+- Приложение стартует только с `DATABASE_URL`. Рантайм и деплой полностью работают через PostgreSQL.
 ## Контент и админка
 
 Теперь в проекте есть еще два слоя:

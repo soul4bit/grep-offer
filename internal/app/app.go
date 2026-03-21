@@ -193,6 +193,12 @@ type AdminArticleForm struct {
 	BlockOrder   int
 	Published    bool
 	ModeLabel    string
+	FileName     string
+	LearnPath    string
+	WordCount    int
+	LineCount    int
+	KindHint     string
+	PreviewHTML  template.HTML
 }
 
 type AdminLessonOption struct {
@@ -314,6 +320,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
+	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
 	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
@@ -994,6 +1001,10 @@ func noticeFromRequest(r *http.Request) string {
 		return "Вопрос для test-блока добавлен."
 	case "test-question-deleted":
 		return "Вопрос удален из test-блока."
+	case "article-created":
+		return "Урок создан. Теперь можно спокойно шлифовать markdown и порядок блока."
+	case "article-saved":
+		return "Урок сохранен. Маршрут подхватит обновление без магии."
 	default:
 		return ""
 	}

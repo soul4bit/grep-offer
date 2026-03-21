@@ -182,6 +182,249 @@
           invalidInputs[0].focus();
         });
       });
+
+      var editorSnippets = {
+        heading: "\n## Подзаголовок\n\nКороткий абзац.\n",
+        list: "\n- пункт 1\n- пункт 2\n- пункт 3\n",
+        code: "\n```bash\n# команда\n```\n",
+        practice: "\n## Минимум руками\n\n1. шаг 1\n2. шаг 2\n",
+        result: "\n## Что считать результатом\n\nКороткий критерий, что блок действительно закрыт.\n"
+      };
+
+      var editorKindHints = {
+        theory: "Теория помечается как прочитанная при открытии. Держи блок коротким и без лекции на полторы жизни.",
+        practice: "Практика открывает следующий блок после прочтения. Формулируй руками: что сделать и какой результат принять.",
+        test: "У теста прогресс считается только после сдачи. После сохранения добавь вопросы в секции test-блоков."
+      };
+
+      var slugify = function (value) {
+        return value
+          .toLowerCase()
+          .trim()
+          .replace(/[^\p{L}\p{N}]+/gu, "-")
+          .replace(/^-+|-+$/g, "");
+      };
+
+      var countWords = function (value) {
+        var trimmed = value.trim();
+        if (!trimmed) {
+          return 0;
+        }
+
+        return trimmed.split(/\s+/).length;
+      };
+
+      var countLines = function (value) {
+        if (!value.trim()) {
+          return 0;
+        }
+
+        return value.replace(/\r\n/g, "\n").split("\n").length;
+      };
+
+      var debounce = function (callback, delay) {
+        var timeoutID;
+        return function () {
+          var args = arguments;
+          clearTimeout(timeoutID);
+          timeoutID = window.setTimeout(function () {
+            callback.apply(null, args);
+          }, delay);
+        };
+      };
+
+      var insertAtCursor = function (textarea, snippet) {
+        if (!textarea) {
+          return;
+        }
+
+        var start = textarea.selectionStart || 0;
+        var end = textarea.selectionEnd || 0;
+        var value = textarea.value;
+        textarea.value = value.slice(0, start) + snippet + value.slice(end);
+        textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      };
+
+      document.querySelectorAll("[data-article-editor]").forEach(function (form) {
+        var shell = form.closest(".admin-editor-shell");
+        var titleInput = form.querySelector("[data-editor-title]");
+        var slugInput = form.querySelector("[data-editor-slug]");
+        var kindInput = form.querySelector("[data-editor-kind]");
+        var bodyInput = form.querySelector("[data-article-body]");
+        var moduleOrderInput = form.querySelector("[data-editor-module-order]");
+        var blockOrderInput = form.querySelector("[data-editor-block-order]");
+        var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
+        var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
+        var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
+        var wordCountNode = shell && shell.querySelector("[data-editor-word-count]");
+        var lineCountNode = shell && shell.querySelector("[data-editor-line-count]");
+        var kindHintNode = shell && shell.querySelector("[data-editor-kind-hint]");
+        var previewNode = shell && shell.querySelector("[data-article-preview]");
+        var previewEndpoint = form.dataset.previewEndpoint;
+        var previewRequestID = 0;
+
+        if (!titleInput || !slugInput || !bodyInput || !shell) {
+          return;
+        }
+
+        if (slugInput.value.trim()) {
+          slugInput.dataset.manual = "1";
+        }
+
+        var updateLearnLink = function (path) {
+          if (!learnLink) {
+            return;
+          }
+
+          if (path) {
+            learnLink.href = path;
+            learnLink.classList.remove("is-disabled");
+            learnLink.removeAttribute("aria-disabled");
+            learnLink.setAttribute("target", "_blank");
+            learnLink.setAttribute("rel", "noreferrer");
+            return;
+          }
+
+          learnLink.href = "#";
+          learnLink.classList.add("is-disabled");
+          learnLink.setAttribute("aria-disabled", "true");
+          learnLink.removeAttribute("target");
+          learnLink.removeAttribute("rel");
+        };
+
+        var refreshLocalSummary = function () {
+          if (!slugInput.dataset.manual) {
+            slugInput.value = slugify(titleInput.value);
+          }
+
+          var slug = slugInput.value.trim();
+          var path = slug ? "/learn/" + slug : "";
+
+          if (pathNode) {
+            pathNode.textContent = path || "появится после slug";
+          }
+          updateLearnLink(path);
+
+          if (wordCountNode) {
+            wordCountNode.textContent = countWords(bodyInput.value);
+          }
+          if (lineCountNode) {
+            lineCountNode.textContent = countLines(bodyInput.value);
+          }
+          if (kindHintNode && kindInput) {
+            kindHintNode.textContent = editorKindHints[kindInput.value] || editorKindHints.theory;
+          }
+          if (fileNameNode && slug) {
+            var moduleOrder = (moduleOrderInput && moduleOrderInput.value.trim()) || "0";
+            var blockOrder = (blockOrderInput && blockOrderInput.value.trim()) || "0";
+            if (/^\d+$/.test(moduleOrder) && /^\d+$/.test(blockOrder) && Number(moduleOrder) > 0 && Number(blockOrder) > 0) {
+              fileNameNode.textContent = moduleOrder.padStart(2, "0") + "-" + blockOrder.padStart(2, "0") + "-" + slug + ".md";
+            } else {
+              fileNameNode.textContent = slug + ".md";
+            }
+          } else if (fileNameNode) {
+            fileNameNode.textContent = "new-lesson.md";
+          }
+        };
+
+        var renderPreview = debounce(function () {
+          if (!previewEndpoint) {
+            return;
+          }
+
+          var requestID = ++previewRequestID;
+          var formData = new FormData(form);
+          var params = new URLSearchParams();
+          formData.forEach(function (value, key) {
+            params.append(key, value);
+          });
+
+          fetch(previewEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+            },
+            body: params.toString()
+          })
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error("preview failed");
+              }
+              return response.json();
+            })
+            .then(function (payload) {
+              if (requestID !== previewRequestID) {
+                return;
+              }
+
+              if (previewNode) {
+                previewNode.innerHTML = payload.html || '<p class="admin-editor-preview-empty">Добавь markdown, и тут сразу появится живая превьюшка урока.</p>';
+              }
+              if (fileNameNode && payload.file_name) {
+                fileNameNode.textContent = payload.file_name;
+              }
+              if (pathNode) {
+                pathNode.textContent = payload.learn_path || "появится после slug";
+              }
+              updateLearnLink(payload.learn_path || "");
+              if (wordCountNode) {
+                wordCountNode.textContent = payload.word_count || 0;
+              }
+              if (lineCountNode) {
+                lineCountNode.textContent = payload.line_count || 0;
+              }
+              if (kindHintNode && payload.kind_hint) {
+                kindHintNode.textContent = payload.kind_hint;
+              }
+            })
+            .catch(function () {
+              refreshLocalSummary();
+            });
+        }, 250);
+
+        titleInput.addEventListener("input", function () {
+          refreshLocalSummary();
+          renderPreview();
+        });
+
+        slugInput.addEventListener("input", function () {
+          slugInput.dataset.manual = slugInput.value.trim() ? "1" : "";
+          refreshLocalSummary();
+          renderPreview();
+        });
+
+        [bodyInput, kindInput, moduleOrderInput, blockOrderInput].forEach(function (input) {
+          if (!input) {
+            return;
+          }
+
+          input.addEventListener("input", function () {
+            refreshLocalSummary();
+            renderPreview();
+          });
+
+          input.addEventListener("change", function () {
+            refreshLocalSummary();
+            renderPreview();
+          });
+        });
+
+        form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            var snippet = editorSnippets[button.dataset.markdownTemplate];
+            if (!snippet) {
+              return;
+            }
+
+            insertAtCursor(bodyInput, snippet);
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        });
+
+        refreshLocalSummary();
+      });
     });
   </script>
 </body>

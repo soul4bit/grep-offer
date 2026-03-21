@@ -78,12 +78,18 @@ type frontMatter struct {
 
 func NewLibrary(dir string) *Library {
 	return &Library{
-		dir: strings.TrimSpace(dir),
-		renderer: goldmark.New(
-			goldmark.WithExtensions(extension.GFM),
-			goldmark.WithRendererOptions(rendererhtml.WithUnsafe()),
-		),
+		dir:      strings.TrimSpace(dir),
+		renderer: newMarkdownRenderer(),
 	}
+}
+
+func RenderMarkdown(body string) (template.HTML, error) {
+	var rendered bytes.Buffer
+	if err := newMarkdownRenderer().Convert([]byte(strings.TrimSpace(body)), &rendered); err != nil {
+		return "", err
+	}
+
+	return template.HTML(rendered.String()), nil
 }
 
 func (l *Library) List() ([]ArticleMeta, error) {
@@ -445,4 +451,11 @@ func moduleIndex(order int) string {
 		return "0"
 	}
 	return fmt.Sprintf("%d", order)
+}
+
+func newMarkdownRenderer() goldmark.Markdown {
+	return goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithRendererOptions(rendererhtml.WithUnsafe()),
+	)
 }

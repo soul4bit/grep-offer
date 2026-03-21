@@ -54,7 +54,7 @@ func main() {
 		log.Fatalf("ping %s: %v", driverName, err)
 	}
 
-	st := store.New(db, driverName)
+	st := store.New(db)
 	if err := st.Init(ctx); err != nil {
 		log.Fatalf("init store: %v", err)
 	}
