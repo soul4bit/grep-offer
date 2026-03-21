@@ -38,6 +38,32 @@ type User struct {
 	CreatedAt    time.Time
 }
 
+type AuditLogEntry struct {
+	ID          int64
+	ActorUserID *int64
+	Scope       string
+	Action      string
+	TargetType  string
+	TargetKey   string
+	Status      string
+	IPAddress   string
+	UserAgent   string
+	Details     map[string]string
+	CreatedAt   time.Time
+}
+
+type AuditLogInput struct {
+	ActorUserID *int64
+	Scope       string
+	Action      string
+	TargetType  string
+	TargetKey   string
+	Status      string
+	IPAddress   string
+	UserAgent   string
+	Details     map[string]string
+}
+
 type scanner interface {
 	Scan(dest ...any) error
 }
@@ -343,5 +369,22 @@ func commonInitTables(idDefinition string) []string {
 			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_user_lesson_test_results_user_id ON user_lesson_test_results(user_id);`,
+		`CREATE TABLE IF NOT EXISTS audit_logs (
+			id BIGSERIAL PRIMARY KEY,
+			actor_user_id BIGINT,
+			scope TEXT NOT NULL,
+			action TEXT NOT NULL,
+			target_type TEXT NOT NULL DEFAULT '',
+			target_key TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'ok',
+			ip_address TEXT NOT NULL DEFAULT '',
+			user_agent TEXT NOT NULL DEFAULT '',
+			details_json TEXT NOT NULL DEFAULT '{}',
+			created_at BIGINT NOT NULL,
+			FOREIGN KEY(actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC, id DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_user_id ON audit_logs(actor_user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_scope_action ON audit_logs(scope, action);`,
 	}
 }

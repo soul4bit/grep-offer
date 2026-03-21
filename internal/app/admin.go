@@ -13,6 +13,44 @@ import (
 )
 
 func (a *App) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/admin/articles", http.StatusSeeOther)
+}
+
+func (a *App) handleAdminRoot(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	http.Redirect(w, r, "/admin/articles", http.StatusSeeOther)
+}
+
+func (a *App) handleAdminArticles(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	articles, err := a.loadAdminArticles()
+	if err != nil {
+		http.Error(w, "load articles failed", http.StatusInternalServerError)
+		return
+	}
+
+	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
+	if err != nil {
+		http.Error(w, "load tests failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.renderAdminPage(w, r, http.StatusOK, ViewData{
+		Notice:             noticeFromRequest(r),
+		AdminSection:       "articles",
+		AdminArticles:      articles,
+		AdminTestLessons:   testLessons,
+		AdminTestQuestions: testQuestions,
+	})
+}
+
+func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 	currentUser := a.requireAdmin(w, r)
 	if currentUser == nil {
 		return
@@ -37,25 +75,37 @@ func (a *App) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	articles, err := a.loadAdminArticles()
-	if err != nil {
-		http.Error(w, "load articles failed", http.StatusInternalServerError)
-		return
-	}
-
-	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
-	if err != nil {
-		http.Error(w, "load tests failed", http.StatusInternalServerError)
-		return
-	}
-
-	a.render(w, r, http.StatusOK, "admin", ViewData{
-		Notice:             noticeFromRequest(r),
-		AdminUsers:         rows,
-		AdminArticles:      articles,
-		AdminTestLessons:   testLessons,
-		AdminTestQuestions: testQuestions,
+	a.renderAdminPage(w, r, http.StatusOK, ViewData{
+		Notice:       noticeFromRequest(r),
+		AdminSection: "users",
+		AdminUsers:   rows,
 	})
+}
+
+func (a *App) handleAdminLogs(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	logs, err := a.loadAdminAuditLogs(r.Context())
+	if err != nil {
+		http.Error(w, "load audit logs failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.renderAdminPage(w, r, http.StatusOK, ViewData{
+		Notice:         noticeFromRequest(r),
+		AdminSection:   "logs",
+		AdminAuditLogs: logs,
+	})
+}
+
+func (a *App) renderAdminPage(w http.ResponseWriter, r *http.Request, status int, data ViewData) {
+	if data.AdminSection == "" {
+		data.AdminSection = "articles"
+	}
+	data.AdminNav = buildAdminNav(data.AdminSection)
+	a.render(w, r, status, "admin", data)
 }
 
 func (a *App) handleAdminUserAdmin(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +130,19 @@ func (a *App) handleAdminUserAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	a.writeAuditLog(r.Context(), r, currentUser, store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "user_admin_changed",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(targetUser.ID, 10),
+		Details: map[string]string{
+			"username": targetUser.Username,
+			"email":    targetUser.Email,
+			"value":    strconv.FormatBool(makeAdmin),
+		},
+	})
+
+	http.Redirect(w, r, "/admin/users?notice=user-admin-updated", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminUserBan(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +173,19 @@ func (a *App) handleAdminUserBan(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	a.writeAuditLog(r.Context(), r, currentUser, store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "user_ban_changed",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(targetUser.ID, 10),
+		Details: map[string]string{
+			"username": targetUser.Username,
+			"email":    targetUser.Email,
+			"value":    strconv.FormatBool(banned),
+		},
+	})
+
+	http.Redirect(w, r, "/admin/users?notice=user-ban-updated", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminUserDelete(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +209,18 @@ func (a *App) handleAdminUserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	a.writeAuditLog(r.Context(), r, currentUser, store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "user_deleted",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(targetUser.ID, 10),
+		Details: map[string]string{
+			"username": targetUser.Username,
+			"email":    targetUser.Email,
+		},
+	})
+
+	http.Redirect(w, r, "/admin/users?notice=user-deleted", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminTestQuestionCreate(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +273,17 @@ func (a *App) handleAdminTestQuestionCreate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	http.Redirect(w, r, "/admin?notice=test-question-created", http.StatusSeeOther)
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "test_question_created",
+		TargetType: "lesson",
+		TargetKey:  lessonSlug,
+		Details: map[string]string{
+			"prompt": prompt,
+		},
+	})
+
+	http.Redirect(w, r, "/admin/articles?notice=test-question-created", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminTestQuestionDelete(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +306,14 @@ func (a *App) handleAdminTestQuestionDelete(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	http.Redirect(w, r, "/admin?notice=test-question-deleted", http.StatusSeeOther)
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "test_question_deleted",
+		TargetType: "test_question",
+		TargetKey:  strconv.FormatInt(questionID, 10),
+	})
+
+	http.Redirect(w, r, "/admin/articles?notice=test-question-deleted", http.StatusSeeOther)
 }
 
 func (a *App) requireAdmin(w http.ResponseWriter, r *http.Request) *store.User {
@@ -234,7 +336,7 @@ func (a *App) loadAdminTargetUser(w http.ResponseWriter, r *http.Request, curren
 		return nil, false
 	}
 	if targetID == currentUser.ID {
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 		return nil, false
 	}
 
@@ -373,4 +475,18 @@ func splitAdminOptions(raw string) []string {
 	}
 
 	return options
+}
+
+func buildAdminNav(active string) []AdminNavItem {
+	items := []AdminNavItem{
+		{Key: "articles", Label: "Статьи", Href: "/admin/articles"},
+		{Key: "users", Label: "Пользователи", Href: "/admin/users"},
+		{Key: "logs", Label: "Лог", Href: "/admin/logs"},
+	}
+
+	for i := range items {
+		items[i].Active = items[i].Key == active
+	}
+
+	return items
 }

@@ -127,7 +127,7 @@
     </article>
 
     <div class="admin-editor-actions">
-      <a class="ghost-button" href="/admin">Назад в админку</a>
+      <a class="ghost-button" href="/admin/articles">Назад в статьи</a>
       <a class="ghost-button {{if not .AdminArticleForm.LearnPath}}is-disabled{{end}}" href="{{if .AdminArticleForm.LearnPath}}{{.AdminArticleForm.LearnPath}}{{else}}#{{end}}" {{if .AdminArticleForm.LearnPath}}target="_blank" rel="noreferrer"{{else}}aria-disabled="true"{{end}} data-editor-learn-link>Открыть как ученик</a>
       <button class="primary-button" type="submit">Сохранить урок</button>
     </div>

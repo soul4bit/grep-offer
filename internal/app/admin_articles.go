@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"grep-offer/internal/content"
+	"grep-offer/internal/store"
 )
 
 func (a *App) handleAdminArticleNew(w http.ResponseWriter, r *http.Request) {
@@ -106,12 +107,25 @@ func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notice := "article-saved"
+	action := "article-saved"
 	if strings.TrimSpace(form.OriginalSlug) == "" {
-		notice = "article-created"
+		action = "article-created"
 	}
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "article_saved",
+		TargetType: "lesson",
+		TargetKey:  saved.Slug,
+		Details: map[string]string{
+			"title":      saved.Title,
+			"kind":       saved.Kind,
+			"published":  strconv.FormatBool(saved.Published),
+			"module":     saved.Module,
+			"module_pos": formatLessonIndex(saved.ModuleOrder, saved.BlockOrder),
+		},
+	})
 
-	http.Redirect(w, r, "/admin/articles/"+saved.Slug+"/edit?notice="+notice, http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/articles/"+saved.Slug+"/edit?notice="+action, http.StatusSeeOther)
 }
 
 func (a *App) handleAdminArticlePreview(w http.ResponseWriter, r *http.Request) {

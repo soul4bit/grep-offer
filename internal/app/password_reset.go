@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -156,9 +157,23 @@ func (a *App) handleForgotPasswordSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := a.passwordReset.Request(r.Context(), email, requestBaseURL(r)); err != nil {
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "password_reset",
+			Action:     "password_reset_requested",
+			TargetType: "email",
+			TargetKey:  email,
+			Status:     "error",
+		})
 		http.Error(w, "password reset request failed", http.StatusInternalServerError)
 		return
 	}
+
+	a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+		Scope:      "password_reset",
+		Action:     "password_reset_requested",
+		TargetType: "email",
+		TargetKey:  email,
+	})
 
 	http.Redirect(w, r, "/password/forgot?notice=password-reset-sent", http.StatusSeeOther)
 }
@@ -224,10 +239,27 @@ func (a *App) handlePasswordResetSubmit(w http.ResponseWriter, r *http.Request) 
 	userID, err := a.passwordReset.Reset(r.Context(), token, password)
 	if err != nil {
 		if errors.Is(err, store.ErrPasswordResetTokenNotFound) {
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "password_reset",
+				Action:     "password_reset_completed",
+				TargetType: "reset_token",
+				TargetKey:  truncateText(token, 24),
+				Status:     "warn",
+				Details: map[string]string{
+					"reason": "invalid_token",
+				},
+			})
 			http.Redirect(w, r, "/login?notice=password-reset-invalid", http.StatusSeeOther)
 			return
 		}
 
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "password_reset",
+			Action:     "password_reset_completed",
+			TargetType: "reset_token",
+			TargetKey:  truncateText(token, 24),
+			Status:     "error",
+		})
 		http.Error(w, "password reset failed", http.StatusInternalServerError)
 		return
 	}
@@ -236,6 +268,13 @@ func (a *App) handlePasswordResetSubmit(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "create session failed", http.StatusInternalServerError)
 		return
 	}
+
+	a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+		Scope:      "password_reset",
+		Action:     "password_reset_completed",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(userID, 10),
+	})
 
 	http.Redirect(w, r, "/dashboard?notice=password-reset-complete", http.StatusSeeOther)
 }

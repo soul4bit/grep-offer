@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/mail"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,6 +62,8 @@ type ViewData struct {
 	Notice             string
 	CSRFToken          string
 	CSPNonce           string
+	AdminSection       string
+	AdminNav           []AdminNavItem
 	Form               AuthForm
 	PasswordResetToken string
 	LandingRoadmap     []LandingStage
@@ -74,6 +77,7 @@ type ViewData struct {
 	AdminArticleForm   AdminArticleForm
 	AdminTestLessons   []AdminLessonOption
 	AdminTestQuestions []AdminTestQuestionRow
+	AdminAuditLogs     []AdminAuditLogRow
 	DashboardStats     []DashboardStat
 	DashboardStages    []DashboardStage
 	DashboardFocus     DashboardFocus
@@ -208,6 +212,13 @@ type AdminLessonOption struct {
 	Title string
 }
 
+type AdminNavItem struct {
+	Key    string
+	Label  string
+	Href   string
+	Active bool
+}
+
 type AdminTestQuestionRow struct {
 	ID          int64
 	LessonSlug  string
@@ -215,6 +226,19 @@ type AdminTestQuestionRow struct {
 	Prompt      string
 	Options     []string
 	AnswerLabel string
+}
+
+type AdminAuditLogRow struct {
+	Scope        string
+	Action       string
+	ActorLabel   string
+	TargetLabel  string
+	Status       string
+	StatusTone   string
+	Details      string
+	IPAddress    string
+	UserAgent    string
+	CreatedLabel string
 }
 
 type DashboardStat struct {
@@ -318,7 +342,10 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /articles/{slug}", a.handleArticleShow)
 	mux.HandleFunc("GET /dashboard", a.handleDashboard)
 	mux.HandleFunc("POST /dashboard/checkpoints", a.handleDashboardCheckpointToggle)
-	mux.HandleFunc("GET /admin", a.handleAdminDashboard)
+	mux.HandleFunc("GET /admin", a.handleAdminRoot)
+	mux.HandleFunc("GET /admin/articles", a.handleAdminArticles)
+	mux.HandleFunc("GET /admin/users", a.handleAdminUsers)
+	mux.HandleFunc("GET /admin/logs", a.handleAdminLogs)
 	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
@@ -633,12 +660,45 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := a.registration.Submit(r.Context(), username, email, string(passwordHash)); err != nil {
 		switch {
 		case errors.Is(err, store.ErrUsernameTaken):
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_submitted",
+				TargetType: "email",
+				TargetKey:  email,
+				Status:     "warn",
+				Details: map[string]string{
+					"reason":   "username_taken",
+					"username": username,
+				},
+			})
 			data.Error = "Такой ник уже занят. Придется придумать другой alias для похода за оффером."
 			a.render(w, r, http.StatusConflict, "register", data)
 		case errors.Is(err, store.ErrEmailTaken):
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_submitted",
+				TargetType: "email",
+				TargetKey:  email,
+				Status:     "warn",
+				Details: map[string]string{
+					"reason":   "email_taken",
+					"username": username,
+				},
+			})
 			data.Error = "Такой email уже занят. Значит, кто-то уже пошел грести оффер."
 			a.render(w, r, http.StatusConflict, "register", data)
 		case errors.Is(err, store.ErrRegistrationPending):
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_submitted",
+				TargetType: "email",
+				TargetKey:  email,
+				Status:     "warn",
+				Details: map[string]string{
+					"reason":   "pending",
+					"username": username,
+				},
+			})
 			data.Error = "Заявка на этот email уже висит. Сначала дождись апрува в Telegram и письма на почту."
 			a.render(w, r, http.StatusConflict, "register", data)
 		default:
@@ -646,6 +706,16 @@ func (a *App) handleRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+		Scope:      "registration",
+		Action:     "registration_submitted",
+		TargetType: "email",
+		TargetKey:  email,
+		Details: map[string]string{
+			"username": username,
+		},
+	})
 
 	http.Redirect(w, r, "/register?notice=registration-requested", http.StatusSeeOther)
 }
@@ -690,6 +760,13 @@ func (a *App) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.UserByEmail(r.Context(), email)
 	if err != nil {
 		if errors.Is(err, store.ErrUserNotFound) {
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "auth",
+				Action:     "login_failed",
+				TargetType: "email",
+				TargetKey:  email,
+				Status:     "warn",
+			})
 			data.Error = a.loginErrorForEmail(r.Context(), email)
 			a.render(w, r, http.StatusUnauthorized, "login", data)
 			return
@@ -706,12 +783,34 @@ func (a *App) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.IsBanned {
+		a.writeAuditLog(r.Context(), r, user, store.AuditLogInput{
+			Scope:      "auth",
+			Action:     "login_failed",
+			TargetType: "user",
+			TargetKey:  strconv.FormatInt(user.ID, 10),
+			Status:     "warn",
+			Details: map[string]string{
+				"reason": "banned",
+				"email":  user.Email,
+			},
+		})
 		data.Error = "Этот доступ заморожен. Админ уже снял этот маршрут с релиза."
 		a.render(w, r, http.StatusForbidden, "login", data)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		a.writeAuditLog(r.Context(), r, user, store.AuditLogInput{
+			Scope:      "auth",
+			Action:     "login_failed",
+			TargetType: "user",
+			TargetKey:  strconv.FormatInt(user.ID, 10),
+			Status:     "warn",
+			Details: map[string]string{
+				"reason": "bad_password",
+				"email":  user.Email,
+			},
+		})
 		data.Error = "Почта или пароль не совпали. grep ничего не нашел."
 		a.render(w, r, http.StatusUnauthorized, "login", data)
 		return
@@ -722,14 +821,37 @@ func (a *App) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.writeAuditLog(r.Context(), r, user, store.AuditLogInput{
+		Scope:      "auth",
+		Action:     "login_succeeded",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(user.ID, 10),
+		Details: map[string]string{
+			"email": user.Email,
+		},
+	})
+
 	http.Redirect(w, r, "/dashboard?notice=logged-in", http.StatusSeeOther)
 }
 
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
+	user := a.currentUser(r)
 	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
 		if err := a.store.DeleteSession(r.Context(), cookie.Value); err != nil && !errors.Is(err, store.ErrSessionNotFound) {
 			log.Printf("delete session: %v", err)
 		}
+	}
+
+	if user != nil {
+		a.writeAuditLog(r.Context(), r, user, store.AuditLogInput{
+			Scope:      "auth",
+			Action:     "logout",
+			TargetType: "user",
+			TargetKey:  strconv.FormatInt(user.ID, 10),
+			Details: map[string]string{
+				"email": user.Email,
+			},
+		})
 	}
 
 	a.clearSessionCookie(w)
@@ -1016,6 +1138,12 @@ func noticeFromRequest(r *http.Request) string {
 		return "Вопрос для test-блока добавлен."
 	case "test-question-deleted":
 		return "Вопрос удален из test-блока."
+	case "user-admin-updated":
+		return "Роль пользователя обновлена."
+	case "user-ban-updated":
+		return "Статус доступа пользователя обновлен."
+	case "user-deleted":
+		return "Пользователь удален."
 	case "article-created":
 		return "Урок создан. Теперь можно спокойно шлифовать markdown и порядок блока."
 	case "article-saved":

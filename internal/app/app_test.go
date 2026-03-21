@@ -1310,7 +1310,7 @@ func TestAdminCanManageUsers(t *testing.T) {
 		return http.ErrUseLastResponse
 	}
 
-	indexRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin", nil)
+	indexRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin/users", nil)
 	if err != nil {
 		t.Fatalf("build admin request: %v", err)
 	}
@@ -1323,7 +1323,7 @@ func TestAdminCanManageUsers(t *testing.T) {
 	defer indexResponse.Body.Close()
 
 	if indexResponse.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected admin page status: %d", indexResponse.StatusCode)
+		t.Fatalf("unexpected admin users page status: %d", indexResponse.StatusCode)
 	}
 
 	if body := readBody(t, indexResponse.Body); !strings.Contains(body, "member@example.com") {
@@ -1401,6 +1401,29 @@ func TestAdminCanManageUsers(t *testing.T) {
 
 	if _, err := st.UserByID(ctx, member.ID); !errors.Is(err, store.ErrUserNotFound) {
 		t.Fatalf("expected deleted user to be gone, got %v", err)
+	}
+
+	logsRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin/logs", nil)
+	if err != nil {
+		t.Fatalf("build audit logs request: %v", err)
+	}
+	logsRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	logsResponse, err := client.Do(logsRequest)
+	if err != nil {
+		t.Fatalf("audit logs request: %v", err)
+	}
+	defer logsResponse.Body.Close()
+
+	if logsResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected audit logs page status: %d", logsResponse.StatusCode)
+	}
+
+	logsBody := readBody(t, logsResponse.Body)
+	for _, fragment := range []string{"admin@example.com", "member@example.com"} {
+		if !strings.Contains(logsBody, fragment) {
+			t.Fatalf("expected audit logs page to contain %q, got: %s", fragment, logsBody)
+		}
 	}
 }
 

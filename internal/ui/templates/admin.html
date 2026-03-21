@@ -3,179 +3,254 @@
 {{define "body"}}
 <section class="admin-hero">
   <div>
-    <div class="eyebrow">админка</div>
-    <h1 class="section-title">Пользователи, тесты и контроль без цирка.</h1>
-    <p class="lead">Здесь живут бан, выдача админки и вопросы для test-блоков.</p>
+    <div class="eyebrow">admin</div>
+    <h1 class="section-title">Контент, пользователи и аудит без свалки в одном экране.</h1>
+    <p class="lead">Админка разбита на три секции: уроки и тесты, список пользователей и журнал чувствительных действий.</p>
   </div>
 </section>
 
-<section class="admin-table-shell">
-  <div class="admin-table-head">
-    <strong>Уроки в markdown</strong>
-    <a class="ghost-button" href="/admin/articles/new">Новый урок</a>
-  </div>
+<nav class="admin-subnav" aria-label="Разделы админки">
+  {{range .AdminNav}}
+    <a class="admin-subnav-link {{if .Active}}is-active{{end}}" href="{{.Href}}">{{.Label}}</a>
+  {{end}}
+</nav>
 
-  <div class="admin-user-list">
-    {{range .AdminArticles}}
-      <article class="admin-user-card">
-        <div class="admin-user-main">
-          <div class="admin-user-title">
-            <strong>{{.Title}}</strong>
-            <span>{{.Slug}}</span>
-          </div>
-          <div class="admin-user-meta">
-            <span class="admin-pill">{{.Module}}</span>
-            <span class="admin-pill">{{.Kind}}</span>
-            <span class="admin-pill {{if .Published}}is-admin{{else}}is-banned{{end}}">{{if .Published}}published{{else}}draft{{end}}</span>
-            <span class="admin-created">{{.UpdatedLabel}}</span>
-          </div>
-        </div>
+{{if eq .AdminSection "articles"}}
+  <section class="admin-table-shell">
+    <div class="admin-table-head">
+      <div>
+        <strong>Уроки в markdown</strong>
+        <p class="admin-section-copy">Приватный контент лежит на сервере, а тут ты управляешь порядком, типом блока и публикацией.</p>
+      </div>
+      <a class="ghost-button" href="/admin/articles/new">Новый урок</a>
+    </div>
 
-        <div class="admin-user-actions">
-          <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
-        </div>
-      </article>
-    {{else}}
-      <article class="article-card article-card-empty">
-        <h2>Пока без уроков</h2>
-        <p>Создай первый markdown-блок через админку, и он появится в маршруте.</p>
-      </article>
-    {{end}}
-  </div>
-</section>
-
-<section class="admin-table-shell">
-  <div class="admin-table-head">
-    <strong>Пользователи</strong>
-    <span>{{len .AdminUsers}} всего</span>
-  </div>
-
-  <div class="admin-user-list">
-    {{range .AdminUsers}}
-      <article class="admin-user-card {{if .IsBanned}}is-banned{{end}}">
-        <div class="admin-user-main">
-          <div class="admin-user-title">
-            <strong>{{.Username}}</strong>
-            <span>{{.Email}}</span>
-          </div>
-          <div class="admin-user-meta">
-            <span class="admin-pill {{if .IsAdmin}}is-admin{{end}}">{{if .IsAdmin}}admin{{else}}user{{end}}</span>
-            <span class="admin-pill {{if .IsBanned}}is-banned{{end}}">{{if .IsBanned}}banned{{else}}active{{end}}</span>
-            {{if .IsCurrentUser}}
-              <span class="admin-pill">you</span>
-            {{end}}
-            <span class="admin-created">{{.CreatedLabel}}</span>
-          </div>
-        </div>
-
-        <div class="admin-user-actions">
-          {{if not .IsCurrentUser}}
-            <form method="post" action="/admin/users/{{.ID}}/admin">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="value" value="{{if .IsAdmin}}0{{else}}1{{end}}">
-              <button class="ghost-button" type="submit">{{if .IsAdmin}}Снять админку{{else}}Выдать админку{{end}}</button>
-            </form>
-
-            <form method="post" action="/admin/users/{{.ID}}/ban">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="value" value="{{if .IsBanned}}0{{else}}1{{end}}">
-              <button class="ghost-button" type="submit">{{if .IsBanned}}Разбанить{{else}}Забанить{{end}}</button>
-            </form>
-
-            <form method="post" action="/admin/users/{{.ID}}/delete">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
-            </form>
-          {{else}}
-            <span class="admin-user-lock">Себя этим экраном не ломаем.</span>
-          {{end}}
-        </div>
-      </article>
-    {{else}}
-      <article class="article-card article-card-empty">
-        <h2>Пока никого нет</h2>
-        <p>Как только появятся пользователи, они будут здесь.</p>
-      </article>
-    {{end}}
-  </div>
-</section>
-
-<section class="admin-table-shell">
-  <div class="admin-table-head">
-    <strong>Вопросы для test-блоков</strong>
-    <span>{{len .AdminTestQuestions}} вопросов</span>
-  </div>
-
-  <div class="admin-test-grid">
-    <article class="admin-test-form-card">
-      <h2>Добавить вопрос</h2>
-      <form method="post" action="/admin/tests/questions" class="admin-test-form">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <label class="field">
-          <span>Тестовый урок</span>
-          <select name="lesson_slug" required>
-            <option value="">Выбери test-блок</option>
-            {{range .AdminTestLessons}}
-              <option value="{{.Slug}}">{{.Title}}</option>
-            {{end}}
-          </select>
-        </label>
-
-        <label class="field">
-          <span>Вопрос</span>
-          <textarea name="prompt" rows="4" required placeholder="Например: Где смотреть логи текущего boot?"></textarea>
-        </label>
-
-        <label class="field">
-          <span>Варианты ответа</span>
-          <textarea name="options" rows="6" required placeholder="Один вариант на строку"></textarea>
-        </label>
-
-        <label class="field">
-          <span>Номер правильного ответа</span>
-          <input type="number" name="correct_option" min="1" required placeholder="1">
-        </label>
-
-        <label class="field">
-          <span>Пояснение</span>
-          <textarea name="explanation" rows="3" placeholder="Опционально: почему этот ответ правильный"></textarea>
-        </label>
-
-        <button class="primary-button" type="submit">Добавить вопрос</button>
-      </form>
-    </article>
-
-    <div class="admin-test-question-list">
-      {{range .AdminTestQuestions}}
-        <article class="admin-test-question-card">
-          <div class="admin-test-question-head">
-            <div>
-              <strong>{{.LessonTitle}}</strong>
-              <span>{{.LessonSlug}}</span>
+    <div class="admin-user-list">
+      {{range .AdminArticles}}
+        <article class="admin-user-card">
+          <div class="admin-user-main">
+            <div class="admin-user-title">
+              <strong>{{.Title}}</strong>
+              <span>{{.Slug}}</span>
             </div>
-            <form method="post" action="/admin/tests/questions/{{.ID}}/delete">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
-            </form>
+            <div class="admin-user-meta">
+              <span class="admin-pill">{{.Module}}</span>
+              <span class="admin-pill">{{.Kind}}</span>
+              <span class="admin-pill {{if .Published}}is-admin{{else}}is-banned{{end}}">{{if .Published}}published{{else}}draft{{end}}</span>
+              <span class="admin-created">{{.UpdatedLabel}}</span>
+            </div>
           </div>
 
-          <p class="admin-test-question-prompt">{{.Prompt}}</p>
-
-          <ul class="admin-test-option-list">
-            {{range .Options}}
-              <li>{{.}}</li>
-            {{end}}
-          </ul>
-
-          <div class="admin-test-answer">Правильный ответ: {{.AnswerLabel}}</div>
+          <div class="admin-user-actions">
+            <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+          </div>
         </article>
       {{else}}
         <article class="article-card article-card-empty">
-          <h2>Пока без вопросов</h2>
-          <p>Добавь первый набор ответов для test-блока, и уроки начнут реально пропускать дальше.</p>
+          <h2>Пока без уроков</h2>
+          <p>Создай первый markdown-блок через админку, и он появится в маршруте.</p>
         </article>
       {{end}}
     </div>
-  </div>
-</section>
+  </section>
+
+  <section class="admin-table-shell">
+    <div class="admin-table-head">
+      <div>
+        <strong>Вопросы для test-блоков</strong>
+        <p class="admin-section-copy">Тут живут варианты ответов для тестовых уроков. Из этого же набора считается реальный прогресс.</p>
+      </div>
+      <span>{{len .AdminTestQuestions}} вопросов</span>
+    </div>
+
+    <div class="admin-test-grid">
+      <article class="admin-test-form-card">
+        <h2>Добавить вопрос</h2>
+        <form method="post" action="/admin/tests/questions" class="admin-test-form">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+          <label class="field">
+            <span>Тестовый урок</span>
+            <select name="lesson_slug" required>
+              <option value="">Выбери test-блок</option>
+              {{range .AdminTestLessons}}
+                <option value="{{.Slug}}">{{.Title}}</option>
+              {{end}}
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Вопрос</span>
+            <textarea name="prompt" rows="4" required placeholder="Например: где смотреть логи текущего boot?"></textarea>
+          </label>
+
+          <label class="field">
+            <span>Варианты ответа</span>
+            <textarea name="options" rows="6" required placeholder="Один вариант на строку"></textarea>
+          </label>
+
+          <label class="field">
+            <span>Номер правильного ответа</span>
+            <input type="number" name="correct_option" min="1" required placeholder="1">
+          </label>
+
+          <label class="field">
+            <span>Пояснение</span>
+            <textarea name="explanation" rows="3" placeholder="Опционально: почему это правильный ответ"></textarea>
+          </label>
+
+          <button class="primary-button" type="submit">Добавить вопрос</button>
+        </form>
+      </article>
+
+      <div class="admin-test-question-list">
+        {{range .AdminTestQuestions}}
+          <article class="admin-test-question-card">
+            <div class="admin-test-question-head">
+              <div>
+                <strong>{{.LessonTitle}}</strong>
+                <span>{{.LessonSlug}}</span>
+              </div>
+              <form method="post" action="/admin/tests/questions/{{.ID}}/delete">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
+              </form>
+            </div>
+
+            <p class="admin-test-question-prompt">{{.Prompt}}</p>
+
+            <ul class="admin-test-option-list">
+              {{range .Options}}
+                <li>{{.}}</li>
+              {{end}}
+            </ul>
+
+            <div class="admin-test-answer">Правильный ответ: {{.AnswerLabel}}</div>
+          </article>
+        {{else}}
+          <article class="article-card article-card-empty">
+            <h2>Пока без вопросов</h2>
+            <p>Добавь первый набор ответов для test-блока, и уроки начнут открывать следующий шаг по результату теста.</p>
+          </article>
+        {{end}}
+      </div>
+    </div>
+  </section>
+{{end}}
+
+{{if eq .AdminSection "users"}}
+  <section class="admin-table-shell">
+    <div class="admin-table-head">
+      <div>
+        <strong>Пользователи</strong>
+        <p class="admin-section-copy">Здесь бан, выдача админки и удаление аккаунтов. Без ручной возни в базе.</p>
+      </div>
+      <span>{{len .AdminUsers}} всего</span>
+    </div>
+
+    <div class="admin-user-list">
+      {{range .AdminUsers}}
+        <article class="admin-user-card {{if .IsBanned}}is-banned{{end}}">
+          <div class="admin-user-main">
+            <div class="admin-user-title">
+              <strong>{{.Username}}</strong>
+              <span>{{.Email}}</span>
+            </div>
+            <div class="admin-user-meta">
+              <span class="admin-pill {{if .IsAdmin}}is-admin{{end}}">{{if .IsAdmin}}admin{{else}}user{{end}}</span>
+              <span class="admin-pill {{if .IsBanned}}is-banned{{end}}">{{if .IsBanned}}banned{{else}}active{{end}}</span>
+              {{if .IsCurrentUser}}
+                <span class="admin-pill">you</span>
+              {{end}}
+              <span class="admin-created">{{.CreatedLabel}}</span>
+            </div>
+          </div>
+
+          <div class="admin-user-actions">
+            {{if not .IsCurrentUser}}
+              <form method="post" action="/admin/users/{{.ID}}/admin">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="value" value="{{if .IsAdmin}}0{{else}}1{{end}}">
+                <button class="ghost-button" type="submit">{{if .IsAdmin}}Снять админку{{else}}Выдать админку{{end}}</button>
+              </form>
+
+              <form method="post" action="/admin/users/{{.ID}}/ban">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="value" value="{{if .IsBanned}}0{{else}}1{{end}}">
+                <button class="ghost-button" type="submit">{{if .IsBanned}}Разбанить{{else}}Забанить{{end}}</button>
+              </form>
+
+              <form method="post" action="/admin/users/{{.ID}}/delete">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="ghost-button ghost-button-danger" type="submit">Удалить</button>
+              </form>
+            {{else}}
+              <span class="admin-user-lock">Себя этим экраном не ломаем.</span>
+            {{end}}
+          </div>
+        </article>
+      {{else}}
+        <article class="article-card article-card-empty">
+          <h2>Пока никого нет</h2>
+          <p>Как только появятся пользователи, они будут здесь.</p>
+        </article>
+      {{end}}
+    </div>
+  </section>
+{{end}}
+
+{{if eq .AdminSection "logs"}}
+  <section class="admin-table-shell">
+    <div class="admin-table-head">
+      <div>
+        <strong>Audit log</strong>
+        <p class="admin-section-copy">Здесь видны admin-действия и чувствительные события: логин, регистрация, сброс пароля, апрувы и бан.</p>
+      </div>
+      <span>{{len .AdminAuditLogs}} событий</span>
+    </div>
+
+    <div class="admin-log-list">
+      {{range .AdminAuditLogs}}
+        <article class="admin-log-card">
+          <div class="admin-log-head">
+            <div class="admin-log-title">
+              <strong>{{.Action}}</strong>
+              <span>{{.CreatedLabel}}</span>
+            </div>
+            <div class="admin-log-meta">
+              <span class="admin-pill">{{.Scope}}</span>
+              <span class="admin-pill admin-pill-status admin-pill-status-{{.StatusTone}}">{{.Status}}</span>
+            </div>
+          </div>
+
+          <div class="admin-log-grid">
+            <div>
+              <span>actor</span>
+              <strong>{{.ActorLabel}}</strong>
+            </div>
+            <div>
+              <span>target</span>
+              <strong>{{.TargetLabel}}</strong>
+            </div>
+            <div>
+              <span>ip</span>
+              <strong>{{.IPAddress}}</strong>
+            </div>
+            <div>
+              <span>ua</span>
+              <strong>{{.UserAgent}}</strong>
+            </div>
+          </div>
+
+          <p class="admin-log-details">{{.Details}}</p>
+        </article>
+      {{else}}
+        <article class="article-card article-card-empty">
+          <h2>Лог пока пуст</h2>
+          <p>Как только появятся admin-действия и чувствительные события, они будут складироваться здесь.</p>
+        </article>
+      {{end}}
+    </div>
+  </section>
+{{end}}
 {{end}}

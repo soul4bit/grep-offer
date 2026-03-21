@@ -176,6 +176,16 @@ func (c *RegistrationCoordinator) confirmationURL(baseURL, rawToken string) (str
 func (a *App) handleRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
 	if token == "" || a.registration == nil {
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "registration",
+			Action:     "registration_confirmed",
+			TargetType: "registration_token",
+			TargetKey:  truncateText(token, 24),
+			Status:     "warn",
+			Details: map[string]string{
+				"reason": "missing_or_disabled",
+			},
+		})
 		http.Redirect(w, r, "/login?notice=confirmation-invalid", http.StatusSeeOther)
 		return
 	}
@@ -183,10 +193,27 @@ func (a *App) handleRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	user, err := a.registration.Confirm(r.Context(), token)
 	if err != nil {
 		if errors.Is(err, store.ErrRegistrationTokenNotFound) {
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_confirmed",
+				TargetType: "registration_token",
+				TargetKey:  truncateText(token, 24),
+				Status:     "warn",
+				Details: map[string]string{
+					"reason": "invalid_token",
+				},
+			})
 			http.Redirect(w, r, "/login?notice=confirmation-invalid", http.StatusSeeOther)
 			return
 		}
 
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "registration",
+			Action:     "registration_confirmed",
+			TargetType: "registration_token",
+			TargetKey:  truncateText(token, 24),
+			Status:     "error",
+		})
 		http.Error(w, "confirm registration failed", http.StatusInternalServerError)
 		return
 	}
@@ -195,6 +222,16 @@ func (a *App) handleRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "create session failed", http.StatusInternalServerError)
 		return
 	}
+
+	a.writeAuditLog(r.Context(), r, user, store.AuditLogInput{
+		Scope:      "registration",
+		Action:     "registration_confirmed",
+		TargetType: "user",
+		TargetKey:  strconv.FormatInt(user.ID, 10),
+		Details: map[string]string{
+			"email": user.Email,
+		},
+	})
 
 	http.Redirect(w, r, "/dashboard?notice=email-confirmed", http.StatusSeeOther)
 }
@@ -234,11 +271,31 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 		request, approveErr := a.registration.Approve(r.Context(), requestID, requestBaseURL(r))
 		if approveErr != nil {
 			log.Printf("approve registration request %d: %v", requestID, approveErr)
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_approved",
+				TargetType: "registration_request",
+				TargetKey:  strconv.FormatInt(requestID, 10),
+				Status:     "error",
+				Details: map[string]string{
+					"reason": approveErr.Error(),
+				},
+			})
 			_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, telegramCallbackErrorText(approveErr))
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "registration",
+			Action:     "registration_approved",
+			TargetType: "registration_request",
+			TargetKey:  strconv.FormatInt(requestID, 10),
+			Details: map[string]string{
+				"username": request.Username,
+				"email":    request.Email,
+			},
+		})
 		_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, "Письмо с подтверждением отправлено.")
 		if callback.Message != nil {
 			if err := a.registration.notifier.MarkRegistrationApproved(
@@ -255,11 +312,31 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 		request, rejectErr := a.registration.Reject(r.Context(), requestID)
 		if rejectErr != nil {
 			log.Printf("reject registration request %d: %v", requestID, rejectErr)
+			a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+				Scope:      "registration",
+				Action:     "registration_rejected",
+				TargetType: "registration_request",
+				TargetKey:  strconv.FormatInt(requestID, 10),
+				Status:     "error",
+				Details: map[string]string{
+					"reason": rejectErr.Error(),
+				},
+			})
 			_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, telegramCallbackErrorText(rejectErr))
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
+		a.writeAuditLog(r.Context(), r, nil, store.AuditLogInput{
+			Scope:      "registration",
+			Action:     "registration_rejected",
+			TargetType: "registration_request",
+			TargetKey:  strconv.FormatInt(requestID, 10),
+			Details: map[string]string{
+				"username": request.Username,
+				"email":    request.Email,
+			},
+		})
 		_ = a.registration.notifier.AnswerCallbackQuery(r.Context(), callback.ID, "Заявка отклонена.")
 		if callback.Message != nil {
 			if err := a.registration.notifier.MarkRegistrationRejected(
