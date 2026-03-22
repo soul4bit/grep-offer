@@ -43,6 +43,7 @@ type App struct {
 	uploads               http.Handler
 	uploadsDir            string
 	deployLockPath        string
+	rateLimiter           *rateLimiter
 	articles              *content.Library
 	registration          *RegistrationCoordinator
 	passwordReset         *PasswordResetCoordinator
@@ -362,6 +363,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		uploads:               uploads,
 		uploadsDir:            uploadsDir,
 		deployLockPath:        strings.TrimSpace(cfg.DeployLockPath),
+		rateLimiter:           newRateLimiter(defaultRateLimitRules()),
 		articles:              cfg.Articles,
 		registration:          cfg.Registration,
 		passwordReset:         cfg.PasswordReset,
@@ -414,7 +416,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /password/reset", a.handlePasswordResetSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
-	return a.withSecurityHeaders(a.withDeployLock(a.withCSRFProtection(a.withCurrentUser(mux))))
+	return a.withSecurityHeaders(a.withRateLimit(a.withDeployLock(a.withCSRFProtection(a.withCurrentUser(mux)))))
 }
 
 func (a *App) requireAuthenticatedHandler(next http.Handler) http.Handler {

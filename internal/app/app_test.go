@@ -549,6 +549,116 @@ func TestDeployLockRejectsWriteRequests(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitReturnsTooManyRequests(t *testing.T) {
+	t.Parallel()
+
+	limiter := newRateLimiter([]rateLimitRule{
+		{
+			name:    "login",
+			method:  http.MethodPost,
+			path:    "/login",
+			limit:   1,
+			window:  time.Minute,
+			message: "Слишком много попыток входа. Подожди немного и попробуй снова.",
+		},
+	})
+
+	testApp, _ := newTestApp(t, testAppOptions{rateLimiter: limiter})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	first, err := postFormWithCSRF(server.Client(), server.URL+"/login", url.Values{
+		"email":    {"member@example.com"},
+		"password": {"password123"},
+	})
+	if err != nil {
+		t.Fatalf("first login request: %v", err)
+	}
+	defer first.Body.Close()
+
+	second, err := postFormWithCSRF(server.Client(), server.URL+"/login", url.Values{
+		"email":    {"member@example.com"},
+		"password": {"password123"},
+	})
+	if err != nil {
+		t.Fatalf("second login request: %v", err)
+	}
+	defer second.Body.Close()
+
+	if second.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("unexpected status: %d", second.StatusCode)
+	}
+	if got := second.Header.Get("Retry-After"); got != "60" {
+		t.Fatalf("unexpected retry-after header: %q", got)
+	}
+	if body := readBody(t, second.Body); !strings.Contains(body, "Слишком много попыток входа") {
+		t.Fatalf("unexpected rate limit body: %s", body)
+	}
+}
+
+func TestAdminUploadRateLimitReturnsJSON(t *testing.T) {
+	t.Parallel()
+
+	limiter := newRateLimiter([]rateLimitRule{
+		{
+			name:     "admin-image-upload",
+			method:   http.MethodPost,
+			path:     "/admin/uploads/images",
+			limit:    1,
+			window:   time.Minute,
+			message:  "Слишком много загрузок за короткое время. Подожди немного и попробуй снова.",
+			jsonMode: true,
+		},
+	})
+
+	uploadsDir := filepath.Join(t.TempDir(), "uploads")
+	testApp, st := newTestApp(t, testAppOptions{
+		uploadsDir:  uploadsDir,
+		rateLimiter: limiter,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-upload-rate-limit-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	first := uploadEditorImageRequest(t, server.URL, sessionToken)
+	defer first.Body.Close()
+	if first.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected first upload status: %d", first.StatusCode)
+	}
+
+	second := uploadEditorImageRequest(t, server.URL, sessionToken)
+	defer second.Body.Close()
+	if second.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("unexpected second upload status: %d", second.StatusCode)
+	}
+	if got := second.Header.Get("Retry-After"); got != "60" {
+		t.Fatalf("unexpected retry-after header: %q", got)
+	}
+
+	var payload struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(second.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode rate limit payload: %v", err)
+	}
+	if !strings.Contains(payload.Error, "Слишком много загрузок") {
+		t.Fatalf("unexpected rate limit error: %s", payload.Error)
+	}
+}
+
 func TestLoginRejectsMissingCSRF(t *testing.T) {
 	t.Parallel()
 
@@ -2234,6 +2344,7 @@ type testAppOptions struct {
 	articleDir     string
 	uploadsDir     string
 	deployLockPath string
+	rateLimiter    *rateLimiter
 }
 
 func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
@@ -2291,6 +2402,9 @@ func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
+	}
+	if options.rateLimiter != nil {
+		app.rateLimiter = options.rateLimiter
 	}
 
 	return app, st
@@ -2385,6 +2499,50 @@ func postFormWithCSRF(client *http.Client, targetURL string, form url.Values) (*
 func addCSRFCookieAndHeader(request *http.Request) {
 	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: testCSRFToken()})
 	request.Header.Set(csrfHeaderName, testCSRFToken())
+}
+
+func uploadEditorImageRequest(t *testing.T, serverURL, sessionToken string) *http.Response {
+	t.Helper()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("image", "linux-diagram.png")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+
+	pngBytes := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+		0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
+		0x18, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+	if _, err := part.Write(pngBytes); err != nil {
+		t.Fatalf("write png payload: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	request, err := http.NewRequest(http.MethodPost, serverURL+"/admin/uploads/images", &body)
+	if err != nil {
+		t.Fatalf("build upload request: %v", err)
+	}
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(request)
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("upload request: %v", err)
+	}
+
+	return response
 }
 
 func testCSRFToken() string {
