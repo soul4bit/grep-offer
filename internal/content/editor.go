@@ -39,26 +39,16 @@ type saveFrontMatter struct {
 }
 
 func (l *Library) ListAll() ([]ManagedArticle, error) {
-	files, err := l.articleFiles()
+	snapshot, err := l.snapshot()
 	if err != nil {
 		return nil, err
 	}
 
-	articles := make([]ManagedArticle, 0, len(files))
-	for _, path := range files {
-		meta, _, err := l.parseFile(path)
-		if err != nil {
-			return nil, err
-		}
-
-		info, err := os.Stat(path)
-		if err != nil {
-			return nil, err
-		}
-
+	articles := make([]ManagedArticle, 0, len(snapshot.articles))
+	for _, article := range snapshot.articles {
 		articles = append(articles, ManagedArticle{
-			ArticleMeta: meta,
-			UpdatedAt:   info.ModTime().UTC(),
+			ArticleMeta: article.meta,
+			UpdatedAt:   article.updatedAt,
 		})
 	}
 
@@ -67,20 +57,21 @@ func (l *Library) ListAll() ([]ManagedArticle, error) {
 }
 
 func (l *Library) EditableBySlug(slug string) (*EditableArticle, error) {
-	path, err := l.articlePathBySlug(slug)
+	snapshot, err := l.snapshot()
 	if err != nil {
 		return nil, err
 	}
 
-	meta, body, err := l.parseFile(path)
-	if err != nil {
-		return nil, err
+	index, ok := snapshot.slugIndex[normalizeSlug(slug)]
+	if !ok {
+		return nil, ErrArticleNotFound
 	}
+	article := snapshot.articles[index]
 
 	return &EditableArticle{
-		OriginalSlug: meta.Slug,
-		ArticleMeta:  meta,
-		Body:         body,
+		OriginalSlug: article.meta.Slug,
+		ArticleMeta:  article.meta,
+		Body:         article.body,
 	}, nil
 }
 
@@ -194,6 +185,7 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 		}
 	}
 
+	l.invalidateCache()
 	return l.EditableBySlug(slug)
 }
 
@@ -214,6 +206,7 @@ func (l *Library) DeleteBySlug(slug string) error {
 		return err
 	}
 
+	l.invalidateCache()
 	return nil
 }
 
@@ -253,22 +246,17 @@ func (l *Library) articlePathBySlug(slug string) (string, error) {
 		return "", ErrArticleNotFound
 	}
 
-	files, err := l.articleFiles()
+	snapshot, err := l.snapshot()
 	if err != nil {
 		return "", err
 	}
 
-	for _, path := range files {
-		meta, _, err := l.parseFile(path)
-		if err != nil {
-			return "", err
-		}
-		if meta.Slug == normalizedSlug {
-			return path, nil
-		}
+	index, ok := snapshot.slugIndex[normalizedSlug]
+	if !ok {
+		return "", ErrArticleNotFound
 	}
 
-	return "", ErrArticleNotFound
+	return snapshot.articles[index].path, nil
 }
 
 func (l *Library) safeArticlePath(fileName string) (string, error) {

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 	"unicode"
 
 	"github.com/yuin/goldmark"
@@ -23,6 +25,22 @@ var ErrArticleNotFound = errors.New("article not found")
 type Library struct {
 	dir      string
 	renderer goldmark.Markdown
+	mu       sync.RWMutex
+	cache    *librarySnapshot
+}
+
+type librarySnapshot struct {
+	signature string
+	articles  []cachedArticle
+	slugIndex map[string]int
+}
+
+type cachedArticle struct {
+	path      string
+	meta      ArticleMeta
+	body      string
+	html      template.HTML
+	updatedAt time.Time
 }
 
 type ArticleMeta struct {
@@ -93,25 +111,20 @@ func RenderMarkdown(body string) (template.HTML, error) {
 }
 
 func (l *Library) List() ([]ArticleMeta, error) {
-	files, err := l.articleFiles()
+	snapshot, err := l.snapshot()
 	if err != nil {
 		return nil, err
 	}
 
-	articles := make([]ArticleMeta, 0, len(files))
-	for _, path := range files {
-		meta, _, err := l.parseFile(path)
-		if err != nil {
-			return nil, err
-		}
-		if !meta.Published {
+	articles := make([]ArticleMeta, 0, len(snapshot.articles))
+	for _, article := range snapshot.articles {
+		if !article.meta.Published {
 			continue
 		}
 
-		articles = append(articles, meta)
+		articles = append(articles, article.meta)
 	}
 
-	sortArticles(articles)
 	return articles, nil
 }
 
@@ -156,68 +169,57 @@ func (l *Library) Curriculum() ([]Module, error) {
 }
 
 func (l *Library) LessonBySlug(slug string) (*Lesson, error) {
-	files, err := l.articleFiles()
+	snapshot, err := l.snapshot()
 	if err != nil {
 		return nil, err
 	}
 
-	articles := make([]ArticleMeta, 0, len(files))
-	var targetBody string
-	var targetMeta ArticleMeta
 	normalizedSlug := normalizeSlug(slug)
-
-	for _, path := range files {
-		meta, body, err := l.parseFile(path)
-		if err != nil {
-			return nil, err
-		}
-		if !meta.Published {
-			continue
-		}
-
-		articles = append(articles, meta)
-		if meta.Slug == normalizedSlug {
-			targetMeta = meta
-			targetBody = body
-		}
-	}
-
-	if targetMeta.Slug == "" {
+	if normalizedSlug == "" {
 		return nil, ErrArticleNotFound
 	}
 
-	sortArticles(articles)
+	targetIndex, ok := snapshot.slugIndex[normalizedSlug]
+	if !ok {
+		return nil, ErrArticleNotFound
+	}
+	target := snapshot.articles[targetIndex]
+	if !target.meta.Published {
+		return nil, ErrArticleNotFound
+	}
 
-	var rendered bytes.Buffer
-	if err := l.renderer.Convert([]byte(targetBody), &rendered); err != nil {
-		return nil, fmt.Errorf("render markdown %s: %w", targetMeta.Slug, err)
+	published := make([]cachedArticle, 0, len(snapshot.articles))
+	for _, article := range snapshot.articles {
+		if article.meta.Published {
+			published = append(published, article)
+		}
 	}
 
 	lesson := &Lesson{
 		Article: Article{
-			ArticleMeta: targetMeta,
-			HTML:        template.HTML(rendered.String()),
+			ArticleMeta: target.meta,
+			HTML:        target.html,
 		},
 		Module: Module{
-			Title: targetMeta.Module,
-			Index: moduleIndex(targetMeta.ModuleOrder),
-			Order: targetMeta.ModuleOrder,
+			Title: target.meta.Module,
+			Index: moduleIndex(target.meta.ModuleOrder),
+			Order: target.meta.ModuleOrder,
 		},
 	}
 
-	for i := range articles {
-		if articles[i].ModuleOrder == targetMeta.ModuleOrder && articles[i].Module == targetMeta.Module {
-			lesson.ModuleItems = append(lesson.ModuleItems, articles[i])
+	for i := range published {
+		if published[i].meta.ModuleOrder == target.meta.ModuleOrder && published[i].meta.Module == target.meta.Module {
+			lesson.ModuleItems = append(lesson.ModuleItems, published[i].meta)
 		}
-		if articles[i].Slug != targetMeta.Slug {
+		if published[i].meta.Slug != target.meta.Slug {
 			continue
 		}
 		if i > 0 {
-			prev := articles[i-1]
+			prev := published[i-1].meta
 			lesson.Prev = &prev
 		}
-		if i+1 < len(articles) {
-			next := articles[i+1]
+		if i+1 < len(published) {
+			next := published[i+1].meta
 			lesson.Next = &next
 		}
 	}
@@ -234,6 +236,121 @@ func (l *Library) ArticleBySlug(slug string) (*Article, error) {
 		return nil, err
 	}
 	return &lesson.Article, nil
+}
+
+func (l *Library) snapshot() (*librarySnapshot, error) {
+	if l == nil {
+		return &librarySnapshot{}, nil
+	}
+
+	signature, files, err := l.signature()
+	if err != nil {
+		return nil, err
+	}
+
+	l.mu.RLock()
+	if l.cache != nil && l.cache.signature == signature {
+		snapshot := l.cache
+		l.mu.RUnlock()
+		return snapshot, nil
+	}
+	l.mu.RUnlock()
+
+	snapshot, err := l.loadSnapshot(signature, files)
+	if err != nil {
+		return nil, err
+	}
+
+	l.mu.Lock()
+	l.cache = snapshot
+	l.mu.Unlock()
+
+	return snapshot, nil
+}
+
+func (l *Library) invalidateCache() {
+	if l == nil {
+		return
+	}
+
+	l.mu.Lock()
+	l.cache = nil
+	l.mu.Unlock()
+}
+
+func (l *Library) signature() (string, []string, error) {
+	files, err := l.articleFiles()
+	if err != nil {
+		return "", nil, err
+	}
+
+	var builder strings.Builder
+	for _, path := range files {
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", nil, err
+		}
+		builder.WriteString(path)
+		builder.WriteByte('|')
+		builder.WriteString(fmt.Sprintf("%d|%d\n", info.ModTime().UTC().UnixNano(), info.Size()))
+	}
+
+	return builder.String(), files, nil
+}
+
+func (l *Library) loadSnapshot(signature string, files []string) (*librarySnapshot, error) {
+	articles := make([]cachedArticle, 0, len(files))
+	for _, path := range files {
+		meta, body, err := l.parseFile(path)
+		if err != nil {
+			return nil, err
+		}
+
+		var rendered bytes.Buffer
+		if err := l.renderer.Convert([]byte(body), &rendered); err != nil {
+			return nil, fmt.Errorf("render markdown %s: %w", meta.Slug, err)
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+
+		articles = append(articles, cachedArticle{
+			path:      path,
+			meta:      meta,
+			body:      body,
+			html:      template.HTML(rendered.String()),
+			updatedAt: info.ModTime().UTC(),
+		})
+	}
+
+	sort.Slice(articles, func(i, j int) bool {
+		switch {
+		case articles[i].meta.ModuleOrder != articles[j].meta.ModuleOrder:
+			return articles[i].meta.ModuleOrder < articles[j].meta.ModuleOrder
+		case articles[i].meta.BlockOrder != articles[j].meta.BlockOrder:
+			return articles[i].meta.BlockOrder < articles[j].meta.BlockOrder
+		case articles[i].meta.Order != articles[j].meta.Order:
+			return articles[i].meta.Order < articles[j].meta.Order
+		default:
+			return articles[i].meta.Title < articles[j].meta.Title
+		}
+	})
+
+	snapshot := &librarySnapshot{
+		signature: signature,
+		articles:  articles,
+		slugIndex: make(map[string]int, len(articles)),
+	}
+	for index, article := range articles {
+		if article.meta.Slug == "" {
+			continue
+		}
+		snapshot.slugIndex[article.meta.Slug] = index
+	}
+
+	return snapshot, nil
 }
 
 func (l *Library) articleFiles() ([]string, error) {
