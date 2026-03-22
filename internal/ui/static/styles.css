@@ -4368,6 +4368,12 @@ button.dashboard-checkpoint-pill {
   gap: 0.18rem;
 }
 
+.admin-editor-danger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .admin-editor-publish-copy strong {
   font-size: 0.98rem;
   color: var(--text);

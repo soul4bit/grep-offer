@@ -22,6 +22,12 @@ import (
 
 var ErrArticleNotFound = errors.New("article not found")
 
+const (
+	ArticleStatusDraft     = "draft"
+	ArticleStatusPublished = "published"
+	ArticleStatusArchived  = "archived"
+)
+
 type Library struct {
 	dir      string
 	renderer goldmark.Markdown
@@ -51,11 +57,11 @@ type ArticleMeta struct {
 	Stage       string
 	Module      string
 	Kind        string
+	Status      string
 	ReadingTime string
 	Order       int
 	ModuleOrder int
 	BlockOrder  int
-	Published   bool
 }
 
 type Module struct {
@@ -87,6 +93,7 @@ type frontMatter struct {
 	Stage       string `yaml:"stage"`
 	Module      string `yaml:"module"`
 	Kind        string `yaml:"kind"`
+	Status      string `yaml:"status"`
 	ReadingTime string `yaml:"reading_time"`
 	Order       int    `yaml:"order"`
 	ModuleOrder int    `yaml:"module_order"`
@@ -118,7 +125,7 @@ func (l *Library) List() ([]ArticleMeta, error) {
 
 	articles := make([]ArticleMeta, 0, len(snapshot.articles))
 	for _, article := range snapshot.articles {
-		if !article.meta.Published {
+		if article.meta.Status != ArticleStatusPublished {
 			continue
 		}
 
@@ -184,13 +191,13 @@ func (l *Library) LessonBySlug(slug string) (*Lesson, error) {
 		return nil, ErrArticleNotFound
 	}
 	target := snapshot.articles[targetIndex]
-	if !target.meta.Published {
+	if target.meta.Status != ArticleStatusPublished {
 		return nil, ErrArticleNotFound
 	}
 
 	published := make([]cachedArticle, 0, len(snapshot.articles))
 	for _, article := range snapshot.articles {
-		if article.meta.Published {
+		if article.meta.Status == ArticleStatusPublished {
 			published = append(published, article)
 		}
 	}
@@ -414,11 +421,11 @@ func (l *Library) parseFile(path string) (ArticleMeta, string, error) {
 		Stage:       strings.TrimSpace(fm.Stage),
 		Module:      strings.TrimSpace(fm.Module),
 		Kind:        normalizeKind(fm.Kind),
+		Status:      normalizeArticleStatus(fm.Status, fm.Published),
 		ReadingTime: strings.TrimSpace(fm.ReadingTime),
 		Order:       fm.Order,
 		ModuleOrder: fm.ModuleOrder,
 		BlockOrder:  fm.BlockOrder,
-		Published:   fm.Published == nil || *fm.Published,
 	}
 
 	if meta.Slug == "" {
@@ -541,6 +548,10 @@ func NormalizeSlug(value string) string {
 	return normalizeSlug(value)
 }
 
+func NormalizeArticleStatus(value string) string {
+	return normalizeArticleStatus(value, nil)
+}
+
 func normalizeKind(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "practice":
@@ -550,6 +561,23 @@ func normalizeKind(value string) string {
 	default:
 		return "theory"
 	}
+}
+
+func normalizeArticleStatus(raw string, legacyPublished *bool) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case ArticleStatusPublished:
+		return ArticleStatusPublished
+	case ArticleStatusArchived:
+		return ArticleStatusArchived
+	case ArticleStatusDraft:
+		return ArticleStatusDraft
+	}
+
+	if legacyPublished == nil || *legacyPublished {
+		return ArticleStatusPublished
+	}
+
+	return ArticleStatusDraft
 }
 
 func sortArticles(articles []ArticleMeta) {

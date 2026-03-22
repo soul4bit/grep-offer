@@ -833,7 +833,7 @@ module: "Доставка"
 module_order: 2
 block_order: 1
 kind: "theory"
-published: true
+status: "archived"
 ---
 
 # Docker без религии
@@ -1342,7 +1342,7 @@ func TestAdminCanCreateMarkdownLesson(t *testing.T) {
 		"kind":         {"theory"},
 		"module_order": {"2"},
 		"block_order":  {"3"},
-		"published":    {"1"},
+		"status":       {"published"},
 		"body":         {"# Файловая система Linux\n\nКороткий текст.\n"},
 	}
 
@@ -1372,8 +1372,8 @@ func TestAdminCanCreateMarkdownLesson(t *testing.T) {
 	if article.Title != "Файловая система Linux" {
 		t.Fatalf("unexpected article title: %#v", article)
 	}
-	if !article.Published {
-		t.Fatalf("expected article to be published")
+	if article.Status != content.ArticleStatusPublished {
+		t.Fatalf("expected article to be published, got %q", article.Status)
 	}
 	if !strings.Contains(article.Body, "Короткий текст.") {
 		t.Fatalf("unexpected article body: %q", article.Body)
@@ -1423,7 +1423,7 @@ func TestAdminCanSaveAndOpenPublishedLesson(t *testing.T) {
 		"kind":         {"theory"},
 		"module_order": {"3"},
 		"block_order":  {"2"},
-		"published":    {"1"},
+		"status":       {"published"},
 		"after_save":   {"open"},
 		"body":         {"# Логи в Linux\n\nСначала смотрим journalctl.\n"},
 	}
@@ -1527,6 +1527,112 @@ published: true
 	library := content.NewLibrary(contentDir)
 	if _, err := library.EditableBySlug("linux-logs"); !errors.Is(err, content.ErrArticleNotFound) {
 		t.Fatalf("expected article to be deleted, got %v", err)
+	}
+}
+
+func TestAdminCanArchiveAndRestoreLesson(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	seed := `---
+title: "Логи в Linux"
+slug: "linux-logs"
+summary: "Короткий блок про journalctl."
+badge: "linux"
+stage: "Linux Base"
+module: "Логи"
+module_order: 3
+block_order: 2
+kind: "theory"
+status: "published"
+---
+
+# Логи в Linux
+
+Смотрим journalctl.
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "03-02-linux-logs.md"), []byte(seed), 0o644); err != nil {
+		t.Fatalf("write seed article: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-article-archive-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	archiveRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/linux-logs/archive", nil)
+	if err != nil {
+		t.Fatalf("build archive request: %v", err)
+	}
+	archiveRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(archiveRequest)
+
+	archiveResponse, err := client.Do(archiveRequest)
+	if err != nil {
+		t.Fatalf("archive request: %v", err)
+	}
+	defer archiveResponse.Body.Close()
+
+	if archiveResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected archive status: %d", archiveResponse.StatusCode)
+	}
+
+	library := content.NewLibrary(contentDir)
+	archived, err := library.EditableBySlug("linux-logs")
+	if err != nil {
+		t.Fatalf("load archived lesson: %v", err)
+	}
+	if archived.Status != content.ArticleStatusArchived {
+		t.Fatalf("expected archived status, got %q", archived.Status)
+	}
+
+	restoreRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/linux-logs/restore", nil)
+	if err != nil {
+		t.Fatalf("build restore request: %v", err)
+	}
+	restoreRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(restoreRequest)
+
+	restoreResponse, err := client.Do(restoreRequest)
+	if err != nil {
+		t.Fatalf("restore request: %v", err)
+	}
+	defer restoreResponse.Body.Close()
+
+	if restoreResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected restore status: %d", restoreResponse.StatusCode)
+	}
+
+	restored, err := library.EditableBySlug("linux-logs")
+	if err != nil {
+		t.Fatalf("load restored lesson: %v", err)
+	}
+	if restored.Status != content.ArticleStatusDraft {
+		t.Fatalf("expected draft status after restore, got %q", restored.Status)
 	}
 }
 

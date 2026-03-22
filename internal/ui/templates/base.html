@@ -304,9 +304,11 @@
         var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
         var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
         var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
-        var publishInput = form.querySelector("[data-editor-published-input]");
+        var statusInput = form.querySelector("[data-editor-status-input]");
         var openSubmitButton = form.querySelector("[data-editor-open-submit]");
         var openNoteNode = shell && shell.querySelector("[data-editor-open-note]");
+        var statusLabelNode = shell && shell.querySelector("[data-editor-status-label]");
+        var statusCopyNode = shell && shell.querySelector("[data-editor-status-copy]");
         var draftStatusNode = shell && shell.querySelector("[data-editor-draft-status]");
         var slugStatusNode = form.querySelector("[data-editor-slug-status]");
         var wordCountNode = shell && shell.querySelector("[data-editor-word-count]");
@@ -405,7 +407,7 @@
             body: bodyInput ? bodyInput.value : "",
             module_order: moduleOrderInput ? moduleOrderInput.value : "",
             block_order: blockOrderInput ? blockOrderInput.value : "",
-            published: publishInput ? publishInput.checked : false
+            status: statusInput ? statusInput.value : "draft"
           };
         };
 
@@ -447,8 +449,8 @@
             blockOrderInput.value = state.block_order;
             blockOrderInput.dataset.manual = state.block_order.trim() ? "1" : "";
           }
-          if (publishInput && typeof state.published === "boolean") {
-            publishInput.checked = state.published;
+          if (statusInput && typeof state.status === "string") {
+            statusInput.value = state.status;
           }
         };
 
@@ -626,14 +628,36 @@
           runSlugCheck();
         }, 220);
 
+        var currentLessonStatus = function () {
+          return statusInput ? (statusInput.value || "draft") : "draft";
+        };
+
+        var statusCopyFor = function (status) {
+          if (status === "published") {
+            return "виден в маршруте";
+          }
+          if (status === "archived") {
+            return "убран в архив и скрыт от учеников";
+          }
+          return "пока скрыт от учеников";
+        };
+
         var syncOpenAction = function () {
           if (!openSubmitButton) {
             return;
           }
 
-          var isPublished = !publishInput || publishInput.checked;
+          var status = currentLessonStatus();
+          var isPublished = status === "published";
           openSubmitButton.disabled = !isPublished;
           openSubmitButton.classList.toggle("is-disabled", !isPublished);
+
+          if (statusLabelNode) {
+            statusLabelNode.textContent = status;
+          }
+          if (statusCopyNode) {
+            statusCopyNode.textContent = statusCopyFor(status);
+          }
 
           if (openNoteNode) {
             openNoteNode.textContent = isPublished
@@ -962,8 +986,8 @@
           });
         });
 
-        if (publishInput) {
-          publishInput.addEventListener("change", function () {
+        if (statusInput) {
+          statusInput.addEventListener("change", function () {
             touchEditorState(false);
           });
         }

@@ -134,6 +134,10 @@ func humanizeAuditAction(action string) string {
 		return "удаление пользователя"
 	case "article_saved":
 		return "сохранение урока"
+	case "article_archived":
+		return "архивация урока"
+	case "article_restored":
+		return "восстановление урока"
 	case "article_deleted":
 		return "удаление урока"
 	case "image_uploaded":

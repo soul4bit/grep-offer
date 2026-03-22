@@ -33,9 +33,9 @@ type saveFrontMatter struct {
 	Stage       string `yaml:"stage,omitempty"`
 	Module      string `yaml:"module,omitempty"`
 	Kind        string `yaml:"kind,omitempty"`
+	Status      string `yaml:"status"`
 	ModuleOrder int    `yaml:"module_order,omitempty"`
 	BlockOrder  int    `yaml:"block_order,omitempty"`
-	Published   bool   `yaml:"published"`
 }
 
 func (l *Library) ListAll() ([]ManagedArticle, error) {
@@ -106,9 +106,9 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 		Stage:       strings.TrimSpace(article.Stage),
 		Module:      strings.TrimSpace(article.Module),
 		Kind:        normalizeKind(article.Kind),
+		Status:      normalizeArticleStatus(article.Status, nil),
 		ModuleOrder: article.ModuleOrder,
 		BlockOrder:  article.BlockOrder,
-		Published:   article.Published,
 	}
 
 	if meta.Stage == "" {
@@ -119,6 +119,9 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 	}
 	if meta.Badge == "" {
 		meta.Badge = "linux"
+	}
+	if meta.Status == "" {
+		meta.Status = ArticleStatusDraft
 	}
 	if meta.ModuleOrder < 0 || meta.BlockOrder < 0 {
 		return nil, errors.New("module and block order must be positive")
@@ -210,6 +213,20 @@ func (l *Library) DeleteBySlug(slug string) error {
 	return nil
 }
 
+func (l *Library) SetStatusBySlug(slug, status string) (*EditableArticle, error) {
+	article, err := l.EditableBySlug(slug)
+	if err != nil {
+		return nil, err
+	}
+
+	article.Status = normalizeArticleStatus(status, nil)
+	if article.Status == "" {
+		article.Status = ArticleStatusDraft
+	}
+
+	return l.SaveEditable(*article)
+}
+
 func (l *Library) SlugAvailable(slug, originalSlug string) (string, bool, error) {
 	normalizedSlug := normalizeSlug(slug)
 	if normalizedSlug == "" {
@@ -287,9 +304,9 @@ func marshalEditableArticle(meta ArticleMeta, body string) ([]byte, error) {
 		Stage:       meta.Stage,
 		Module:      meta.Module,
 		Kind:        meta.Kind,
+		Status:      normalizeArticleStatus(meta.Status, nil),
 		ModuleOrder: meta.ModuleOrder,
 		BlockOrder:  meta.BlockOrder,
-		Published:   meta.Published,
 	})
 	if err != nil {
 		return nil, err

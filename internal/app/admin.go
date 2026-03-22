@@ -39,6 +39,11 @@ func (a *App) handleAdminArticles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load article groups failed", http.StatusInternalServerError)
 		return
 	}
+	archivedArticles, err := a.loadAdminArchivedArticles()
+	if err != nil {
+		http.Error(w, "load archived articles failed", http.StatusInternalServerError)
+		return
+	}
 
 	testLessons, testQuestions, err := a.loadAdminTests(r.Context())
 	if err != nil {
@@ -47,12 +52,13 @@ func (a *App) handleAdminArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.renderAdminPage(w, r, http.StatusOK, ViewData{
-		Notice:             noticeFromRequest(r),
-		AdminSection:       "articles",
-		AdminArticles:      articles,
-		AdminArticleGroups: articleGroups,
-		AdminTestLessons:   testLessons,
-		AdminTestQuestions: testQuestions,
+		Notice:                noticeFromRequest(r),
+		AdminSection:          "articles",
+		AdminArticles:         articles,
+		AdminArticleGroups:    articleGroups,
+		AdminArchivedArticles: archivedArticles,
+		AdminTestLessons:      testLessons,
+		AdminTestQuestions:    testQuestions,
 	})
 }
 
@@ -435,7 +441,7 @@ func (a *App) adminTestLessons(ctx context.Context) (map[string]content.ArticleM
 
 	options := make([]AdminLessonOption, 0, len(articles))
 	for _, article := range articles {
-		if article.Kind != "test" {
+		if article.Kind != "test" || article.Status == content.ArticleStatusArchived {
 			continue
 		}
 
@@ -460,7 +466,7 @@ func (a *App) adminTestLessonBySlug(ctx context.Context, slug string) (*content.
 	}
 
 	for _, article := range articles {
-		if article.Slug == strings.TrimSpace(slug) {
+		if article.Slug == strings.TrimSpace(slug) && article.Status != content.ArticleStatusArchived {
 			meta := article.ArticleMeta
 			return &meta, nil
 		}

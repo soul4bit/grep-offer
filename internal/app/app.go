@@ -62,34 +62,35 @@ type Config struct {
 }
 
 type ViewData struct {
-	CurrentUser         *store.User
-	Error               string
-	Notice              string
-	DeployLocked        bool
-	DeployLockMessage   string
-	CSRFToken           string
-	CSPNonce            string
-	AdminSection        string
-	AdminNav            []AdminNavItem
-	Form                AuthForm
-	PasswordResetToken  string
-	LandingRoadmap      []LandingStage
-	FeaturedArticles    []ArticleCard
-	CourseModules       []CourseModule
-	CourseProgress      CourseProgressView
-	Articles            []ArticleCard
-	Article             *ArticlePage
-	AdminUsers          []AdminUserRow
-	AdminArticles       []AdminArticleRow
-	AdminArticleGroups  []AdminArticleGroup
-	AdminArticleForm    AdminArticleForm
-	AdminArticleOptions AdminArticleOptions
-	AdminTestLessons    []AdminLessonOption
-	AdminTestQuestions  []AdminTestQuestionRow
-	AdminAuditLogs      []AdminAuditLogRow
-	DashboardStats      []DashboardStat
-	DashboardStages     []DashboardStage
-	DashboardFocus      DashboardFocus
+	CurrentUser           *store.User
+	Error                 string
+	Notice                string
+	DeployLocked          bool
+	DeployLockMessage     string
+	CSRFToken             string
+	CSPNonce              string
+	AdminSection          string
+	AdminNav              []AdminNavItem
+	Form                  AuthForm
+	PasswordResetToken    string
+	LandingRoadmap        []LandingStage
+	FeaturedArticles      []ArticleCard
+	CourseModules         []CourseModule
+	CourseProgress        CourseProgressView
+	Articles              []ArticleCard
+	Article               *ArticlePage
+	AdminUsers            []AdminUserRow
+	AdminArticles         []AdminArticleRow
+	AdminArticleGroups    []AdminArticleGroup
+	AdminArchivedArticles []AdminArticleRow
+	AdminArticleForm      AdminArticleForm
+	AdminArticleOptions   AdminArticleOptions
+	AdminTestLessons      []AdminLessonOption
+	AdminTestQuestions    []AdminTestQuestionRow
+	AdminAuditLogs        []AdminAuditLogRow
+	DashboardStats        []DashboardStat
+	DashboardStages       []DashboardStage
+	DashboardFocus        DashboardFocus
 }
 
 type AuthForm struct {
@@ -192,10 +193,14 @@ type AdminArticleRow struct {
 	Module       string
 	KindKey      string
 	Kind         string
+	StatusKey    string
+	StatusLabel  string
+	StatusTone   string
 	Index        string
 	ModuleOrder  int
 	BlockOrder   int
 	Published    bool
+	Archived     bool
 	UpdatedLabel string
 }
 
@@ -206,6 +211,7 @@ type AdminArticleGroup struct {
 	ModuleIndex    string
 	LessonCount    int
 	PublishedCount int
+	DraftCount     int
 	Lessons        []AdminArticleRow
 }
 
@@ -218,10 +224,13 @@ type AdminArticleForm struct {
 	Stage         string
 	Module        string
 	Kind          string
+	Status        string
+	StatusLabel   string
 	Body          string
 	ModuleOrder   int
 	BlockOrder    int
 	Published     bool
+	Archived      bool
 	ModeLabel     string
 	FileName      string
 	LearnPath     string
@@ -396,6 +405,8 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/articles/{slug}/edit", a.handleAdminArticleEdit)
 	mux.HandleFunc("GET /admin/articles/{slug}/duplicate", a.handleAdminArticleDuplicate)
 	mux.HandleFunc("POST /admin/articles", a.handleAdminArticleSave)
+	mux.HandleFunc("POST /admin/articles/{slug}/archive", a.handleAdminArticleArchive)
+	mux.HandleFunc("POST /admin/articles/{slug}/restore", a.handleAdminArticleRestore)
 	mux.HandleFunc("POST /admin/articles/{slug}/delete", a.handleAdminArticleDelete)
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
 	mux.HandleFunc("POST /admin/articles/reorder", a.handleAdminArticleReorder)
@@ -1217,6 +1228,12 @@ func noticeFromRequest(r *http.Request) string {
 		return "Создана копия урока. Можно править ее отдельно, не ломая оригинал."
 	case "article-open-requires-publish":
 		return "Чтобы открыть урок у ученика сразу после сохранения, сначала включи публикацию."
+	case "article-archived":
+		return "Урок убран в архив. Из маршрута он исчез, но его можно вернуть."
+	case "article-restored":
+		return "Урок вернулся из архива в draft. Можно дошлифовать и снова опубликовать."
+	case "article-delete-requires-archive":
+		return "Сначала отправь урок в архив, а уже потом удаляй его навсегда."
 	case "article-deleted":
 		return "Урок удален. Маршрут и админка уже без него."
 	default:

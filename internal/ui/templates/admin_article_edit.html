@@ -26,8 +26,8 @@
         <span>строк</span>
       </article>
       <article class="admin-editor-kpi">
-        <strong>{{if .AdminArticleForm.Published}}live{{else}}draft{{end}}</strong>
-        <span>{{if .AdminArticleForm.Published}}виден в маршруте{{else}}пока скрыт от учеников{{end}}</span>
+        <strong data-editor-status-label>{{.AdminArticleForm.StatusLabel}}</strong>
+        <span data-editor-status-copy>{{if .AdminArticleForm.Published}}виден в маршруте{{else if .AdminArticleForm.Archived}}убран в архив и скрыт от учеников{{else}}пока скрыт от учеников{{end}}</span>
       </article>
     </div>
   </div>
@@ -161,12 +161,14 @@
 
         <p class="admin-editor-order-hint" data-editor-order-hint>Порядок подставляется по выбранной категории и разделу, но его можно переопределить вручную.</p>
 
-        <label class="admin-editor-publish-toggle">
-          <input type="checkbox" name="published" value="1" {{if .AdminArticleForm.Published}}checked{{end}} data-editor-published-input>
-          <span class="admin-editor-publish-copy">
-            <strong>Сразу публиковать</strong>
-            <small>Если включено, блок сразу появится в маршруте у учеников. Если нет, останется draft.</small>
-          </span>
+        <label class="field">
+          <span>Статус урока</span>
+          <select name="status" data-editor-status-input>
+            <option value="draft" {{if eq .AdminArticleForm.Status "draft"}}selected{{end}}>draft</option>
+            <option value="published" {{if eq .AdminArticleForm.Status "published"}}selected{{end}}>published</option>
+            <option value="archived" {{if eq .AdminArticleForm.Status "archived"}}selected{{end}}>archived</option>
+          </select>
+          <small class="admin-editor-note">`published` виден ученикам, `draft` остается рабочим черновиком, `archived` убирает урок из маршрута без удаления файла.</small>
         </label>
       </article>
 
@@ -214,10 +216,23 @@
     </form>
 
     {{if .AdminArticleForm.OriginalSlug}}
-      <form method="post" action="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/delete" class="admin-editor-danger-form" data-confirm-submit="Удалить урок «{{.AdminArticleForm.Title}}»? Это удалит markdown-файл с сервера.">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="ghost-button ghost-button-danger" type="submit">Удалить урок</button>
-      </form>
+      <div class="admin-editor-danger-actions">
+        {{if .AdminArticleForm.Archived}}
+          <form method="post" action="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/restore" class="admin-editor-danger-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="ghost-button" type="submit">Вернуть в draft</button>
+          </form>
+          <form method="post" action="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/delete" class="admin-editor-danger-form" data-confirm-submit="Удалить урок «{{.AdminArticleForm.Title}}» навсегда? Это уже снесет markdown-файл с сервера.">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="ghost-button ghost-button-danger" type="submit">Удалить навсегда</button>
+          </form>
+        {{else}}
+          <form method="post" action="/admin/articles/{{.AdminArticleForm.OriginalSlug}}/archive" class="admin-editor-danger-form" data-confirm-submit="Убрать урок «{{.AdminArticleForm.Title}}» в архив? Он исчезнет из маршрута, но файл останется и его можно будет вернуть.">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="ghost-button ghost-button-danger" type="submit">Убрать в архив</button>
+          </form>
+        {{end}}
+      </div>
     {{end}}
   </div>
 
@@ -242,7 +257,7 @@
       </div>
 
       <p class="admin-editor-kind-hint" data-editor-kind-hint>{{.AdminArticleForm.KindHint}}</p>
-      <p class="admin-editor-route-note" data-editor-open-note>{{if .AdminArticleForm.Published}}После сохранения можно сразу открыть урок глазами ученика.{{else}}Кнопка «Сохранить и открыть» сработает только для опубликованного урока.{{end}}</p>
+      <p class="admin-editor-route-note" data-editor-open-note>{{if .AdminArticleForm.Published}}После сохранения можно сразу открыть урок глазами ученика.{{else if .AdminArticleForm.Archived}}Архивный урок в /learn не открывается. Сначала верни его в draft или опубликуй.{{else}}Кнопка «Сохранить и открыть» сработает только для опубликованного урока.{{end}}</p>
       <div class="admin-editor-draft-status" data-editor-draft-status>Черновик синхронизируется в браузере.</div>
     </article>
 

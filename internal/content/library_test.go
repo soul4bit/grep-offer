@@ -61,9 +61,9 @@ func TestLibraryInvalidatesCacheAfterSaveAndDelete(t *testing.T) {
 			Stage:       "Linux Base",
 			Module:      "Filesystem",
 			Kind:        "theory",
+			Status:      ArticleStatusPublished,
 			ModuleOrder: 1,
 			BlockOrder:  1,
-			Published:   true,
 		},
 		Body: "# Linux Files Updated\n\nfresh body",
 	})
@@ -102,7 +102,7 @@ func writeTestLesson(t *testing.T, path, title, slug, body string) {
 		"module_order: 1\n" +
 		"block_order: 1\n" +
 		"kind: \"theory\"\n" +
-		"published: true\n" +
+		"status: \"published\"\n" +
 		"---\n\n" +
 		body + "\n"
 

@@ -22,7 +22,7 @@ func (a *App) handleAdminArticleNew(w http.ResponseWriter, r *http.Request) {
 		Badge:       "linux",
 		Stage:       "Linux Base",
 		Kind:        "theory",
-		Published:   false,
+		Status:      content.ArticleStatusDraft,
 		ModeLabel:   "Новый урок",
 		Body:        defaultArticleBody(),
 		ModuleOrder: 1,
@@ -81,7 +81,7 @@ func (a *App) handleAdminArticleDuplicate(w http.ResponseWriter, r *http.Request
 	form.OriginalSlug = ""
 	form.Title = duplicateArticleTitle(article.Title)
 	form.Slug = duplicateSlug
-	form.Published = false
+	form.Status = content.ArticleStatusDraft
 	form.ModeLabel = "Дубликат урока"
 	form.OpenLearnPath = ""
 
@@ -167,9 +167,9 @@ func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 			Stage:       form.Stage,
 			Module:      form.Module,
 			Kind:        form.Kind,
+			Status:      form.Status,
 			ModuleOrder: form.ModuleOrder,
 			BlockOrder:  form.BlockOrder,
-			Published:   form.Published,
 		},
 		Body: form.Body,
 	})
@@ -195,14 +195,14 @@ func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 		Details: map[string]string{
 			"title":      saved.Title,
 			"kind":       saved.Kind,
-			"published":  strconv.FormatBool(saved.Published),
+			"status":     saved.Status,
 			"module":     saved.Module,
 			"module_pos": formatLessonIndex(saved.ModuleOrder, saved.BlockOrder),
 		},
 	})
 
 	if strings.TrimSpace(r.FormValue("after_save")) == "open" {
-		if saved.Published {
+		if saved.Status == content.ArticleStatusPublished {
 			http.Redirect(w, r, "/learn/"+saved.Slug, http.StatusSeeOther)
 			return
 		}
@@ -276,6 +276,10 @@ func (a *App) handleAdminArticleDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load article failed", http.StatusInternalServerError)
 		return
 	}
+	if article.Status != content.ArticleStatusArchived {
+		http.Redirect(w, r, "/admin/articles/"+article.Slug+"/edit?notice=article-delete-requires-archive", http.StatusSeeOther)
+		return
+	}
 
 	if err := a.articles.DeleteBySlug(slug); err != nil {
 		if errors.Is(err, content.ErrArticleNotFound) {
@@ -298,6 +302,84 @@ func (a *App) handleAdminArticleDelete(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, "/admin/articles?notice=article-deleted", http.StatusSeeOther)
+}
+
+func (a *App) handleAdminArticleArchive(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	slug := strings.TrimSpace(r.PathValue("slug"))
+	if slug == "" {
+		http.Error(w, "invalid article slug", http.StatusBadRequest)
+		return
+	}
+
+	article, err := a.articles.SetStatusBySlug(slug, content.ArticleStatusArchived)
+	if err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "archive article failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "article_archived",
+		TargetType: "lesson",
+		TargetKey:  article.Slug,
+		Details: map[string]string{
+			"title":  article.Title,
+			"module": article.Module,
+		},
+	})
+
+	http.Redirect(w, r, "/admin/articles?notice=article-archived", http.StatusSeeOther)
+}
+
+func (a *App) handleAdminArticleRestore(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+	if a.articles == nil {
+		http.Error(w, "content editor is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	slug := strings.TrimSpace(r.PathValue("slug"))
+	if slug == "" {
+		http.Error(w, "invalid article slug", http.StatusBadRequest)
+		return
+	}
+
+	article, err := a.articles.SetStatusBySlug(slug, content.ArticleStatusDraft)
+	if err != nil {
+		if errors.Is(err, content.ErrArticleNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "restore article failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "article_restored",
+		TargetType: "lesson",
+		TargetKey:  article.Slug,
+		Details: map[string]string{
+			"title":  article.Title,
+			"module": article.Module,
+		},
+	})
+
+	http.Redirect(w, r, "/admin/articles/"+article.Slug+"/edit?notice=article-restored", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminArticleReorder(w http.ResponseWriter, r *http.Request) {
@@ -518,10 +600,14 @@ func (a *App) loadAdminArticles() ([]AdminArticleRow, error) {
 			Module:       article.Module,
 			KindKey:      article.Kind,
 			Kind:         lessonKindLabel(article.Kind),
+			StatusKey:    article.Status,
+			StatusLabel:  adminArticleStatusLabel(article.Status),
+			StatusTone:   adminArticleStatusTone(article.Status),
 			Index:        formatLessonIndex(article.ModuleOrder, article.BlockOrder),
 			ModuleOrder:  article.ModuleOrder,
 			BlockOrder:   article.BlockOrder,
-			Published:    article.Published,
+			Published:    article.Status == content.ArticleStatusPublished,
+			Archived:     article.Status == content.ArticleStatusArchived,
 			UpdatedLabel: article.UpdatedAt.In(time.FixedZone("MSK", 3*60*60)).Format("02.01.2006 15:04"),
 		})
 	}
@@ -543,6 +629,10 @@ func (a *App) loadAdminArticleGroups() ([]AdminArticleGroup, error) {
 	groupIndexes := make(map[string]int)
 
 	for _, article := range articles {
+		if article.Archived {
+			continue
+		}
+
 		key := strconv.Itoa(article.ModuleOrder) + "::" + article.Stage + "::" + article.Module
 		groupIndex, ok := groupIndexes[key]
 		if !ok {
@@ -560,10 +650,28 @@ func (a *App) loadAdminArticleGroups() ([]AdminArticleGroup, error) {
 		groups[groupIndex].LessonCount++
 		if article.Published {
 			groups[groupIndex].PublishedCount++
+		} else {
+			groups[groupIndex].DraftCount++
 		}
 	}
 
 	return groups, nil
+}
+
+func (a *App) loadAdminArchivedArticles() ([]AdminArticleRow, error) {
+	articles, err := a.loadAdminArticles()
+	if err != nil {
+		return nil, err
+	}
+
+	archived := make([]AdminArticleRow, 0, len(articles))
+	for _, article := range articles {
+		if article.Archived {
+			archived = append(archived, article)
+		}
+	}
+
+	return archived, nil
 }
 
 func adminArticleFormFromContent(article content.EditableArticle) AdminArticleForm {
@@ -576,10 +684,10 @@ func adminArticleFormFromContent(article content.EditableArticle) AdminArticleFo
 		Stage:        article.Stage,
 		Module:       article.Module,
 		Kind:         article.Kind,
+		Status:       article.Status,
 		Body:         article.Body,
 		ModuleOrder:  article.ModuleOrder,
 		BlockOrder:   article.BlockOrder,
-		Published:    article.Published,
 		ModeLabel:    "Редактирование урока",
 	}
 }
@@ -599,8 +707,8 @@ func adminArticleFormFromRequest(r *http.Request) AdminArticleForm {
 		Stage:        strings.TrimSpace(r.FormValue("stage")),
 		Module:       strings.TrimSpace(r.FormValue("module")),
 		Kind:         strings.TrimSpace(r.FormValue("kind")),
+		Status:       strings.TrimSpace(r.FormValue("status")),
 		Body:         strings.ReplaceAll(r.FormValue("body"), "\r\n", "\n"),
-		Published:    r.FormValue("published") != "",
 		ModeLabel:    modeLabel,
 	}
 }
@@ -629,6 +737,13 @@ func hydrateAdminArticleForm(form AdminArticleForm) AdminArticleForm {
 	}
 
 	form.Slug = strings.TrimSpace(form.Slug)
+	form.Status = content.NormalizeArticleStatus(form.Status)
+	if form.Status == "" {
+		form.Status = content.ArticleStatusDraft
+	}
+	form.Published = form.Status == content.ArticleStatusPublished
+	form.Archived = form.Status == content.ArticleStatusArchived
+	form.StatusLabel = adminArticleStatusLabel(form.Status)
 	if originalSlug := strings.TrimSpace(form.OriginalSlug); originalSlug != "" && form.Published {
 		form.OpenLearnPath = "/learn/" + originalSlug
 	}
@@ -655,6 +770,28 @@ func hydrateAdminArticleForm(form AdminArticleForm) AdminArticleForm {
 	}
 
 	return form
+}
+
+func adminArticleStatusLabel(status string) string {
+	switch strings.TrimSpace(status) {
+	case content.ArticleStatusPublished:
+		return "published"
+	case content.ArticleStatusArchived:
+		return "archived"
+	default:
+		return "draft"
+	}
+}
+
+func adminArticleStatusTone(status string) string {
+	switch strings.TrimSpace(status) {
+	case content.ArticleStatusPublished:
+		return "ok"
+	case content.ArticleStatusArchived:
+		return "error"
+	default:
+		return "warn"
+	}
 }
 
 func countEditorWords(body string) int {
