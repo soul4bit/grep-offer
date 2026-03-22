@@ -833,7 +833,7 @@ module: "Доставка"
 module_order: 2
 block_order: 1
 kind: "theory"
-status: "archived"
+status: "published"
 ---
 
 # Docker без религии
@@ -1520,11 +1520,64 @@ published: true
 	if response.StatusCode != http.StatusSeeOther {
 		t.Fatalf("unexpected delete status: %d", response.StatusCode)
 	}
-	if location := response.Header.Get("Location"); location != "/admin/articles?notice=article-deleted" {
-		t.Fatalf("unexpected delete redirect: %q", location)
+	if location := response.Header.Get("Location"); location != "/admin/articles/linux-logs/edit?notice=article-delete-requires-archive" {
+		t.Fatalf("unexpected redirect before archive: %q", location)
 	}
 
 	library := content.NewLibrary(contentDir)
+	preserved, err := library.EditableBySlug("linux-logs")
+	if err != nil {
+		t.Fatalf("expected article to stay until archive, got %v", err)
+	}
+	if preserved.Status != content.ArticleStatusPublished {
+		t.Fatalf("expected published status before archive, got %q", preserved.Status)
+	}
+
+	archiveRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/linux-logs/archive", nil)
+	if err != nil {
+		t.Fatalf("build archive request: %v", err)
+	}
+	archiveRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(archiveRequest)
+
+	archiveResponse, err := client.Do(archiveRequest)
+	if err != nil {
+		t.Fatalf("archive request: %v", err)
+	}
+	defer archiveResponse.Body.Close()
+
+	if archiveResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected archive status: %d", archiveResponse.StatusCode)
+	}
+
+	archived, err := library.EditableBySlug("linux-logs")
+	if err != nil {
+		t.Fatalf("load archived lesson: %v", err)
+	}
+	if archived.Status != content.ArticleStatusArchived {
+		t.Fatalf("expected archived status, got %q", archived.Status)
+	}
+
+	deleteRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/articles/linux-logs/delete", nil)
+	if err != nil {
+		t.Fatalf("build archived delete request: %v", err)
+	}
+	deleteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(deleteRequest)
+
+	deleteResponse, err := client.Do(deleteRequest)
+	if err != nil {
+		t.Fatalf("archived delete request: %v", err)
+	}
+	defer deleteResponse.Body.Close()
+
+	if deleteResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected archived delete status: %d", deleteResponse.StatusCode)
+	}
+	if location := deleteResponse.Header.Get("Location"); location != "/admin/articles?notice=article-deleted" {
+		t.Fatalf("unexpected delete redirect: %q", location)
+	}
+
 	if _, err := library.EditableBySlug("linux-logs"); !errors.Is(err, content.ErrArticleNotFound) {
 		t.Fatalf("expected article to be deleted, got %v", err)
 	}
