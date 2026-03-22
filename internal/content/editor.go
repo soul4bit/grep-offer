@@ -106,7 +106,7 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 		Stage:       strings.TrimSpace(article.Stage),
 		Module:      strings.TrimSpace(article.Module),
 		Kind:        normalizeKind(article.Kind),
-		Status:      normalizeArticleStatus(article.Status, nil),
+		Status:      NormalizeArticleStatus(article.Status),
 		ModuleOrder: article.ModuleOrder,
 		BlockOrder:  article.BlockOrder,
 	}
@@ -219,7 +219,7 @@ func (l *Library) SetStatusBySlug(slug, status string) (*EditableArticle, error)
 		return nil, err
 	}
 
-	article.Status = normalizeArticleStatus(status, nil)
+	article.Status = NormalizeArticleStatus(status)
 	if article.Status == "" {
 		article.Status = ArticleStatusDraft
 	}
@@ -296,6 +296,11 @@ func (l *Library) safeArticlePath(fileName string) (string, error) {
 }
 
 func marshalEditableArticle(meta ArticleMeta, body string) ([]byte, error) {
+	status := NormalizeArticleStatus(meta.Status)
+	if status == "" {
+		status = ArticleStatusDraft
+	}
+
 	frontMatterBytes, err := yaml.Marshal(saveFrontMatter{
 		Title:       meta.Title,
 		Slug:        meta.Slug,
@@ -304,7 +309,7 @@ func marshalEditableArticle(meta ArticleMeta, body string) ([]byte, error) {
 		Stage:       meta.Stage,
 		Module:      meta.Module,
 		Kind:        meta.Kind,
-		Status:      normalizeArticleStatus(meta.Status, nil),
+		Status:      status,
 		ModuleOrder: meta.ModuleOrder,
 		BlockOrder:  meta.BlockOrder,
 	})

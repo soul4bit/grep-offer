@@ -549,7 +549,16 @@ func NormalizeSlug(value string) string {
 }
 
 func NormalizeArticleStatus(value string) string {
-	return normalizeArticleStatus(value, nil)
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case ArticleStatusPublished:
+		return ArticleStatusPublished
+	case ArticleStatusArchived:
+		return ArticleStatusArchived
+	case ArticleStatusDraft:
+		return ArticleStatusDraft
+	default:
+		return ""
+	}
 }
 
 func normalizeKind(value string) string {
@@ -564,13 +573,8 @@ func normalizeKind(value string) string {
 }
 
 func normalizeArticleStatus(raw string, legacyPublished *bool) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case ArticleStatusPublished:
-		return ArticleStatusPublished
-	case ArticleStatusArchived:
-		return ArticleStatusArchived
-	case ArticleStatusDraft:
-		return ArticleStatusDraft
+	if status := NormalizeArticleStatus(raw); status != "" {
+		return status
 	}
 
 	if legacyPublished == nil || *legacyPublished {
