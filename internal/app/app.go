@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ type App struct {
 	static                http.Handler
 	uploads               http.Handler
 	uploadsDir            string
+	deployLockPath        string
 	articles              *content.Library
 	registration          *RegistrationCoordinator
 	passwordReset         *PasswordResetCoordinator
@@ -54,6 +56,7 @@ type Config struct {
 	TelegramWebhookSecret string
 	Articles              *content.Library
 	UploadsDir            string
+	DeployLockPath        string
 	BootstrapAdminEmails  []string
 }
 
@@ -61,6 +64,8 @@ type ViewData struct {
 	CurrentUser         *store.User
 	Error               string
 	Notice              string
+	DeployLocked        bool
+	DeployLockMessage   string
 	CSRFToken           string
 	CSPNonce            string
 	AdminSection        string
@@ -356,6 +361,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		static:                http.FileServer(http.FS(staticFS)),
 		uploads:               uploads,
 		uploadsDir:            uploadsDir,
+		deployLockPath:        strings.TrimSpace(cfg.DeployLockPath),
 		articles:              cfg.Articles,
 		registration:          cfg.Registration,
 		passwordReset:         cfg.PasswordReset,
@@ -408,7 +414,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /password/reset", a.handlePasswordResetSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
-	return a.withSecurityHeaders(a.withCSRFProtection(a.withCurrentUser(mux)))
+	return a.withSecurityHeaders(a.withDeployLock(a.withCSRFProtection(a.withCurrentUser(mux))))
 }
 
 func (a *App) requireAuthenticatedHandler(next http.Handler) http.Handler {
@@ -1024,6 +1030,12 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 		}
 		data.CSPNonce = nonce
 	}
+	if !data.DeployLocked {
+		data.DeployLocked = a.deployLockActive()
+	}
+	if data.DeployLocked && data.DeployLockMessage == "" {
+		data.DeployLockMessage = deployLockMessage
+	}
 
 	var buffer bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buffer, "base", data); err != nil {
@@ -1039,6 +1051,15 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 	if _, err := buffer.WriteTo(w); err != nil {
 		log.Printf("write response: %v", err)
 	}
+}
+
+func (a *App) deployLockActive() bool {
+	if a.deployLockPath == "" {
+		return false
+	}
+
+	_, err := os.Stat(a.deployLockPath)
+	return err == nil
 }
 
 func loadTemplates() (map[string]*template.Template, error) {

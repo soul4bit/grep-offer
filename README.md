@@ -39,6 +39,7 @@ ADDR=:8080
 DATABASE_URL=postgres://grep_offer:secret@localhost:5432/grep_offer?sslmode=disable
 CONTENT_DIR=content/articles
 UPLOADS_DIR=shared/uploads
+DEPLOY_LOCK_PATH=shared/flags/deploy.lock
 APP_BASE_URL=http://localhost:8080
 ```
 
@@ -64,6 +65,7 @@ DATABASE_URL=postgres://grep_offer:change-me@db.example.com:5432/grep_offer?sslm
 APP_BASE_URL=https://grep-offer.ru
 CONTENT_DIR=/var/www/grep-offer/shared/content/articles
 UPLOADS_DIR=/var/www/grep-offer/shared/uploads
+DEPLOY_LOCK_PATH=/var/www/grep-offer/shared/flags/deploy.lock
 ADMIN_EMAILS=admin@example.com
 ```
 
@@ -108,6 +110,7 @@ TELEGRAM_WEBHOOK_SECRET=change-me
 
 - `CONTENT_DIR` — markdown-уроки
 - `UPLOADS_DIR` — картинки и вложения
+- `DEPLOY_LOCK_PATH` — lock-файл, который включает read-only banner на время деплоя
 
 Типовая прод-схема:
 
@@ -117,6 +120,7 @@ TELEGRAM_WEBHOOK_SECRET=change-me
   releases/
   shared/
     content/articles/
+    flags/
     uploads/
 ```
 
@@ -184,6 +188,7 @@ Audit log хранит:
 - GitHub Actions прогоняет тесты
 - deploy job работает на self-hosted runner на Ubuntu
 - на сервере собирается релиз
+- на время релиза ставится deploy lock: чтение остается доступным, а формы и прогресс ставятся на паузу
 - обновляется `/var/www/grep-offer/current`
 - `systemd` перезапускает `grep-offer`
 
@@ -201,6 +206,7 @@ bash deploy/setup-server.sh
 
 - создает `releases`
 - создает `shared/content/articles`
+- создает `shared/flags`
 - создает `shared/uploads`
 - ставит `systemd` unit
 - создает `/etc/grep-offer.env`, если его еще нет

@@ -18,6 +18,7 @@ env:
   GOOS: linux
   GOARCH: amd64
   RELEASE_ROOT: /var/www/grep-offer
+  DEPLOY_LOCK_PATH: /var/www/grep-offer/shared/flags/deploy.lock
   HEALTHCHECK_URL: http://127.0.0.1:8080/healthz
   SYSTEMCTL_BIN: /usr/bin/systemctl
 
@@ -67,11 +68,20 @@ jobs:
 
           RELEASE_DIR="$RELEASE_ROOT/releases/${GITHUB_SHA}"
           PREVIOUS_RELEASE="$(readlink -f "$RELEASE_ROOT/current" 2>/dev/null || true)"
+          LOCK_DIR="$(dirname "$DEPLOY_LOCK_PATH")"
           mkdir -p "$RELEASE_ROOT/releases"
+          mkdir -p "$LOCK_DIR"
           rm -rf "$RELEASE_DIR"
           mkdir -p "$RELEASE_DIR"
 
           install -m 755 "dist/$APP_NAME" "$RELEASE_DIR/$APP_NAME"
+          printf 'deploy=%s\nstarted_at=%s\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > "$DEPLOY_LOCK_PATH"
+
+          cleanup_lock() {
+            rm -f "$DEPLOY_LOCK_PATH"
+          }
+          trap cleanup_lock EXIT
+
           ln -sfn "$RELEASE_DIR" "$RELEASE_ROOT/current"
 
           rollback() {
@@ -96,6 +106,8 @@ jobs:
           for attempt in $(seq 1 20); do
             if curl --fail --silent "$HEALTHCHECK_URL" >/dev/null; then
               ls -1dt "$RELEASE_ROOT"/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+              cleanup_lock
+              trap - EXIT
               exit 0
             fi
 

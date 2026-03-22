@@ -487,6 +487,68 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestDeployLockShowsBannerOnReadPages(t *testing.T) {
+	t.Parallel()
+
+	lockDir := t.TempDir()
+	lockPath := filepath.Join(lockDir, "deploy.lock")
+	if err := os.WriteFile(lockPath, []byte("deploy"), 0o644); err != nil {
+		t.Fatalf("write deploy lock: %v", err)
+	}
+
+	testApp, _ := newTestApp(t, testAppOptions{deployLockPath: lockPath})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := server.Client().Get(server.URL + "/login")
+	if err != nil {
+		t.Fatalf("login form request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d", response.StatusCode)
+	}
+
+	body := readBody(t, response.Body)
+	if !strings.Contains(body, "Сайт обновляется, формы и прогресс временно на паузе.") {
+		t.Fatalf("deploy banner missing: %s", body)
+	}
+}
+
+func TestDeployLockRejectsWriteRequests(t *testing.T) {
+	t.Parallel()
+
+	lockDir := t.TempDir()
+	lockPath := filepath.Join(lockDir, "deploy.lock")
+	if err := os.WriteFile(lockPath, []byte("deploy"), 0o644); err != nil {
+		t.Fatalf("write deploy lock: %v", err)
+	}
+
+	testApp, _ := newTestApp(t, testAppOptions{deployLockPath: lockPath})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := postFormWithCSRF(server.Client(), server.URL+"/login", url.Values{
+		"email":    {"member@example.com"},
+		"password": {"password123"},
+	})
+	if err != nil {
+		t.Fatalf("login request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("unexpected status: %d", response.StatusCode)
+	}
+	if got := response.Header.Get("Retry-After"); got != "30" {
+		t.Fatalf("unexpected retry-after header: %q", got)
+	}
+	if body := readBody(t, response.Body); !strings.Contains(body, "Сайт обновляется") {
+		t.Fatalf("unexpected deploy lock body: %s", body)
+	}
+}
+
 func TestLoginRejectsMissingCSRF(t *testing.T) {
 	t.Parallel()
 
@@ -2166,11 +2228,12 @@ func TestBannedUserCannotLogin(t *testing.T) {
 }
 
 type testAppOptions struct {
-	mailer        ConfirmationMailer
-	notifier      AdminApprovalNotifier
-	webhookSecret string
-	articleDir    string
-	uploadsDir    string
+	mailer         ConfirmationMailer
+	notifier       AdminApprovalNotifier
+	webhookSecret  string
+	articleDir     string
+	uploadsDir     string
+	deployLockPath string
 }
 
 func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
@@ -2224,6 +2287,7 @@ func newTestApp(t *testing.T, options testAppOptions) (*App, *store.Store) {
 		TelegramWebhookSecret: options.webhookSecret,
 		Articles:              articles,
 		UploadsDir:            uploadsDir,
+		DeployLockPath:        options.deployLockPath,
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)

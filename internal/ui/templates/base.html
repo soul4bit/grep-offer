@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body>
+<body{{if .DeployLocked}} class="site-readonly" data-deploy-locked="true"{{end}}>
   <div class="orb orb-lime"></div>
   <div class="orb orb-coral"></div>
   <div class="orb orb-mint"></div>
@@ -51,6 +51,14 @@
       <div class="notice" role="status">{{.Notice}}</div>
     {{end}}
 
+    {{if .DeployLocked}}
+      <div class="deploy-banner" data-deploy-lock-banner role="status" aria-live="polite">
+        <span class="deploy-banner-kicker">deploy mode</span>
+        <strong>{{.DeployLockMessage}}</strong>
+        <span>Читать можно, менять данные временно нельзя.</span>
+      </div>
+    {{end}}
+
     <main class="main-content">
       {{template "body" .}}
     </main>
@@ -58,6 +66,33 @@
 
   <script nonce="{{.CSPNonce}}">
     document.addEventListener("DOMContentLoaded", function () {
+      var deployLocked = document.body.dataset.deployLocked === "true";
+      var deployBanner = document.querySelector("[data-deploy-lock-banner]");
+
+      if (deployLocked) {
+        document.querySelectorAll("form").forEach(function (form) {
+          var method = (form.getAttribute("method") || "get").toLowerCase();
+          if (method === "get") {
+            return;
+          }
+
+          form.classList.add("is-deploy-locked");
+          form.querySelectorAll("button, input, select, textarea").forEach(function (field) {
+            if (field.type === "hidden") {
+              return;
+            }
+            field.disabled = true;
+          });
+
+          form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (deployBanner) {
+              deployBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+        });
+      }
+
       document.querySelectorAll(".anti-autofill-input").forEach(function (input) {
         var unlock = function () {
           input.removeAttribute("readonly");

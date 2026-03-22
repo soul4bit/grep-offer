@@ -26,6 +26,7 @@ func main() {
 	addr := envOrDefault("ADDR", ":8080")
 	contentDir := envOrDefault("CONTENT_DIR", filepath.Join("content", "articles"))
 	uploadsDir := envOrDefault("UPLOADS_DIR", filepath.Join("shared", "uploads"))
+	deployLockPath := strings.TrimSpace(os.Getenv("DEPLOY_LOCK_PATH"))
 
 	driverName := "pgx"
 	dsn := databaseURL()
@@ -34,6 +35,11 @@ func main() {
 	}
 	if err := os.MkdirAll(uploadsDir, 0o755); err != nil {
 		log.Fatalf("create uploads dir: %v", err)
+	}
+	if deployLockPath != "" {
+		if err := os.MkdirAll(filepath.Dir(deployLockPath), 0o775); err != nil {
+			log.Fatalf("create deploy lock dir: %v", err)
+		}
 	}
 
 	db, err := sql.Open(driverName, dsn)
@@ -69,6 +75,7 @@ func main() {
 	appConfig := app.Config{
 		Articles:             content.NewLibrary(contentDir),
 		UploadsDir:           uploadsDir,
+		DeployLockPath:       deployLockPath,
 		BootstrapAdminEmails: parseCSVEnv("ADMIN_EMAILS"),
 	}
 	mailer, err := buildSMTPMailer()
