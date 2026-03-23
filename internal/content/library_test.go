@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,6 +89,23 @@ func TestLibraryInvalidatesCacheAfterSaveAndDelete(t *testing.T) {
 
 	if _, err := library.EditableBySlug("linux-files"); !errors.Is(err, ErrArticleNotFound) {
 		t.Fatalf("expected article to be gone after delete, got: %v", err)
+	}
+}
+
+func TestRenderMarkdownAddsLazyImageAttributes(t *testing.T) {
+	t.Parallel()
+
+	rendered, err := RenderMarkdown("![diagram](/uploads/editor/linux.png)")
+	if err != nil {
+		t.Fatalf("render markdown: %v", err)
+	}
+
+	markup := string(rendered)
+	if !strings.Contains(markup, `loading="lazy"`) {
+		t.Fatalf("expected lazy loading attribute in rendered html: %s", markup)
+	}
+	if !strings.Contains(markup, `decoding="async"`) {
+		t.Fatalf("expected async decoding attribute in rendered html: %s", markup)
 	}
 }
 

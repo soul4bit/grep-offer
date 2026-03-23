@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html/template"
@@ -14,6 +16,7 @@ import (
 	"net/mail"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +47,7 @@ type App struct {
 	uploadsDir            string
 	deployLockPath        string
 	rateLimiter           *rateLimiter
+	staticVersion         string
 	articles              *content.Library
 	registration          *RegistrationCoordinator
 	passwordReset         *PasswordResetCoordinator
@@ -69,6 +73,7 @@ type ViewData struct {
 	DeployLockMessage     string
 	CSRFToken             string
 	CSPNonce              string
+	StaticVersion         string
 	AdminSection          string
 	AdminNav              []AdminNavItem
 	Form                  AuthForm
@@ -358,6 +363,10 @@ func New(st *store.Store, cfg Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load static fs: %w", err)
 	}
+	staticVersion, err := buildStaticVersion(staticFS)
+	if err != nil {
+		return nil, fmt.Errorf("build static version: %w", err)
+	}
 
 	uploadsDir := strings.TrimSpace(cfg.UploadsDir)
 	var uploads http.Handler
@@ -373,6 +382,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		uploadsDir:            uploadsDir,
 		deployLockPath:        strings.TrimSpace(cfg.DeployLockPath),
 		rateLimiter:           newRateLimiter(defaultRateLimitRules()),
+		staticVersion:         staticVersion,
 		articles:              cfg.Articles,
 		registration:          cfg.Registration,
 		passwordReset:         cfg.PasswordReset,
@@ -383,7 +393,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 
 func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", a.withCacheControl("public, max-age=3600", http.StripPrefix("/static/", a.static)))
+	mux.Handle("GET /static/", a.withVersionedAssetCacheControl(http.StripPrefix("/static/", a.static)))
 	if a.uploads != nil {
 		mux.Handle("GET /uploads/", a.requireAuthenticatedHandler(a.withCacheControl("private, max-age=3600", http.StripPrefix("/uploads/", a.uploads))))
 	}
@@ -427,7 +437,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /password/reset", a.handlePasswordResetSubmit)
 	mux.HandleFunc("POST /logout", a.handleLogout)
 	mux.HandleFunc("POST /telegram/webhook", a.handleTelegramWebhook)
-	return a.withSecurityHeaders(a.withRateLimit(a.withDeployLock(a.withCSRFProtection(a.withCurrentUser(mux)))))
+	return a.withCompression(a.withSecurityHeaders(a.withRateLimit(a.withDeployLock(a.withCSRFProtection(a.withCurrentUser(mux))))))
 }
 
 func (a *App) requireAuthenticatedHandler(next http.Handler) http.Handler {
@@ -1043,6 +1053,9 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, name st
 		}
 		data.CSPNonce = nonce
 	}
+	if data.StaticVersion == "" {
+		data.StaticVersion = a.staticVersion
+	}
 	if !data.DeployLocked {
 		data.DeployLocked = a.deployLockActive()
 	}
@@ -1093,6 +1106,38 @@ func loadTemplates() (map[string]*template.Template, error) {
 	}
 
 	return cache, nil
+}
+
+func buildStaticVersion(root fs.FS) (string, error) {
+	paths := make([]string, 0, 8)
+	if err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		paths = append(paths, path)
+		return nil
+	}); err != nil {
+		return "", err
+	}
+
+	sort.Strings(paths)
+
+	hash := sha256.New()
+	for _, path := range paths {
+		payload, err := fs.ReadFile(root, path)
+		if err != nil {
+			return "", err
+		}
+		hash.Write([]byte(path))
+		hash.Write([]byte{0})
+		hash.Write(payload)
+		hash.Write([]byte{0})
+	}
+
+	return hex.EncodeToString(hash.Sum(nil))[:12], nil
 }
 
 func validateRegistration(username, email, password, confirmPassword string) string {

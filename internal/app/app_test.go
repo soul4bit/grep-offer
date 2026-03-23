@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -709,6 +710,119 @@ func TestLoginFormSetsSecurityHeadersAndCSRFCookie(t *testing.T) {
 	}
 	if !foundCSRFCookie {
 		t.Fatalf("csrf cookie missing")
+	}
+}
+
+func TestLoginFormIncludesVersionedAssets(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	response, err := server.Client().Get(server.URL + "/login")
+	if err != nil {
+		t.Fatalf("login form request: %v", err)
+	}
+	defer response.Body.Close()
+
+	body := readBody(t, response.Body)
+	for _, asset := range []string{
+		`/static/favicon.svg?v=`,
+		`/static/styles.css?v=`,
+		`/static/app.js?v=`,
+	} {
+		if !strings.Contains(body, asset) {
+			t.Fatalf("expected versioned asset %q in body: %s", asset, body)
+		}
+	}
+}
+
+func TestVersionedStaticAssetsAreImmutableAndCompressed(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+		},
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/static/styles.css?v=test", nil)
+	if err != nil {
+		t.Fatalf("build static request: %v", err)
+	}
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("static request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if got := response.Header.Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Fatalf("unexpected cache-control: %q", got)
+	}
+	if got := response.Header.Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("unexpected content-encoding: %q", got)
+	}
+	if got := response.Header.Get("Vary"); !strings.Contains(got, "Accept-Encoding") {
+		t.Fatalf("unexpected vary header: %q", got)
+	}
+
+	reader, err := gzip.NewReader(response.Body)
+	if err != nil {
+		t.Fatalf("build gzip reader: %v", err)
+	}
+	defer reader.Close()
+
+	body := readBody(t, reader)
+	if !strings.Contains(body, ":root") {
+		t.Fatalf("unexpected compressed static body: %s", body)
+	}
+}
+
+func TestHTMLResponsesAreCompressed(t *testing.T) {
+	t.Parallel()
+
+	testApp, _ := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+		},
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/login", nil)
+	if err != nil {
+		t.Fatalf("build login request: %v", err)
+	}
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("login request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if got := response.Header.Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("unexpected content-encoding: %q", got)
+	}
+
+	reader, err := gzip.NewReader(response.Body)
+	if err != nil {
+		t.Fatalf("build gzip reader: %v", err)
+	}
+	defer reader.Close()
+
+	body := readBody(t, reader)
+	if !strings.Contains(body, "<!doctype html>") {
+		t.Fatalf("unexpected compressed html body: %s", body)
 	}
 }
 

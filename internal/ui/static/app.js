@@ -1,0 +1,1308 @@
+document.addEventListener("DOMContentLoaded", function () {
+      var deployLocked = document.body.dataset.deployLocked === "true";
+      var deployBanner = document.querySelector("[data-deploy-lock-banner]");
+
+      if (deployLocked) {
+        document.querySelectorAll("form").forEach(function (form) {
+          var method = (form.getAttribute("method") || "get").toLowerCase();
+          if (method === "get") {
+            return;
+          }
+
+          form.classList.add("is-deploy-locked");
+          form.querySelectorAll("button, input, select, textarea").forEach(function (field) {
+            if (field.type === "hidden") {
+              return;
+            }
+            field.disabled = true;
+          });
+
+          form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (deployBanner) {
+              deployBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+        });
+      }
+
+      document.querySelectorAll(".anti-autofill-input").forEach(function (input) {
+        var unlock = function () {
+          input.removeAttribute("readonly");
+        };
+
+        input.addEventListener("pointerdown", unlock, { once: true });
+        input.addEventListener("focus", unlock, { once: true });
+        input.addEventListener("keydown", unlock, { once: true });
+      });
+
+      var validators = {
+        username: {
+          test: function (value) {
+            return /^[a-zA-Z0-9._-]{3,24}$/.test(value);
+          },
+          idle: "3-24 символа, ASCII и без внезапного hostname from hell.",
+          valid: "Ник выглядит нормально. Bash не плачет.",
+          invalid: "Нужны 3-24 ASCII-символа: буквы, цифры, точка, дефис или _."
+        },
+        email: {
+          test: function (value) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+          },
+          idle: "Почта должна выглядеть как нормальная почта.",
+          valid: "Почта выглядит так, будто письмо реально дойдет.",
+          invalid: "Пока не похоже на валидный email."
+        },
+        password: {
+          test: function (value) {
+            return value.length >= 8;
+          },
+          idle: "Минимум 8 символов. Совсем уж не рофлим над безопасностью.",
+          valid: "Пароль ок. Brute-force сегодня не улыбается.",
+          invalid: "Нужно минимум 8 символов."
+        },
+        "confirm-password": {
+          test: function (value, input, form) {
+            var passwordInput = form.querySelector('input[name="password"]');
+            return Boolean(passwordInput) && value.length >= 8 && value === passwordInput.value;
+          },
+          idle: "Должен совпасть. Иначе даже до письма дойдет драма.",
+          valid: "Совпало. Прод пока не распался.",
+          invalid: "Не совпало. Проверь еще раз."
+        }
+      };
+
+      document.querySelectorAll("[data-auth-form]").forEach(function (form) {
+        var bumpField = function (field) {
+          field.classList.remove("is-shaking");
+          void field.offsetWidth;
+          field.classList.add("is-shaking");
+        };
+
+        var updateField = function (input) {
+          var kind = input.dataset.validate;
+          var field = input.closest(".field");
+          var status = form.querySelector('[data-field-status="' + kind + '"]');
+          var validator = validators[kind];
+          if (!field || !status || !validator) {
+            return true;
+          }
+
+          var value = input.value.trim();
+          field.classList.remove("is-valid", "is-invalid", "is-idle");
+
+          if (!value) {
+            field.classList.add("is-idle");
+            status.textContent = validator.idle;
+            input.removeAttribute("aria-invalid");
+            return false;
+          }
+
+          var valid = validator.test(value, input, form);
+          field.classList.add(valid ? "is-valid" : "is-invalid");
+          status.textContent = valid ? validator.valid : validator.invalid;
+          input.setAttribute("aria-invalid", valid ? "false" : "true");
+          return valid;
+        };
+
+        var validateForm = function () {
+          var invalidInputs = [];
+
+          form.querySelectorAll("[data-validate]").forEach(function (input) {
+            var valid = updateField(input);
+            if (!valid) {
+              invalidInputs.push(input);
+            }
+          });
+
+          return invalidInputs;
+        };
+
+        form.querySelectorAll("[data-validate]").forEach(function (input) {
+          var sync = function () {
+            updateField(input);
+
+            if (input.name === "password") {
+              var confirm = form.querySelector('[data-validate="confirm-password"]');
+              if (confirm) {
+                updateField(confirm);
+              }
+            }
+          };
+
+          sync();
+          input.addEventListener("input", sync);
+          input.addEventListener("blur", sync);
+        });
+
+        form.addEventListener("submit", function (event) {
+          var invalidInputs = validateForm();
+          if (!invalidInputs.length) {
+            return;
+          }
+
+          event.preventDefault();
+          invalidInputs.forEach(function (input) {
+            var field = input.closest(".field");
+            if (field) {
+              bumpField(field);
+            }
+          });
+
+          invalidInputs[0].focus();
+        });
+      });
+
+      var editorSnippets = {
+        heading: "\n## Подзаголовок\n\nКороткий абзац.\n",
+        list: "\n- пункт 1\n- пункт 2\n- пункт 3\n",
+        code: "\n```bash\n# команда\n```\n",
+        practice: "\n## Минимум руками\n\n1. шаг 1\n2. шаг 2\n",
+        result: "\n## Что считать результатом\n\nКороткий критерий, что блок действительно закрыт.\n"
+      };
+
+      var editorKindHints = {
+        theory: "Теория помечается как прочитанная при открытии. Держи блок коротким и без лекции на полторы жизни.",
+        practice: "Практика открывает следующий блок после прочтения. Формулируй руками: что сделать и какой результат принять.",
+        test: "У теста прогресс считается только после сдачи. После сохранения добавь вопросы в секции test-блоков."
+      };
+
+      var slugify = function (value) {
+        return value
+          .toLowerCase()
+          .trim()
+          .replace(/[^\p{L}\p{N}]+/gu, "-")
+          .replace(/^-+|-+$/g, "");
+      };
+
+      var countWords = function (value) {
+        var trimmed = value.trim();
+        if (!trimmed) {
+          return 0;
+        }
+
+        return trimmed.split(/\s+/).length;
+      };
+
+      var countLines = function (value) {
+        if (!value.trim()) {
+          return 0;
+        }
+
+        return value.replace(/\r\n/g, "\n").split("\n").length;
+      };
+
+      var debounce = function (callback, delay) {
+        var timeoutID;
+        return function () {
+          var args = arguments;
+          clearTimeout(timeoutID);
+          timeoutID = window.setTimeout(function () {
+            callback.apply(null, args);
+          }, delay);
+        };
+      };
+
+      var insertAtCursor = function (textarea, snippet) {
+        if (!textarea) {
+          return;
+        }
+
+        var start = textarea.selectionStart || 0;
+        var end = textarea.selectionEnd || 0;
+        var value = textarea.value;
+        textarea.value = value.slice(0, start) + snippet + value.slice(end);
+        textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      };
+
+      document.querySelectorAll("[data-article-editor]").forEach(function (form) {
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var shell = form.closest(".admin-editor-shell");
+        var titleInput = form.querySelector("[data-editor-title]");
+        var slugInput = form.querySelector("[data-editor-slug]");
+        var summaryInput = form.querySelector('textarea[name="summary"]');
+        var badgeInput = form.querySelector('input[name="badge"]');
+        var kindInput = form.querySelector("[data-editor-kind]");
+        var bodyInput = form.querySelector("[data-article-body]");
+        var moduleOrderInput = form.querySelector("[data-editor-module-order]");
+        var blockOrderInput = form.querySelector("[data-editor-block-order]");
+        var stageInput = form.querySelector("[data-editor-stage-input]");
+        var moduleInput = form.querySelector("[data-editor-module-input]");
+        var moduleEmptyNode = form.querySelector("[data-editor-module-empty]");
+        var stageNewButton = form.querySelector("[data-editor-stage-new]");
+        var moduleNewButton = form.querySelector("[data-editor-module-new]");
+        var orderHintNode = form.querySelector("[data-editor-order-hint]");
+        var stageChipButtons = form.querySelectorAll("[data-editor-stage-chip]");
+        var moduleChipButtons = form.querySelectorAll("[data-editor-module-chip]");
+        var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
+        var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
+        var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
+        var statusInput = form.querySelector("[data-editor-status-input]");
+        var openSubmitButton = form.querySelector("[data-editor-open-submit]");
+        var openNoteNode = shell && shell.querySelector("[data-editor-open-note]");
+        var statusLabelNode = shell && shell.querySelector("[data-editor-status-label]");
+        var statusCopyNode = shell && shell.querySelector("[data-editor-status-copy]");
+        var draftStatusNode = shell && shell.querySelector("[data-editor-draft-status]");
+        var slugStatusNode = form.querySelector("[data-editor-slug-status]");
+        var wordCountNode = shell && shell.querySelector("[data-editor-word-count]");
+        var lineCountNode = shell && shell.querySelector("[data-editor-line-count]");
+        var kindHintNode = shell && shell.querySelector("[data-editor-kind-hint]");
+        var previewNode = shell && shell.querySelector("[data-article-preview]");
+        var previewEndpoint = form.dataset.previewEndpoint;
+        var slugCheckEndpoint = form.dataset.slugCheckEndpoint;
+        var draftStorageKey = "grep-offer-editor:" + (form.dataset.draftKey || "lesson:new");
+        var globalNextModuleOrder = Number(form.dataset.globalNextModuleOrder || "1") || 1;
+        var previewRequestID = 0;
+        var slugCheckRequestID = 0;
+        var isEditing = Boolean(form.querySelector('input[name="original_slug"]') && form.querySelector('input[name="original_slug"]').value.trim());
+        var originalSlugInput = form.querySelector('input[name="original_slug"]');
+        var lastSubmitButton = null;
+        var isSubmitting = false;
+        var isDirty = false;
+        var initialSnapshot = "";
+        var autosaveTimer = 0;
+        var slugCheckState = {
+          normalizedSlug: "",
+          available: false,
+          pending: false
+        };
+
+        if (!titleInput || !slugInput || !bodyInput || !shell) {
+          return;
+        }
+
+        if (slugInput.value.trim()) {
+          slugInput.dataset.manual = "1";
+        }
+        if (isEditing) {
+          if (moduleOrderInput) {
+            moduleOrderInput.dataset.manual = "1";
+          }
+          if (blockOrderInput) {
+            blockOrderInput.dataset.manual = "1";
+          }
+        }
+
+        var updateLearnLink = function (path) {
+          if (!learnLink) {
+            return;
+          }
+
+          if (path) {
+            learnLink.href = path;
+            learnLink.classList.remove("is-disabled");
+            learnLink.removeAttribute("aria-disabled");
+            learnLink.setAttribute("target", "_blank");
+            learnLink.setAttribute("rel", "noreferrer");
+            return;
+          }
+
+          learnLink.href = "#";
+          learnLink.classList.add("is-disabled");
+          learnLink.setAttribute("aria-disabled", "true");
+          learnLink.removeAttribute("target");
+          learnLink.removeAttribute("rel");
+        };
+
+        var setSlugStatus = function (text, tone) {
+          if (!slugStatusNode) {
+            return;
+          }
+
+          slugStatusNode.textContent = text || "";
+          slugStatusNode.classList.remove("is-ok", "is-error", "is-pending");
+          if (tone) {
+            slugStatusNode.classList.add("is-" + tone);
+          }
+        };
+
+        var setDraftStatus = function (text, tone) {
+          if (!draftStatusNode) {
+            return;
+          }
+
+          draftStatusNode.textContent = text || "";
+          draftStatusNode.classList.remove("is-ok", "is-error", "is-pending", "is-dirty");
+          if (tone) {
+            draftStatusNode.classList.add("is-" + tone);
+          }
+        };
+
+        var editorState = function () {
+          return {
+            title: titleInput ? titleInput.value : "",
+            slug: slugInput ? slugInput.value : "",
+            summary: summaryInput ? summaryInput.value : "",
+            badge: badgeInput ? badgeInput.value : "",
+            stage: stageInput ? stageInput.value : "",
+            module: moduleInput ? moduleInput.value : "",
+            kind: kindInput ? kindInput.value : "",
+            body: bodyInput ? bodyInput.value : "",
+            module_order: moduleOrderInput ? moduleOrderInput.value : "",
+            block_order: blockOrderInput ? blockOrderInput.value : "",
+            status: statusInput ? statusInput.value : "draft"
+          };
+        };
+
+        var applyEditorState = function (state) {
+          if (!state) {
+            return;
+          }
+
+          if (titleInput && typeof state.title === "string") {
+            titleInput.value = state.title;
+          }
+          if (slugInput && typeof state.slug === "string") {
+            slugInput.value = state.slug;
+            slugInput.dataset.manual = state.slug.trim() ? "1" : "";
+          }
+          if (summaryInput && typeof state.summary === "string") {
+            summaryInput.value = state.summary;
+          }
+          if (badgeInput && typeof state.badge === "string") {
+            badgeInput.value = state.badge;
+          }
+          if (stageInput && typeof state.stage === "string") {
+            stageInput.value = state.stage;
+          }
+          if (moduleInput && typeof state.module === "string") {
+            moduleInput.value = state.module;
+          }
+          if (kindInput && typeof state.kind === "string") {
+            kindInput.value = state.kind;
+          }
+          if (bodyInput && typeof state.body === "string") {
+            bodyInput.value = state.body;
+          }
+          if (moduleOrderInput && typeof state.module_order === "string") {
+            moduleOrderInput.value = state.module_order;
+            moduleOrderInput.dataset.manual = state.module_order.trim() ? "1" : "";
+          }
+          if (blockOrderInput && typeof state.block_order === "string") {
+            blockOrderInput.value = state.block_order;
+            blockOrderInput.dataset.manual = state.block_order.trim() ? "1" : "";
+          }
+          if (statusInput && typeof state.status === "string") {
+            statusInput.value = state.status;
+          }
+        };
+
+        var snapshotState = function () {
+          return JSON.stringify(editorState());
+        };
+
+        var syncDirtyState = function () {
+          isDirty = snapshotState() !== initialSnapshot;
+          if (!isDirty) {
+            window.clearTimeout(autosaveTimer);
+            try {
+              window.localStorage.removeItem(draftStorageKey);
+            } catch (_error) {
+            }
+            setDraftStatus("Изменения совпадают с сохраненной версией.", "ok");
+            return;
+          }
+
+          setDraftStatus("Есть несохраненные изменения. Черновик сохранится автоматически.", "dirty");
+        };
+
+        var formatDraftTime = function (value) {
+          try {
+            return new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          } catch (_error) {
+            return "";
+          }
+        };
+
+        var saveDraftToLocal = function () {
+          if (!isDirty) {
+            return;
+          }
+
+          try {
+            var payload = {
+              saved_at: Date.now(),
+              state: editorState()
+            };
+            window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+            setDraftStatus("Черновик сохранен в браузере в " + formatDraftTime(payload.saved_at) + ".", "ok");
+          } catch (_error) {
+            setDraftStatus("Не удалось сохранить локальный черновик.", "error");
+          }
+        };
+
+        var scheduleAutosave = function () {
+          syncDirtyState();
+          if (!isDirty) {
+            return;
+          }
+
+          window.clearTimeout(autosaveTimer);
+          setDraftStatus("Есть несохраненные изменения. Автосохранение...", "pending");
+          autosaveTimer = window.setTimeout(saveDraftToLocal, 900);
+        };
+
+        var restoreDraft = function () {
+          var rawDraft = "";
+          try {
+            rawDraft = window.localStorage.getItem(draftStorageKey) || "";
+          } catch (_error) {
+            return;
+          }
+          if (!rawDraft) {
+            return;
+          }
+
+          try {
+            var payload = JSON.parse(rawDraft);
+            if (!payload || !payload.state) {
+              return;
+            }
+
+            var currentSnapshot = snapshotState();
+            var savedSnapshot = JSON.stringify(payload.state);
+            if (!savedSnapshot || savedSnapshot === currentSnapshot) {
+              window.localStorage.removeItem(draftStorageKey);
+              return;
+            }
+
+            applyEditorState(payload.state);
+            setDraftStatus("Локальный черновик восстановлен из браузера.", "ok");
+          } catch (_error) {
+            window.localStorage.removeItem(draftStorageKey);
+          }
+        };
+
+        var runSlugCheck = function () {
+          if (!slugInput) {
+            return Promise.resolve(slugCheckState);
+          }
+
+          var rawSlug = slugInput.value.trim();
+          var originalSlug = originalSlugInput ? originalSlugInput.value.trim() : "";
+          if (!rawSlug) {
+            slugCheckState = {
+              normalizedSlug: "",
+              available: false,
+              pending: false
+            };
+            setSlugStatus("Нужен slug.", "error");
+            return Promise.resolve(slugCheckState);
+          }
+
+          if (!slugCheckEndpoint) {
+            slugCheckState = {
+              normalizedSlug: rawSlug,
+              available: true,
+              pending: false
+            };
+            setSlugStatus("Slug готов к сохранению.", "ok");
+            return Promise.resolve(slugCheckState);
+          }
+
+          var requestID = ++slugCheckRequestID;
+          slugCheckState.pending = true;
+          setSlugStatus("Проверяю slug...", "pending");
+
+          var endpoint = new URL(slugCheckEndpoint, window.location.origin);
+          endpoint.searchParams.set("slug", rawSlug);
+          if (originalSlug) {
+            endpoint.searchParams.set("original_slug", originalSlug);
+          }
+
+          return fetch(endpoint.toString(), {
+            method: "GET",
+            credentials: "same-origin"
+          })
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error("slug check failed");
+              }
+              return response.json();
+            })
+            .then(function (payload) {
+              if (requestID !== slugCheckRequestID) {
+                return slugCheckState;
+              }
+
+              var normalizedSlug = payload.normalized_slug || rawSlug;
+              if (normalizedSlug !== rawSlug) {
+                slugInput.value = normalizedSlug;
+                slugInput.dataset.manual = normalizedSlug.trim() ? "1" : "";
+                refreshLocalSummary();
+              }
+
+              slugCheckState = {
+                normalizedSlug: normalizedSlug,
+                available: Boolean(payload.available),
+                pending: false
+              };
+
+              var statusMessage = payload.message || "";
+              if (payload.available && normalizedSlug !== rawSlug) {
+                statusMessage = "Slug нормализован и свободен: " + normalizedSlug;
+              }
+
+              setSlugStatus(statusMessage, payload.available ? "ok" : "error");
+              return slugCheckState;
+            })
+            .catch(function () {
+              slugCheckState = {
+                normalizedSlug: rawSlug,
+                available: false,
+                pending: false
+              };
+              setSlugStatus("Не удалось проверить slug прямо сейчас.", "error");
+              return slugCheckState;
+            });
+        };
+
+        var debouncedSlugCheck = debounce(function () {
+          runSlugCheck();
+        }, 220);
+
+        var currentLessonStatus = function () {
+          return statusInput ? (statusInput.value || "draft") : "draft";
+        };
+
+        var statusCopyFor = function (status) {
+          if (status === "published") {
+            return "виден в маршруте";
+          }
+          if (status === "archived") {
+            return "убран в архив и скрыт от учеников";
+          }
+          return "пока скрыт от учеников";
+        };
+
+        var syncOpenAction = function () {
+          if (!openSubmitButton) {
+            return;
+          }
+
+          var status = currentLessonStatus();
+          var isPublished = status === "published";
+          openSubmitButton.disabled = !isPublished;
+          openSubmitButton.classList.toggle("is-disabled", !isPublished);
+
+          if (statusLabelNode) {
+            statusLabelNode.textContent = status;
+          }
+          if (statusCopyNode) {
+            statusCopyNode.textContent = statusCopyFor(status);
+          }
+
+          if (openNoteNode) {
+            openNoteNode.textContent = isPublished
+              ? "После сохранения урок откроется сразу в ученическом режиме."
+              : "Сначала включи публикацию. Иначе урок сохранится как draft и в /learn не откроется.";
+          }
+        };
+
+        var syncRoutePicker = function () {
+          var currentStage = stageInput ? stageInput.value.trim() : "";
+          var currentModule = moduleInput ? moduleInput.value.trim() : "";
+          var visibleModules = 0;
+
+          stageChipButtons.forEach(function (button) {
+            button.classList.toggle("is-active", button.dataset.stageValue === currentStage);
+          });
+
+          moduleChipButtons.forEach(function (button) {
+            var matchesStage = !currentStage || button.dataset.moduleStage === currentStage;
+            button.hidden = !matchesStage;
+            button.disabled = !matchesStage;
+            button.classList.toggle("is-active", matchesStage && button.dataset.moduleValue === currentModule);
+            if (matchesStage) {
+              visibleModules++;
+            }
+          });
+
+          if (moduleEmptyNode) {
+            moduleEmptyNode.hidden = visibleModules > 0;
+          }
+        };
+
+        var suggestRouteOrder = function (force) {
+          if (!moduleOrderInput || !blockOrderInput) {
+            return;
+          }
+          if (!force && (moduleOrderInput.dataset.manual === "1" || blockOrderInput.dataset.manual === "1")) {
+            return;
+          }
+
+          var currentStage = stageInput ? stageInput.value.trim() : "";
+          var currentModule = moduleInput ? moduleInput.value.trim() : "";
+          var activeStageChip = null;
+          var activeModuleChip = null;
+          var suggestedModuleOrder = globalNextModuleOrder;
+          var suggestedBlockOrder = 1;
+          var hint = "Порядок подставляется автоматически по категории и разделу.";
+
+          stageChipButtons.forEach(function (button) {
+            if (button.dataset.stageValue === currentStage) {
+              activeStageChip = button;
+            }
+          });
+
+          moduleChipButtons.forEach(function (button) {
+            if (button.hidden) {
+              return;
+            }
+            if (button.dataset.moduleStage === currentStage && button.dataset.moduleValue === currentModule) {
+              activeModuleChip = button;
+            }
+          });
+
+          if (activeModuleChip) {
+            suggestedModuleOrder = Number(activeModuleChip.dataset.moduleOrder || suggestedModuleOrder) || suggestedModuleOrder;
+            suggestedBlockOrder = Number(activeModuleChip.dataset.moduleNextBlock || suggestedBlockOrder) || suggestedBlockOrder;
+            hint = "Для существующего раздела подставлен следующий block_order.";
+          } else if (activeStageChip) {
+            suggestedModuleOrder = Number(activeStageChip.dataset.stageNextModule || suggestedModuleOrder) || suggestedModuleOrder;
+            suggestedBlockOrder = 1;
+            hint = "Для новой секции внутри категории подставлен следующий module_order.";
+          } else {
+            suggestedModuleOrder = globalNextModuleOrder;
+            suggestedBlockOrder = 1;
+            hint = "Для новой категории подставлен следующий свободный module_order.";
+          }
+
+          if (force || moduleOrderInput.dataset.manual !== "1") {
+            moduleOrderInput.value = String(suggestedModuleOrder);
+          }
+          if (force || blockOrderInput.dataset.manual !== "1") {
+            blockOrderInput.value = String(suggestedBlockOrder);
+          }
+          if (orderHintNode) {
+            orderHintNode.textContent = hint;
+          }
+        };
+
+        var refreshLocalSummary = function () {
+          syncRoutePicker();
+          suggestRouteOrder(false);
+
+          if (!slugInput.dataset.manual) {
+            slugInput.value = slugify(titleInput.value);
+          }
+
+          var slug = slugInput.value.trim();
+          var path = slug ? "/learn/" + slug : "";
+
+          if (pathNode) {
+            pathNode.textContent = path || "появится после slug";
+          }
+          updateLearnLink(path);
+
+          if (wordCountNode) {
+            wordCountNode.textContent = countWords(bodyInput.value);
+          }
+          if (lineCountNode) {
+            lineCountNode.textContent = countLines(bodyInput.value);
+          }
+          if (kindHintNode && kindInput) {
+            kindHintNode.textContent = editorKindHints[kindInput.value] || editorKindHints.theory;
+          }
+          if (fileNameNode && slug) {
+            var moduleOrder = (moduleOrderInput && moduleOrderInput.value.trim()) || "0";
+            var blockOrder = (blockOrderInput && blockOrderInput.value.trim()) || "0";
+            if (/^\d+$/.test(moduleOrder) && /^\d+$/.test(blockOrder) && Number(moduleOrder) > 0 && Number(blockOrder) > 0) {
+              fileNameNode.textContent = moduleOrder.padStart(2, "0") + "-" + blockOrder.padStart(2, "0") + "-" + slug + ".md";
+            } else {
+              fileNameNode.textContent = slug + ".md";
+            }
+          } else if (fileNameNode) {
+            fileNameNode.textContent = "new-lesson.md";
+          }
+
+          syncOpenAction();
+        };
+
+        var renderPreview = debounce(function () {
+          if (!previewEndpoint) {
+            return;
+          }
+
+          var requestID = ++previewRequestID;
+          var formData = new FormData(form);
+          var params = new URLSearchParams();
+          formData.forEach(function (value, key) {
+            params.append(key, value);
+          });
+
+          fetch(previewEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
+            },
+            body: params.toString()
+          })
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error("preview failed");
+              }
+              return response.json();
+            })
+            .then(function (payload) {
+              if (requestID !== previewRequestID) {
+                return;
+              }
+
+              if (previewNode) {
+                previewNode.innerHTML = payload.html || '<p class="admin-editor-preview-empty">Добавь markdown, и тут сразу появится живая превьюшка урока.</p>';
+              }
+              if (fileNameNode && payload.file_name) {
+                fileNameNode.textContent = payload.file_name;
+              }
+              if (pathNode) {
+                pathNode.textContent = payload.learn_path || "появится после slug";
+              }
+              updateLearnLink(payload.learn_path || "");
+              if (wordCountNode) {
+                wordCountNode.textContent = payload.word_count || 0;
+              }
+              if (lineCountNode) {
+                lineCountNode.textContent = payload.line_count || 0;
+              }
+              if (kindHintNode && payload.kind_hint) {
+                kindHintNode.textContent = payload.kind_hint;
+              }
+            })
+            .catch(function () {
+              refreshLocalSummary();
+            });
+        }, 250);
+
+        var touchEditorState = function (checkSlugNow) {
+          refreshLocalSummary();
+          renderPreview();
+          scheduleAutosave();
+          if (checkSlugNow) {
+            debouncedSlugCheck();
+          }
+        };
+
+        titleInput.addEventListener("input", function () {
+          touchEditorState(true);
+        });
+
+        slugInput.addEventListener("input", function () {
+          slugInput.dataset.manual = slugInput.value.trim() ? "1" : "";
+          touchEditorState(true);
+        });
+
+        [summaryInput, badgeInput].forEach(function (input) {
+          if (!input) {
+            return;
+          }
+
+          input.addEventListener("input", function () {
+            touchEditorState(false);
+          });
+          input.addEventListener("change", function () {
+            touchEditorState(false);
+          });
+        });
+
+        if (stageInput) {
+          ["input", "change"].forEach(function (eventName) {
+            stageInput.addEventListener(eventName, function () {
+              touchEditorState(false);
+            });
+          });
+        }
+
+        if (moduleInput) {
+          ["input", "change"].forEach(function (eventName) {
+            moduleInput.addEventListener(eventName, function () {
+              touchEditorState(false);
+            });
+          });
+        }
+
+        stageChipButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            if (stageInput) {
+              stageInput.value = button.dataset.stageValue || "";
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            if (moduleInput) {
+              var moduleExistsInStage = false;
+              moduleChipButtons.forEach(function (moduleButton) {
+                if (moduleButton.dataset.moduleStage === (button.dataset.stageValue || "") && moduleButton.dataset.moduleValue === moduleInput.value.trim()) {
+                  moduleExistsInStage = true;
+                }
+              });
+              if (!moduleExistsInStage) {
+                moduleInput.value = "";
+              }
+            }
+            touchEditorState(false);
+          });
+        });
+
+        moduleChipButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            if (moduleInput) {
+              moduleInput.value = button.dataset.moduleValue || "";
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            touchEditorState(false);
+          });
+        });
+
+        if (stageNewButton) {
+          stageNewButton.addEventListener("click", function () {
+            if (stageInput) {
+              stageInput.value = "";
+              stageInput.focus();
+            }
+            if (moduleInput) {
+              moduleInput.value = "";
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            touchEditorState(false);
+          });
+        }
+
+        if (moduleNewButton) {
+          moduleNewButton.addEventListener("click", function () {
+            if (moduleInput) {
+              moduleInput.value = "";
+              moduleInput.focus();
+            }
+            if (moduleOrderInput) {
+              moduleOrderInput.dataset.manual = "";
+            }
+            if (blockOrderInput) {
+              blockOrderInput.dataset.manual = "";
+            }
+            touchEditorState(false);
+          });
+        }
+
+        [bodyInput, kindInput, moduleOrderInput, blockOrderInput].forEach(function (input) {
+          if (!input) {
+            return;
+          }
+
+          input.addEventListener("input", function () {
+            if (input === moduleOrderInput || input === blockOrderInput) {
+              input.dataset.manual = input.value.trim() ? "1" : "";
+            }
+            touchEditorState(false);
+          });
+
+          input.addEventListener("change", function () {
+            if (input === moduleOrderInput || input === blockOrderInput) {
+              input.dataset.manual = input.value.trim() ? "1" : "";
+            }
+            touchEditorState(false);
+          });
+        });
+
+        if (statusInput) {
+          statusInput.addEventListener("change", function () {
+            touchEditorState(false);
+          });
+        }
+
+        form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+          button.addEventListener("click", function () {
+            lastSubmitButton = button;
+          });
+        });
+
+        var beforeUnloadHandler = function (event) {
+          if (!isDirty || isSubmitting) {
+            return;
+          }
+
+          event.preventDefault();
+          event.returnValue = "";
+          return "";
+        };
+
+        window.addEventListener("beforeunload", beforeUnloadHandler);
+
+        form.addEventListener("submit", function (event) {
+          if (isSubmitting) {
+            return;
+          }
+
+          event.preventDefault();
+
+          runSlugCheck().then(function (result) {
+            if (!result.available) {
+              setDraftStatus("Исправь slug перед сохранением.", "error");
+              slugInput.focus();
+              return;
+            }
+
+            isSubmitting = true;
+            window.clearTimeout(autosaveTimer);
+            window.removeEventListener("beforeunload", beforeUnloadHandler);
+
+            try {
+              window.localStorage.removeItem(draftStorageKey);
+            } catch (_error) {
+            }
+
+            var submitForwarder = form.querySelector("[data-editor-submit-forwarder]");
+            if (!submitForwarder) {
+              submitForwarder = document.createElement("input");
+              submitForwarder.type = "hidden";
+              submitForwarder.dataset.editorSubmitForwarder = "1";
+              form.appendChild(submitForwarder);
+            }
+
+            if (lastSubmitButton && lastSubmitButton.name) {
+              submitForwarder.name = lastSubmitButton.name;
+              submitForwarder.value = lastSubmitButton.value || "";
+            } else {
+              submitForwarder.removeAttribute("name");
+              submitForwarder.value = "";
+            }
+
+            form.submit();
+          });
+        });
+
+        form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            var snippet = editorSnippets[button.dataset.markdownTemplate];
+            if (!snippet) {
+              return;
+            }
+
+            insertAtCursor(bodyInput, snippet);
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        });
+
+        refreshLocalSummary();
+        initialSnapshot = snapshotState();
+        restoreDraft();
+        refreshLocalSummary();
+        syncDirtyState();
+        runSlugCheck();
+      });
+    });
+  
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("form[data-confirm-submit]").forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+          var message = form.dataset.confirmSubmit;
+          if (!message) {
+            return;
+          }
+
+          if (!window.confirm(message)) {
+            event.preventDefault();
+          }
+        });
+      });
+    });
+  
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var extraEditorSnippets = {
+        subheading: "\n### Подблок\n\nЕще один короткий абзац.\n",
+        callout: "\n> Заметка: короткий акцент на то, что важно не пропустить.\n",
+        command: "\n```bash\nsudo systemctl status nginx\njournalctl -u nginx -n 50 --no-pager\n```\n"
+      };
+
+      var insertAtCursor = function (textarea, snippet) {
+        if (!textarea) {
+          return;
+        }
+
+        var start = textarea.selectionStart || 0;
+        var end = textarea.selectionEnd || 0;
+        var value = textarea.value;
+        textarea.value = value.slice(0, start) + snippet + value.slice(end);
+        textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      };
+
+      document.querySelectorAll("[data-article-editor]").forEach(function (form) {
+        var bodyInput = form.querySelector("[data-article-body]");
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var uploadForm = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-form]");
+        var uploadInput = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-input]");
+        var uploadStatus = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-status]");
+        var uploadResult = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-result]");
+        var uploadPathNode = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-path]");
+        var uploadInsertButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-insert]");
+        var uploadCopyButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-copy]");
+        var uploadSubmitButton = form.closest(".admin-editor-shell") && form.closest(".admin-editor-shell").querySelector("[data-editor-upload-submit]");
+        var latestUploadPath = "";
+
+        form.querySelectorAll("[data-markdown-template]").forEach(function (button) {
+          var snippet = extraEditorSnippets[button.dataset.markdownTemplate];
+          if (!snippet) {
+            return;
+          }
+
+          button.addEventListener("click", function () {
+            insertAtCursor(bodyInput, snippet);
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        });
+
+        if (!uploadForm || !uploadInput || !uploadStatus || !uploadResult || !uploadPathNode) {
+          return;
+        }
+
+        uploadForm.addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          if (!uploadInput.files || !uploadInput.files.length) {
+            uploadStatus.textContent = "Сначала выбери картинку.";
+            return;
+          }
+
+          var payload = new FormData();
+          payload.append("image", uploadInput.files[0]);
+
+          if (uploadSubmitButton) {
+            uploadSubmitButton.disabled = true;
+          }
+          uploadStatus.textContent = "Загружаю картинку...";
+
+          fetch(uploadForm.dataset.uploadEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
+            },
+            body: payload
+          })
+            .then(function (response) {
+              return response.json().then(function (json) {
+                if (!response.ok) {
+                  throw new Error(json.error || "upload failed");
+                }
+                return json;
+              });
+            })
+            .then(function (json) {
+              latestUploadPath = json.path || "";
+              uploadPathNode.textContent = latestUploadPath || "—";
+              uploadStatus.textContent = latestUploadPath ? "Картинка загружена. Можно вставлять в markdown." : "Загрузка завершена.";
+              uploadResult.hidden = !latestUploadPath;
+              uploadInput.value = "";
+            })
+            .catch(function (error) {
+              uploadStatus.textContent = error && error.message ? error.message : "Не удалось загрузить картинку.";
+              uploadResult.hidden = true;
+            })
+            .finally(function () {
+              if (uploadSubmitButton) {
+                uploadSubmitButton.disabled = false;
+              }
+            });
+        });
+
+        if (uploadInsertButton) {
+          uploadInsertButton.addEventListener("click", function () {
+            if (!latestUploadPath) {
+              return;
+            }
+
+            insertAtCursor(bodyInput, "\n![](" + latestUploadPath + ")\n");
+            bodyInput.dispatchEvent(new Event("input", { bubbles: true }));
+            bodyInput.focus();
+          });
+        }
+
+        if (uploadCopyButton) {
+          uploadCopyButton.addEventListener("click", function () {
+            if (!latestUploadPath) {
+              return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(latestUploadPath)
+                .then(function () {
+                  uploadStatus.textContent = "Путь скопирован.";
+                })
+                .catch(function () {
+                  uploadStatus.textContent = "Не удалось скопировать путь.";
+                });
+              return;
+            }
+
+            uploadStatus.textContent = "Буфер обмена в этом браузере недоступен.";
+          });
+        }
+      });
+    });
+  
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+      var getDragAfterElement = function (container, y) {
+        var items = Array.from(container.querySelectorAll("[data-admin-reorder-item]:not(.is-dragging)"));
+        var closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+        items.forEach(function (item) {
+          var box = item.getBoundingClientRect();
+          var offset = y - box.top - box.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            closest = { offset: offset, element: item };
+          }
+        });
+
+        return closest.element;
+      };
+
+      document.querySelectorAll("[data-admin-reorder-list]").forEach(function (list) {
+        var statusNode = list.parentElement && list.parentElement.querySelector("[data-admin-reorder-status]");
+        var draggingItem = null;
+        var lastSerializedOrder = "";
+
+        var syncSerializedOrder = function () {
+          lastSerializedOrder = Array.from(list.querySelectorAll("[data-admin-reorder-item]"))
+            .map(function (item) { return item.dataset.slug || ""; })
+            .join(",");
+        };
+
+        var sendOrder = function () {
+          var params = new URLSearchParams();
+          Array.from(list.querySelectorAll("[data-admin-reorder-item]")).forEach(function (item) {
+            params.append("slug", item.dataset.slug || "");
+          });
+          params.append("stage", list.dataset.stage || "");
+          params.append("module", list.dataset.module || "");
+          params.append("module_order", list.dataset.moduleOrder || "");
+
+          if (statusNode) {
+            statusNode.hidden = false;
+            statusNode.classList.remove("is-error");
+            statusNode.textContent = "Сохраняю новый порядок...";
+          }
+
+          fetch(list.dataset.reorderEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRF-Token": csrfMeta ? csrfMeta.content : ""
+            },
+            body: params.toString()
+          })
+            .then(function (response) {
+              return response.json().then(function (json) {
+                if (!response.ok) {
+                  throw new Error(json.error || "reorder failed");
+                }
+                return json;
+              });
+            })
+            .then(function (payload) {
+              if (!payload.items) {
+                return;
+              }
+
+              payload.items.forEach(function (item) {
+                var node = list.querySelector('[data-admin-reorder-item][data-slug="' + item.slug + '"] .admin-article-sort-title strong');
+                if (!node) {
+                  return;
+                }
+                var title = node.textContent.replace(/^\d+\.\d+\s+/, "");
+                node.textContent = (item.index ? item.index + " " : "") + title;
+              });
+
+              syncSerializedOrder();
+              if (statusNode) {
+                statusNode.textContent = "Порядок сохранен.";
+              }
+            })
+            .catch(function (error) {
+              if (statusNode) {
+                statusNode.hidden = false;
+                statusNode.classList.add("is-error");
+                statusNode.textContent = error && error.message ? error.message : "Не удалось сохранить порядок.";
+              }
+            });
+        };
+
+        syncSerializedOrder();
+
+        list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+          item.addEventListener("dragstart", function () {
+            draggingItem = item;
+            item.classList.add("is-dragging");
+          });
+
+          item.addEventListener("dragend", function () {
+            item.classList.remove("is-dragging");
+            draggingItem = null;
+
+            var currentOrder = Array.from(list.querySelectorAll("[data-admin-reorder-item]"))
+              .map(function (node) { return node.dataset.slug || ""; })
+              .join(",");
+            if (currentOrder !== lastSerializedOrder) {
+              sendOrder();
+            }
+          });
+        });
+
+        list.addEventListener("dragover", function (event) {
+          if (!draggingItem) {
+            return;
+          }
+
+          event.preventDefault();
+          var afterElement = getDragAfterElement(list, event.clientY);
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+
+          if (!afterElement) {
+            list.appendChild(draggingItem);
+            return;
+          }
+
+          afterElement.classList.add("is-drop-target");
+          list.insertBefore(draggingItem, afterElement);
+        });
+
+        list.addEventListener("dragleave", function () {
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+        });
+
+        list.addEventListener("drop", function () {
+          list.querySelectorAll("[data-admin-reorder-item]").forEach(function (item) {
+            item.classList.remove("is-drop-target");
+          });
+        });
+      });
+    });

@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -21,6 +22,8 @@ import (
 )
 
 var ErrArticleNotFound = errors.New("article not found")
+
+var imgTagPattern = regexp.MustCompile(`(?i)<img\b[^>]*>`)
 
 const (
 	ArticleStatusDraft     = "draft"
@@ -114,7 +117,7 @@ func RenderMarkdown(body string) (template.HTML, error) {
 		return "", err
 	}
 
-	return template.HTML(rendered.String()), nil
+	return optimizeRenderedHTML(rendered.String()), nil
 }
 
 func (l *Library) List() ([]ArticleMeta, error) {
@@ -327,7 +330,7 @@ func (l *Library) loadSnapshot(signature string, files []string) (*librarySnapsh
 			path:      path,
 			meta:      meta,
 			body:      body,
-			html:      template.HTML(rendered.String()),
+			html:      optimizeRenderedHTML(rendered.String()),
 			updatedAt: info.ModTime().UTC(),
 		})
 	}
@@ -611,4 +614,37 @@ func newMarkdownRenderer() goldmark.Markdown {
 		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithRendererOptions(rendererhtml.WithUnsafe()),
 	)
+}
+
+func optimizeRenderedHTML(markup string) template.HTML {
+	return template.HTML(addImagePerformanceAttrs(markup))
+}
+
+func addImagePerformanceAttrs(markup string) string {
+	if !strings.Contains(strings.ToLower(markup), "<img") {
+		return markup
+	}
+
+	return imgTagPattern.ReplaceAllStringFunc(markup, func(tag string) string {
+		lower := strings.ToLower(tag)
+		if !strings.Contains(lower, " loading=") {
+			tag = injectHTMLAttribute(tag, ` loading="lazy"`)
+			lower = strings.ToLower(tag)
+		}
+		if !strings.Contains(lower, " decoding=") {
+			tag = injectHTMLAttribute(tag, ` decoding="async"`)
+		}
+		return tag
+	})
+}
+
+func injectHTMLAttribute(tag, attr string) string {
+	end := strings.LastIndex(tag, ">")
+	if end < 0 {
+		return tag
+	}
+	if end > 0 && tag[end-1] == '/' {
+		return tag[:end-1] + attr + tag[end-1:]
+	}
+	return tag[:end] + attr + tag[end:]
 }

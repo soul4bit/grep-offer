@@ -3266,6 +3266,25 @@ button.dashboard-checkpoint-pill {
   color: var(--accent);
 }
 
+.article-body img {
+  display: block;
+  max-width: min(100%, 46rem);
+  height: auto;
+  margin: 1.5rem auto;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  border-radius: 22px;
+  background: rgba(5, 8, 7, 0.92);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.landing-roadmap-section,
+.landing-final,
+.course-module-card,
+.lesson-quiz-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 720px;
+}
+
 .admin-table-shell {
   padding: 1.5rem;
 }
