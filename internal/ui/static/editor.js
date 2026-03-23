@@ -445,17 +445,51 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         };
 
+        var knownModuleMatchesStage = function (stageValue, moduleValue) {
+          var hasKnownModule = false;
+          var moduleBelongsToStage = false;
+
+          moduleChipButtons.forEach(function (button) {
+            if (button.dataset.moduleValue !== moduleValue) {
+              return;
+            }
+
+            hasKnownModule = true;
+            if (button.dataset.moduleStage === stageValue) {
+              moduleBelongsToStage = true;
+            }
+          });
+
+          return {
+            hasKnownModule: hasKnownModule,
+            moduleBelongsToStage: moduleBelongsToStage
+          };
+        };
+
         var syncRoutePicker = function () {
           var currentStage = stageInput ? stageInput.value.trim() : "";
           var currentModule = moduleInput ? moduleInput.value.trim() : "";
           var visibleModules = 0;
+          var knownStage = false;
 
           stageChipButtons.forEach(function (button) {
-            button.classList.toggle("is-active", button.dataset.stageValue === currentStage);
+            var isActive = button.dataset.stageValue === currentStage;
+            button.classList.toggle("is-active", isActive);
+            if (isActive) {
+              knownStage = true;
+            }
           });
 
+          if (moduleInput && currentStage && currentModule) {
+            var moduleState = knownModuleMatchesStage(currentStage, currentModule);
+            if (moduleState.hasKnownModule && !moduleState.moduleBelongsToStage) {
+              moduleInput.value = "";
+              currentModule = "";
+            }
+          }
+
           moduleChipButtons.forEach(function (button) {
-            var matchesStage = !currentStage || button.dataset.moduleStage === currentStage;
+            var matchesStage = Boolean(currentStage) && button.dataset.moduleStage === currentStage;
             button.hidden = !matchesStage;
             button.disabled = !matchesStage;
             button.classList.toggle("is-active", matchesStage && button.dataset.moduleValue === currentModule);
@@ -465,7 +499,12 @@ document.addEventListener("DOMContentLoaded", function () {
           });
 
           if (moduleEmptyNode) {
-            moduleEmptyNode.hidden = visibleModules > 0;
+            moduleEmptyNode.hidden = !currentStage || visibleModules > 0;
+            if (currentStage && !knownStage) {
+              moduleEmptyNode.textContent = "Для нового этапа пока нет готовых подразделов. Можно ввести свой.";
+            } else {
+              moduleEmptyNode.textContent = "Для этого этапа пока нет готовых подразделов. Можно создать свой.";
+            }
           }
         };
 
