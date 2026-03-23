@@ -90,6 +90,7 @@ type ViewData struct {
 	AdminArchivedArticles []AdminArticleRow
 	AdminArticleForm      AdminArticleForm
 	AdminArticleOptions   AdminArticleOptions
+	AdminRoadmapStages    []AdminRoadmapStageRow
 	AdminTestLessons      []AdminLessonOption
 	AdminTestQuestions    []AdminTestQuestionRow
 	AdminAuditLogs        []AdminAuditLogRow
@@ -251,6 +252,28 @@ type AdminArticleOptions struct {
 	Stages                []AdminStageOption
 }
 
+type AdminRoadmapStageRow struct {
+	ID          int64
+	Key         string
+	Title       string
+	Badge       string
+	Summary     string
+	Note        string
+	OrderIndex  int
+	LessonCount int
+	Modules     []AdminRoadmapModuleRow
+}
+
+type AdminRoadmapModuleRow struct {
+	ID          int64
+	StageID     int64
+	Key         string
+	Title       string
+	Note        string
+	OrderIndex  int
+	LessonCount int
+}
+
 type AdminStageOption struct {
 	Value           string
 	NextModuleOrder int
@@ -374,7 +397,7 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		uploads = http.FileServer(http.Dir(uploadsDir))
 	}
 
-	return &App{
+	application := &App{
 		store:                 st,
 		templates:             templates,
 		static:                http.FileServer(http.FS(staticFS)),
@@ -388,7 +411,13 @@ func New(st *store.Store, cfg Config) (*App, error) {
 		passwordReset:         cfg.PasswordReset,
 		telegramWebhookSecret: cfg.TelegramWebhookSecret,
 		bootstrapAdminEmails:  normalizeAdminEmails(cfg.BootstrapAdminEmails),
-	}, nil
+	}
+
+	if err := application.ensureRoadmapConfig(context.Background()); err != nil {
+		return nil, fmt.Errorf("ensure roadmap config: %w", err)
+	}
+
+	return application, nil
 }
 
 func (a *App) Routes() http.Handler {
@@ -408,6 +437,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /dashboard/checkpoints", a.handleDashboardCheckpointToggle)
 	mux.HandleFunc("GET /admin", a.handleAdminRoot)
 	mux.HandleFunc("GET /admin/articles", a.handleAdminArticles)
+	mux.HandleFunc("GET /admin/roadmap", a.handleAdminRoadmap)
 	mux.HandleFunc("GET /admin/users", a.handleAdminUsers)
 	mux.HandleFunc("GET /admin/logs", a.handleAdminLogs)
 	mux.HandleFunc("GET /admin/articles/new", a.handleAdminArticleNew)
@@ -421,6 +451,12 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /admin/articles/preview", a.handleAdminArticlePreview)
 	mux.HandleFunc("POST /admin/articles/reorder", a.handleAdminArticleReorder)
 	mux.HandleFunc("POST /admin/uploads/images", a.handleAdminImageUpload)
+	mux.HandleFunc("POST /admin/roadmap/stages", a.handleAdminRoadmapStageCreate)
+	mux.HandleFunc("POST /admin/roadmap/stages/{id}", a.handleAdminRoadmapStageUpdate)
+	mux.HandleFunc("POST /admin/roadmap/stages/{id}/delete", a.handleAdminRoadmapStageDelete)
+	mux.HandleFunc("POST /admin/roadmap/modules", a.handleAdminRoadmapModuleCreate)
+	mux.HandleFunc("POST /admin/roadmap/modules/{id}", a.handleAdminRoadmapModuleUpdate)
+	mux.HandleFunc("POST /admin/roadmap/modules/{id}/delete", a.handleAdminRoadmapModuleDelete)
 	mux.HandleFunc("POST /admin/users/{id}/admin", a.handleAdminUserAdmin)
 	mux.HandleFunc("POST /admin/users/{id}/ban", a.handleAdminUserBan)
 	mux.HandleFunc("POST /admin/users/{id}/delete", a.handleAdminUserDelete)
@@ -467,40 +503,16 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load articles failed", http.StatusInternalServerError)
 		return
 	}
+	roadmapStages, err := a.roadmapStages(r.Context())
+	if err != nil {
+		http.Error(w, "load roadmap failed", http.StatusInternalServerError)
+		return
+	}
 
 	data := ViewData{
 		Notice:           noticeFromRequest(r),
 		FeaturedArticles: featuredArticles,
-		LandingRoadmap: []LandingStage{
-			{
-				Index:   "01",
-				Title:   "Фундамент",
-				Badge:   "linux / bash / git",
-				Summary: "Собираешь базу: терминал, сеть, процессы, файлы и привычку не паниковать от логов.",
-				Note:    "Без этого любой модный стек сверху просто ломается дороже и загадочнее.",
-			},
-			{
-				Index:   "02",
-				Title:   "Доставка",
-				Badge:   "docker / ci-cd / deploy",
-				Summary: "Понимаешь, как код едет от коммита до сервера и где по дороге чаще всего все начинает гореть.",
-				Note:    "Именно тут исчезает наивная вера в фразу «у меня локально работало».",
-			},
-			{
-				Index:   "03",
-				Title:   "Платформа",
-				Badge:   "k8s / terraform / observability",
-				Summary: "Подключаешь оркестрацию, инфраструктуру и наблюдаемость без попытки называть магией обычную эксплуатацию.",
-				Note:    "Сначала понимание систем, потом Kubernetes. Иначе получится дорогой квест.",
-			},
-			{
-				Index:   "04",
-				Title:   "Оффер",
-				Badge:   "cv / interviews / money",
-				Summary: "Упаковываешь опыт, проходишь собесы и разговариваешь о деньгах уже с нормальной опорой на практику.",
-				Note:    "Не инфоцыганский финал, а обычный рабочий результат последовательного пути.",
-			},
-		},
+		LandingRoadmap:   buildLandingRoadmap(roadmapStages),
 	}
 
 	a.render(w, r, http.StatusOK, "home", data)
@@ -558,124 +570,6 @@ func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "dashboard", data)
 }
 
-func buildDashboardView() ([]DashboardStat, DashboardFocus, []DashboardStage) {
-	stages := []DashboardStage{
-		{
-			Index:   "01",
-			Title:   "Фундамент",
-			Badge:   "linux / bash / git / network",
-			Summary: "Собираешь базу: терминал, процессы, сеть и привычку не гадать по логам.",
-			Checkpoints: []DashboardCheckpoint{
-				{Title: "Навигация по Linux без паники", Note: "Файлы, права, процессы, systemd и package manager без магии.", Done: true},
-				{Title: "Bash как рабочий инструмент", Note: "Pipe, redirection, grep, sed, env и привычка читать man.", Done: true},
-				{Title: "Git и сеть без белой магии", Note: "SSH, remote, DNS, curl, ss и разбор обычных поломок.", Done: true},
-			},
-		},
-		{
-			Index:   "02",
-			Title:   "Доставка",
-			Badge:   "docker / ci-cd / deploy",
-			Summary: "Понимаешь, как код едет от коммита до сервера и где по дороге все обычно горит.",
-			Checkpoints: []DashboardCheckpoint{
-				{Title: "Собрать образ без шаманства", Note: "Dockerfile, layers, registry и разница между build и run.", Done: true},
-				{Title: "Положить CI на рельсы", Note: "Pipeline, тесты, артефакты и нормальные healthchecks.", Done: false},
-				{Title: "Довезти deploy до предсказуемости", Note: "Rollback, env, секреты и понимание, где обычно рвется цепочка.", Done: false},
-			},
-		},
-		{
-			Index:   "03",
-			Title:   "Платформа",
-			Badge:   "k8s / terraform / observability",
-			Summary: "Подключаешь оркестрацию, инфраструктуру и наблюдаемость без культа YAML.",
-			Checkpoints: []DashboardCheckpoint{
-				{Title: "Понять orchestration, а не просто выучить YAML", Note: "Pods, services, ingress и что именно они решают.", Done: false},
-				{Title: "Наблюдать систему, а не надеяться", Note: "Logs, metrics, traces, alerts и что реально смотреть при инциденте.", Done: false},
-				{Title: "Описывать инфраструктуру как код", Note: "Terraform, state, secrets и аккуратная работа с cloud-ресурсами.", Done: false},
-			},
-		},
-		{
-			Index:   "04",
-			Title:   "Оффер",
-			Badge:   "cv / interview / offer",
-			Summary: "Упаковываешь опыт, проходишь собесы и разговариваешь про деньги уже с реальной опорой.",
-			Checkpoints: []DashboardCheckpoint{
-				{Title: "Собрать резюме вокруг реальных задач", Note: "Что делал, что ломалось, что улучшил и какой был эффект.", Done: false},
-				{Title: "Подготовить техразговор без легенд", Note: "Архитектура, инциденты, delivery, надежность и компромиссы.", Done: false},
-				{Title: "Договориться об оффере без тумана", Note: "Деньги, ожидания, зона ответственности и следующий уровень роста.", Done: false},
-			},
-		},
-	}
-
-	totalCheckpoints := 0
-	doneCheckpoints := 0
-	currentStageIndex := len(stages) - 1
-	foundActive := false
-
-	for i := range stages {
-		total := len(stages[i].Checkpoints)
-		done := 0
-
-		for _, checkpoint := range stages[i].Checkpoints {
-			totalCheckpoints++
-			if checkpoint.Done {
-				done++
-				doneCheckpoints++
-			}
-		}
-
-		stages[i].DoneCount = done
-		stages[i].TotalCount = total
-		if total > 0 {
-			stages[i].Percent = done * 100 / total
-		}
-
-		switch {
-		case done == total:
-			stages[i].Status = "готово"
-			stages[i].StatusTone = "done"
-		case !foundActive:
-			stages[i].Status = "в работе"
-			stages[i].StatusTone = "active"
-			currentStageIndex = i
-			foundActive = true
-		default:
-			stages[i].Status = "в очереди"
-			stages[i].StatusTone = "queued"
-		}
-	}
-
-	currentStage := stages[currentStageIndex]
-	nextCheckpoint := "Все чекпоинты закрыты. Можно идти за оффером."
-	for _, checkpoint := range currentStage.Checkpoints {
-		if !checkpoint.Done {
-			nextCheckpoint = checkpoint.Title
-			break
-		}
-	}
-
-	overallPercent := 0
-	if totalCheckpoints > 0 {
-		overallPercent = doneCheckpoints * 100 / totalCheckpoints
-	}
-
-	stats := []DashboardStat{
-		{Value: fmt.Sprintf("%d/%d", doneCheckpoints, totalCheckpoints), Label: "закрыто по маршруту"},
-		{Value: currentStage.Title, Label: "текущий этап"},
-		{Value: fmt.Sprintf("%d%%", overallPercent), Label: "общий прогресс"},
-	}
-
-	focus := DashboardFocus{
-		Title:          currentStage.Title,
-		Summary:        currentStage.Summary,
-		StageLabel:     fmt.Sprintf("этап %d из %d", currentStageIndex+1, len(stages)),
-		NextCheckpoint: nextCheckpoint,
-		Percent:        overallPercent,
-		DoneCount:      doneCheckpoints,
-		TotalCount:     totalCheckpoints,
-	}
-
-	return stats, focus, stages
-}
 func (a *App) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 	if a.currentUser(r) != nil {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -1281,6 +1175,30 @@ func noticeFromRequest(r *http.Request) string {
 		return "Сначала отправь урок в архив, а уже потом удаляй его навсегда."
 	case "article-deleted":
 		return "Урок удален. Маршрут и админка уже без него."
+	case "roadmap-stage-created":
+		return "Этап маршрута добавлен."
+	case "roadmap-stage-saved":
+		return "Этап маршрута обновлен."
+	case "roadmap-stage-deleted":
+		return "Этап маршрута удален."
+	case "roadmap-stage-delete-blocked":
+		return "Этап нельзя удалить, пока в нем есть подразделы или привязанные уроки."
+	case "roadmap-stage-title-required":
+		return "Для этапа нужно название."
+	case "roadmap-stage-required":
+		return "Сначала выбери этап маршрута."
+	case "roadmap-module-created":
+		return "Подраздел маршрута добавлен."
+	case "roadmap-module-saved":
+		return "Подраздел маршрута обновлен."
+	case "roadmap-module-deleted":
+		return "Подраздел маршрута удален."
+	case "roadmap-module-delete-blocked":
+		return "Подраздел нельзя удалить, пока в нем есть уроки."
+	case "roadmap-module-title-required":
+		return "Для подраздела нужно название."
+	case "roadmap-order-invalid":
+		return "Порядок должен быть целым числом не меньше нуля."
 	default:
 		return ""
 	}

@@ -4,8 +4,8 @@
 <section class="admin-hero">
   <div>
     <div class="eyebrow">admin</div>
-    <h1 class="section-title">Контент, пользователи и аудит без свалки в одном экране.</h1>
-    <p class="lead">Админка разбита на три секции: уроки и тесты, список пользователей и журнал чувствительных действий.</p>
+    <h1 class="section-title">Контент, маршрут, пользователи и аудит без свалки в одном экране.</h1>
+    <p class="lead">Админка разбита на четыре секции: уроки и тесты, этапы маршрута, список пользователей и журнал чувствительных действий.</p>
   </div>
 </section>
 
@@ -20,6 +20,7 @@
 
   <p class="admin-subnav-summary">
     {{if eq .AdminSection "articles"}}Здесь живут уроки, markdown и test-блоки.{{end}}
+    {{if eq .AdminSection "roadmap"}}Здесь настраиваются этапы и подразделы маршрута, которые видны на лендинге, в кабинете и редакторе.{{end}}
     {{if eq .AdminSection "users"}}Здесь управление ролями, баном и удалением аккаунтов.{{end}}
     {{if eq .AdminSection "logs"}}Здесь журнал admin-действий и чувствительных событий.{{end}}
   </p>
@@ -221,6 +222,224 @@
           </article>
         {{end}}
       </div>
+    </div>
+  </section>
+{{end}}
+
+{{if eq .AdminSection "roadmap"}}
+  <section class="admin-table-shell">
+    <div class="admin-table-head">
+      <div>
+        <strong>Этапы маршрута</strong>
+        <p class="admin-section-copy">Здесь задается структура витрины и редактора: этапы вроде «Фундамент» и вложенные подразделы вроде «Навигация по Linux без паники».</p>
+      </div>
+      <span>{{len .AdminRoadmapStages}} этапов</span>
+    </div>
+
+    <article class="admin-roadmap-stage-card admin-roadmap-stage-card-create">
+      <div class="admin-roadmap-stage-head">
+        <div>
+          <strong>Добавить этап</strong>
+          <p class="admin-section-copy">Новый этап сразу появится в редакторе урока, на лендинге и в кабинете.</p>
+        </div>
+      </div>
+
+      <form method="post" action="/admin/roadmap/stages" class="admin-roadmap-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+        <div class="admin-roadmap-form-grid">
+          <label class="field">
+            <span>Название этапа</span>
+            <input type="text" name="title" required placeholder="Например: Фундамент">
+          </label>
+
+          <label class="field">
+            <span>Badge</span>
+            <input type="text" name="badge" placeholder="linux / bash / git">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Краткое описание</span>
+          <textarea name="summary" rows="3" placeholder="Что закрывает этот этап и зачем он нужен ученику"></textarea>
+        </label>
+
+        <div class="admin-roadmap-form-grid">
+          <label class="field">
+            <span>Нижняя подпись</span>
+            <textarea name="note" rows="3" placeholder="Контекст или пояснение для карточки этапа"></textarea>
+          </label>
+
+          <label class="field">
+            <span>Порядок</span>
+            <input type="number" min="0" name="order_index" value="1">
+          </label>
+        </div>
+
+        <div class="admin-roadmap-form-actions">
+          <button class="primary-button" type="submit">Добавить этап</button>
+        </div>
+      </form>
+    </article>
+
+    <div class="admin-roadmap-grid">
+      {{range .AdminRoadmapStages}}
+        <article class="admin-roadmap-stage-card">
+          <div class="admin-roadmap-stage-head">
+            <div class="admin-roadmap-stage-title">
+              <strong>{{.Title}}</strong>
+              <span>{{.Key}}</span>
+            </div>
+
+            <div class="admin-roadmap-meta">
+              <span class="admin-pill">этап {{.OrderIndex}}</span>
+              <span class="admin-pill">{{len .Modules}} подразделов</span>
+              <span class="admin-pill">{{.LessonCount}} уроков</span>
+            </div>
+          </div>
+
+          <form method="post" action="/admin/roadmap/stages/{{.ID}}" class="admin-roadmap-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+
+            <div class="admin-roadmap-form-grid">
+              <label class="field">
+                <span>Название этапа</span>
+                <input type="text" name="title" value="{{.Title}}" required>
+              </label>
+
+              <label class="field">
+                <span>Badge</span>
+                <input type="text" name="badge" value="{{.Badge}}">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Краткое описание</span>
+              <textarea name="summary" rows="3">{{.Summary}}</textarea>
+            </label>
+
+            <div class="admin-roadmap-form-grid">
+              <label class="field">
+                <span>Нижняя подпись</span>
+                <textarea name="note" rows="3">{{.Note}}</textarea>
+              </label>
+
+              <label class="field">
+                <span>Порядок</span>
+                <input type="number" min="0" name="order_index" value="{{.OrderIndex}}">
+              </label>
+            </div>
+
+            <div class="admin-roadmap-form-actions">
+              <button class="primary-button" type="submit">Сохранить этап</button>
+            </div>
+          </form>
+
+          <div class="admin-roadmap-module-section">
+            <div class="admin-roadmap-module-head">
+              <div>
+                <strong>Подразделы этапа</strong>
+                <p class="admin-section-copy">Именно эти названия админ выбирает в редакторе урока.</p>
+              </div>
+            </div>
+
+            <div class="admin-roadmap-module-list">
+              {{range .Modules}}
+                <article class="admin-roadmap-module-card">
+                  <form method="post" action="/admin/roadmap/modules/{{.ID}}" class="admin-roadmap-form">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+
+                    <div class="admin-roadmap-module-head">
+                      <div class="admin-roadmap-stage-title">
+                        <strong>{{.Title}}</strong>
+                        <span>{{.Key}}</span>
+                      </div>
+
+                      <div class="admin-roadmap-meta">
+                        <span class="admin-pill">порядок {{.OrderIndex}}</span>
+                        <span class="admin-pill">{{.LessonCount}} уроков</span>
+                      </div>
+                    </div>
+
+                    <div class="admin-roadmap-form-grid">
+                      <label class="field">
+                        <span>Название подраздела</span>
+                        <input type="text" name="title" value="{{.Title}}" required>
+                      </label>
+
+                      <label class="field">
+                        <span>Порядок</span>
+                        <input type="number" min="0" name="order_index" value="{{.OrderIndex}}">
+                      </label>
+                    </div>
+
+                    <label class="field">
+                      <span>Пояснение</span>
+                      <textarea name="note" rows="3">{{.Note}}</textarea>
+                    </label>
+
+                    <div class="admin-roadmap-form-actions">
+                      <button class="primary-button" type="submit">Сохранить подраздел</button>
+                    </div>
+                  </form>
+
+                  <form method="post" action="/admin/roadmap/modules/{{.ID}}/delete" data-confirm-submit="Удалить подраздел «{{.Title}}»? Это сработает только если в нем нет уроков.">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button class="ghost-button ghost-button-danger" type="submit">Удалить подраздел</button>
+                  </form>
+                </article>
+              {{else}}
+                <p class="admin-roadmap-empty">В этом этапе пока нет подразделов. Добавь первый ниже.</p>
+              {{end}}
+            </div>
+
+            <article class="admin-roadmap-module-card admin-roadmap-module-card-create">
+              <div class="admin-roadmap-module-head">
+                <div>
+                  <strong>Добавить подраздел</strong>
+                  <p class="admin-section-copy">Например: «Навигация по Linux без паники» или «Положить CI на рельсы».</p>
+                </div>
+              </div>
+
+              <form method="post" action="/admin/roadmap/modules" class="admin-roadmap-form">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="stage_id" value="{{.ID}}">
+
+                <div class="admin-roadmap-form-grid">
+                  <label class="field">
+                    <span>Название подраздела</span>
+                    <input type="text" name="title" required placeholder="Например: Навигация по Linux без паники">
+                  </label>
+
+                  <label class="field">
+                    <span>Порядок</span>
+                    <input type="number" min="0" name="order_index" value="1">
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Пояснение</span>
+                  <textarea name="note" rows="3" placeholder="Что именно должен закрыть этот подраздел"></textarea>
+                </label>
+
+                <div class="admin-roadmap-form-actions">
+                  <button class="secondary-button" type="submit">Добавить подраздел</button>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <form method="post" action="/admin/roadmap/stages/{{.ID}}/delete" data-confirm-submit="Удалить этап «{{.Title}}»? Это сработает только если в нем нет подразделов и уроков.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="ghost-button ghost-button-danger" type="submit">Удалить этап</button>
+          </form>
+        </article>
+      {{else}}
+        <article class="article-card article-card-empty">
+          <h2>Маршрут пока пуст</h2>
+          <p>Добавь первый этап, и редактор уроков начнет подсказывать его автоматически.</p>
+        </article>
+      {{end}}
     </div>
   </section>
 {{end}}

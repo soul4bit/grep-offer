@@ -18,16 +18,24 @@ func (a *App) handleAdminArticleNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.renderAdminArticleEditor(w, r, http.StatusOK, AdminArticleForm{
+	form := AdminArticleForm{
 		Badge:       "linux",
-		Stage:       "Linux Base",
 		Kind:        "theory",
 		Status:      content.ArticleStatusDraft,
 		ModeLabel:   "Новый урок",
 		Body:        defaultArticleBody(),
 		ModuleOrder: 1,
 		BlockOrder:  1,
-	})
+	}
+
+	if stages, err := a.roadmapStages(r.Context()); err == nil && len(stages) > 0 {
+		form.Stage = stages[0].Title
+		if len(stages[0].Modules) > 0 {
+			form.Module = stages[0].Modules[0].Title
+		}
+	}
+
+	a.renderAdminArticleEditor(w, r, http.StatusOK, form)
 }
 
 func (a *App) handleAdminArticleEdit(w http.ResponseWriter, r *http.Request) {
@@ -484,7 +492,7 @@ func (a *App) renderAdminArticleEditor(w http.ResponseWriter, r *http.Request, s
 
 func (a *App) renderAdminArticleEditorWithError(w http.ResponseWriter, r *http.Request, status int, form AdminArticleForm, message string) {
 	form = hydrateAdminArticleForm(form)
-	options := a.loadAdminArticleOptions()
+	options := a.loadAdminArticleOptions(r.Context())
 
 	a.render(w, r, status, "admin_article_edit", ViewData{
 		Notice:              noticeFromRequest(r),
@@ -492,93 +500,6 @@ func (a *App) renderAdminArticleEditorWithError(w http.ResponseWriter, r *http.R
 		AdminArticleForm:    form,
 		AdminArticleOptions: options,
 	})
-}
-
-func (a *App) loadAdminArticleOptions() AdminArticleOptions {
-	if a.articles == nil {
-		return AdminArticleOptions{GlobalNextModuleOrder: 1}
-	}
-
-	articles, err := a.articles.ListAll()
-	if err != nil {
-		return AdminArticleOptions{GlobalNextModuleOrder: 1}
-	}
-
-	options := AdminArticleOptions{
-		GlobalNextModuleOrder: 1,
-		Stages:                make([]AdminStageOption, 0, len(articles)),
-	}
-
-	stageIndexes := make(map[string]int)
-	moduleIndexes := make(map[string]map[string]int)
-
-	for _, article := range articles {
-		if article.ModuleOrder+1 > options.GlobalNextModuleOrder {
-			options.GlobalNextModuleOrder = article.ModuleOrder + 1
-		}
-
-		stage := strings.TrimSpace(article.Stage)
-		if stage == "" {
-			continue
-		}
-
-		stageIndex, ok := stageIndexes[stage]
-		if !ok {
-			stageIndex = len(options.Stages)
-			stageIndexes[stage] = stageIndex
-			options.Stages = append(options.Stages, AdminStageOption{
-				Value:           stage,
-				NextModuleOrder: max(article.ModuleOrder+1, 1),
-			})
-		}
-		if article.ModuleOrder+1 > options.Stages[stageIndex].NextModuleOrder {
-			options.Stages[stageIndex].NextModuleOrder = article.ModuleOrder + 1
-		}
-
-		module := strings.TrimSpace(article.Module)
-		if module == "" {
-			continue
-		}
-
-		if moduleIndexes[stage] == nil {
-			moduleIndexes[stage] = make(map[string]int)
-		}
-
-		moduleIndex, ok := moduleIndexes[stage][module]
-		if !ok {
-			moduleIndex = len(options.Stages[stageIndex].Modules)
-			moduleIndexes[stage][module] = moduleIndex
-			options.Stages[stageIndex].Modules = append(options.Stages[stageIndex].Modules, AdminModuleOption{
-				Value:          module,
-				ModuleOrder:    article.ModuleOrder,
-				NextBlockOrder: max(article.BlockOrder+1, 1),
-			})
-		} else {
-			if article.ModuleOrder > 0 && (options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder == 0 || article.ModuleOrder < options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder) {
-				options.Stages[stageIndex].Modules[moduleIndex].ModuleOrder = article.ModuleOrder
-			}
-			if article.BlockOrder+1 > options.Stages[stageIndex].Modules[moduleIndex].NextBlockOrder {
-				options.Stages[stageIndex].Modules[moduleIndex].NextBlockOrder = article.BlockOrder + 1
-			}
-		}
-	}
-
-	for i := range options.Stages {
-		stage := &options.Stages[i]
-		if stage.NextModuleOrder <= 0 {
-			stage.NextModuleOrder = options.GlobalNextModuleOrder
-		}
-		for j := range stage.Modules {
-			if stage.Modules[j].ModuleOrder <= 0 {
-				stage.Modules[j].ModuleOrder = stage.NextModuleOrder
-			}
-			if stage.Modules[j].NextBlockOrder <= 0 {
-				stage.Modules[j].NextBlockOrder = 1
-			}
-		}
-	}
-
-	return options
 }
 
 func (a *App) loadAdminArticles() ([]AdminArticleRow, error) {

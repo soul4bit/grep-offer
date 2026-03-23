@@ -386,5 +386,29 @@ func commonInitTables(idDefinition string) []string {
 		`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC, id DESC);`,
 		`CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_user_id ON audit_logs(actor_user_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_audit_logs_scope_action ON audit_logs(scope, action);`,
+		`CREATE TABLE IF NOT EXISTS roadmap_stages (
+			id ` + idDefinition + `,
+			stage_key TEXT NOT NULL UNIQUE,
+			title TEXT NOT NULL,
+			badge TEXT NOT NULL DEFAULT '',
+			summary TEXT NOT NULL DEFAULT '',
+			note TEXT NOT NULL DEFAULT '',
+			order_index INTEGER NOT NULL DEFAULT 0,
+			created_at BIGINT NOT NULL,
+			updated_at BIGINT NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_roadmap_stages_order_index ON roadmap_stages(order_index, id);`,
+		`CREATE TABLE IF NOT EXISTS roadmap_modules (
+			id ` + idDefinition + `,
+			stage_id BIGINT NOT NULL,
+			checkpoint_key TEXT NOT NULL UNIQUE,
+			title TEXT NOT NULL,
+			note TEXT NOT NULL DEFAULT '',
+			order_index INTEGER NOT NULL DEFAULT 0,
+			created_at BIGINT NOT NULL,
+			updated_at BIGINT NOT NULL,
+			FOREIGN KEY(stage_id) REFERENCES roadmap_stages(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_roadmap_modules_stage_order ON roadmap_modules(stage_id, order_index, id);`,
 	}
 }

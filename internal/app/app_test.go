@@ -874,7 +874,7 @@ func TestDashboardCheckpointTogglePersists(t *testing.T) {
 	}
 
 	initialBody := readBody(t, dashboardResponse.Body)
-	if !strings.Contains(initialBody, "0/12") {
+	if !strings.Contains(initialBody, "0 / 12") {
 		t.Fatalf("expected initial progress in dashboard body: %s", initialBody)
 	}
 
@@ -933,7 +933,7 @@ func TestDashboardCheckpointTogglePersists(t *testing.T) {
 	defer reloadResponse.Body.Close()
 
 	reloadBody := readBody(t, reloadResponse.Body)
-	if !strings.Contains(reloadBody, "1/12") {
+	if !strings.Contains(reloadBody, "1 / 12") {
 		t.Fatalf("expected updated progress in dashboard body: %s", reloadBody)
 	}
 }
@@ -1321,7 +1321,7 @@ published: true
 	defer dashboardResponse.Body.Close()
 
 	dashboardBody := readBody(t, dashboardResponse.Body)
-	if !strings.Contains(dashboardBody, "1/1") {
+	if !strings.Contains(dashboardBody, "1 / 1") {
 		t.Fatalf("expected test progress on dashboard: %s", dashboardBody)
 	}
 	if !strings.Contains(dashboardBody, "Продолжить Linux") {
@@ -2258,11 +2258,11 @@ published: true
 		articleDir: contentDir,
 	})
 
-	options := testApp.loadAdminArticleOptions()
+	options := testApp.loadAdminArticleOptions(context.Background())
 	if options.GlobalNextModuleOrder != 5 {
 		t.Fatalf("unexpected global next module order: %d", options.GlobalNextModuleOrder)
 	}
-	if len(options.Stages) != 2 {
+	if len(options.Stages) < 6 {
 		t.Fatalf("unexpected stage count: %d", len(options.Stages))
 	}
 
@@ -2276,15 +2276,177 @@ published: true
 	if linuxStage.Value == "" {
 		t.Fatalf("linux stage missing from options: %#v", options.Stages)
 	}
-	if linuxStage.NextModuleOrder != 4 {
+	if linuxStage.NextModuleOrder != 5 {
 		t.Fatalf("unexpected linux next module order: %d", linuxStage.NextModuleOrder)
 	}
 	if len(linuxStage.Modules) != 2 {
 		t.Fatalf("unexpected linux module count: %d", len(linuxStage.Modules))
 	}
 
-	if linuxStage.Modules[0].Value != "Файловая система" || linuxStage.Modules[0].ModuleOrder != 2 || linuxStage.Modules[0].NextBlockOrder != 3 {
-		t.Fatalf("unexpected first linux module option: %#v", linuxStage.Modules[0])
+	var filesystemModule AdminModuleOption
+	for _, module := range linuxStage.Modules {
+		if module.Value == "Файловая система" {
+			filesystemModule = module
+			break
+		}
+	}
+	if filesystemModule.Value == "" {
+		t.Fatalf("filesystem module missing from options: %#v", linuxStage.Modules)
+	}
+	if filesystemModule.ModuleOrder != 2 || filesystemModule.NextBlockOrder != 3 {
+		t.Fatalf("unexpected filesystem module option: %#v", filesystemModule)
+	}
+}
+
+func TestAdminCanManageRoadmapAndSeeItInEditor(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-roadmap-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	pageRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin/roadmap", nil)
+	if err != nil {
+		t.Fatalf("build roadmap page request: %v", err)
+	}
+	pageRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	pageResponse, err := client.Do(pageRequest)
+	if err != nil {
+		t.Fatalf("roadmap page request: %v", err)
+	}
+	defer pageResponse.Body.Close()
+
+	if pageResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected roadmap page status: %d", pageResponse.StatusCode)
+	}
+
+	pageBody := readBody(t, pageResponse.Body)
+	for _, fragment := range []string{"Этапы маршрута", "Фундамент", "Навигация по Linux без паники"} {
+		if !strings.Contains(pageBody, fragment) {
+			t.Fatalf("expected roadmap page to contain %q, got: %s", fragment, pageBody)
+		}
+	}
+
+	stageForm := url.Values{
+		"title":       {"Стажировка"},
+		"badge":       {"support / shadowing"},
+		"summary":     {"Переходный этап между учебкой и боевой работой."},
+		"note":        {"Первые реальные задачи без лишней героики."},
+		"order_index": {"5"},
+	}
+
+	stageRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/roadmap/stages", strings.NewReader(stageForm.Encode()))
+	if err != nil {
+		t.Fatalf("build roadmap stage request: %v", err)
+	}
+	stageRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	stageRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(stageRequest)
+
+	stageResponse, err := client.Do(stageRequest)
+	if err != nil {
+		t.Fatalf("roadmap stage request: %v", err)
+	}
+	defer stageResponse.Body.Close()
+
+	if stageResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected roadmap stage status: %d", stageResponse.StatusCode)
+	}
+	if location := stageResponse.Header.Get("Location"); !strings.Contains(location, "roadmap-stage-created") {
+		t.Fatalf("unexpected roadmap stage redirect: %s", location)
+	}
+
+	stages, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load roadmap: %v", err)
+	}
+
+	var createdStage store.RoadmapStage
+	for _, stage := range stages {
+		if stage.Title == "Стажировка" {
+			createdStage = stage
+			break
+		}
+	}
+	if createdStage.ID == 0 {
+		t.Fatalf("created roadmap stage not found: %#v", stages)
+	}
+
+	moduleForm := url.Values{
+		"stage_id":    {strconv.FormatInt(createdStage.ID, 10)},
+		"title":       {"Разобраться в проде без паники"},
+		"note":        {"Дежурства, чужой код и реальные инциденты."},
+		"order_index": {"1"},
+	}
+
+	moduleRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/roadmap/modules", strings.NewReader(moduleForm.Encode()))
+	if err != nil {
+		t.Fatalf("build roadmap module request: %v", err)
+	}
+	moduleRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	moduleRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(moduleRequest)
+
+	moduleResponse, err := client.Do(moduleRequest)
+	if err != nil {
+		t.Fatalf("roadmap module request: %v", err)
+	}
+	defer moduleResponse.Body.Close()
+
+	if moduleResponse.StatusCode != http.StatusSeeOther {
+		t.Fatalf("unexpected roadmap module status: %d", moduleResponse.StatusCode)
+	}
+	if location := moduleResponse.Header.Get("Location"); !strings.Contains(location, "roadmap-module-created") {
+		t.Fatalf("unexpected roadmap module redirect: %s", location)
+	}
+
+	editorRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin/articles/new", nil)
+	if err != nil {
+		t.Fatalf("build editor request: %v", err)
+	}
+	editorRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	editorResponse, err := client.Do(editorRequest)
+	if err != nil {
+		t.Fatalf("editor request: %v", err)
+	}
+	defer editorResponse.Body.Close()
+
+	if editorResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected editor status: %d", editorResponse.StatusCode)
+	}
+
+	editorBody := readBody(t, editorResponse.Body)
+	for _, fragment := range []string{
+		"Этап маршрута",
+		"Подраздел",
+		"Стажировка",
+		"Разобраться в проде без паники",
+		"/admin/roadmap",
+	} {
+		if !strings.Contains(editorBody, fragment) {
+			t.Fatalf("expected editor body to contain %q, got: %s", fragment, editorBody)
+		}
 	}
 }
 

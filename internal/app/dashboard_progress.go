@@ -3,87 +3,18 @@ package app
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"grep-offer/internal/store"
 )
 
-type dashboardStageSeed struct {
-	Index       string
-	Title       string
-	Badge       string
-	Summary     string
-	Checkpoints []dashboardCheckpointSeed
-}
-
-type dashboardCheckpointSeed struct {
-	Key         string
-	Title       string
-	Note        string
-	DefaultDone bool
-}
-
-var dashboardRoadmapSeeds = []dashboardStageSeed{
-	{
-		Index:   "01",
-		Title:   "Фундамент",
-		Badge:   "linux / bash / git / network",
-		Summary: "Собираешь базу: терминал, процессы, сеть и привычку не гадать по логам.",
-		Checkpoints: []dashboardCheckpointSeed{
-			{Key: "foundation-linux", Title: "Навигация по Linux без паники", Note: "Файлы, права, процессы, systemd и package manager без магии."},
-			{Key: "foundation-bash", Title: "Bash как рабочий инструмент", Note: "Pipe, redirection, grep, sed, env и привычка читать man."},
-			{Key: "foundation-network", Title: "Git и сеть без белой магии", Note: "SSH, remote, DNS, curl, ss и разбор обычных поломок."},
-		},
-	},
-	{
-		Index:   "02",
-		Title:   "Доставка",
-		Badge:   "docker / ci-cd / deploy",
-		Summary: "Понимаешь, как код едет от коммита до сервера и где по дороге все обычно горит.",
-		Checkpoints: []dashboardCheckpointSeed{
-			{Key: "delivery-image", Title: "Собрать образ без шаманства", Note: "Dockerfile, layers, registry и разница между build и run."},
-			{Key: "delivery-ci", Title: "Положить CI на рельсы", Note: "Pipeline, тесты, артефакты и нормальные healthchecks."},
-			{Key: "delivery-deploy", Title: "Довезти deploy до предсказуемости", Note: "Rollback, env, секреты и понимание, где обычно рвется цепочка."},
-		},
-	},
-	{
-		Index:   "03",
-		Title:   "Платформа",
-		Badge:   "k8s / terraform / observability",
-		Summary: "Подключаешь оркестрацию, инфраструктуру и наблюдаемость без культа YAML.",
-		Checkpoints: []dashboardCheckpointSeed{
-			{Key: "platform-orchestration", Title: "Понять orchestration, а не просто выучить YAML", Note: "Pods, services, ingress и что именно они решают."},
-			{Key: "platform-observability", Title: "Наблюдать систему, а не надеяться", Note: "Logs, metrics, traces, alerts и что реально смотреть при инциденте."},
-			{Key: "platform-iac", Title: "Описывать инфраструктуру как код", Note: "Terraform, state, secrets и аккуратная работа с cloud-ресурсами."},
-		},
-	},
-	{
-		Index:   "04",
-		Title:   "Оффер",
-		Badge:   "cv / interview / offer",
-		Summary: "Упаковываешь опыт, проходишь собесы и разговариваешь про деньги уже с реальной опорой.",
-		Checkpoints: []dashboardCheckpointSeed{
-			{Key: "offer-resume", Title: "Собрать резюме вокруг реальных задач", Note: "Что делал, что ломалось, что улучшил и какой был эффект."},
-			{Key: "offer-interview", Title: "Подготовить техразговор без легенд", Note: "Архитектура, инциденты, delivery, надежность и компромиссы."},
-			{Key: "offer-deal", Title: "Договориться об оффере без тумана", Note: "Деньги, ожидания, зона ответственности и следующий уровень роста."},
-		},
-	},
-}
-
-var dashboardCheckpointIndex = func() map[string]struct{} {
-	index := make(map[string]struct{}, 12)
-	for _, stage := range dashboardRoadmapSeeds {
-		for _, checkpoint := range stage.Checkpoints {
-			index[checkpoint.Key] = struct{}{}
-		}
+func (a *App) loadDashboardView(ctx context.Context, userID int64) ([]DashboardStat, DashboardFocus, []DashboardStage, error) {
+	roadmapStages, err := a.roadmapStages(ctx)
+	if err != nil {
+		return nil, DashboardFocus{}, nil, err
 	}
 
-	return index
-}()
-
-func (a *App) loadDashboardView(ctx context.Context, userID int64) ([]DashboardStat, DashboardFocus, []DashboardStage, error) {
-	if err := a.store.EnsureRoadmapProgress(ctx, userID, dashboardCheckpointDefaults()); err != nil {
+	if err := a.store.EnsureRoadmapProgress(ctx, userID, dashboardCheckpointDefaults(roadmapStages)); err != nil {
 		return nil, DashboardFocus{}, nil, err
 	}
 
@@ -92,7 +23,7 @@ func (a *App) loadDashboardView(ctx context.Context, userID int64) ([]DashboardS
 		return nil, DashboardFocus{}, nil, err
 	}
 
-	stats, focus, stages := buildDashboardViewFromProgress(progress)
+	stats, focus, stages := buildDashboardViewFromProgress(progress, roadmapStages)
 	return stats, focus, stages, nil
 }
 
@@ -103,13 +34,20 @@ func (a *App) handleDashboardCheckpointToggle(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	roadmapStages, err := a.roadmapStages(r.Context())
+	if err != nil {
+		http.Error(w, "load roadmap failed", http.StatusInternalServerError)
+		return
+	}
+	checkpointIndex := dashboardCheckpointIndex(roadmapStages)
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
 
 	checkpointKey := strings.TrimSpace(r.FormValue("checkpoint"))
-	if _, ok := dashboardCheckpointIndex[checkpointKey]; !ok {
+	if _, ok := checkpointIndex[checkpointKey]; !ok {
 		http.Error(w, "unknown checkpoint", http.StatusBadRequest)
 		return
 	}
@@ -126,7 +64,7 @@ func (a *App) handleDashboardCheckpointToggle(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := a.store.EnsureRoadmapProgress(r.Context(), user.ID, dashboardCheckpointDefaults()); err != nil {
+	if err := a.store.EnsureRoadmapProgress(r.Context(), user.ID, dashboardCheckpointDefaults(roadmapStages)); err != nil {
 		http.Error(w, "ensure roadmap progress failed", http.StatusInternalServerError)
 		return
 	}
@@ -139,37 +77,36 @@ func (a *App) handleDashboardCheckpointToggle(w http.ResponseWriter, r *http.Req
 	http.Redirect(w, r, "/dashboard?notice=progress-saved", http.StatusSeeOther)
 }
 
-func buildDashboardViewFromProgress(progress map[string]bool) ([]DashboardStat, DashboardFocus, []DashboardStage) {
-	stages := make([]DashboardStage, 0, len(dashboardRoadmapSeeds))
+func buildDashboardViewFromProgress(progress map[string]bool, roadmapStages []store.RoadmapStage) ([]DashboardStat, DashboardFocus, []DashboardStage) {
+	if len(roadmapStages) == 0 {
+		return nil, DashboardFocus{}, nil
+	}
+
+	stages := make([]DashboardStage, 0, len(roadmapStages))
 	totalCheckpoints := 0
 	doneCheckpoints := 0
-	currentStageIndex := len(dashboardRoadmapSeeds) - 1
+	currentStageIndex := len(roadmapStages) - 1
 	foundActive := false
 
-	for _, seed := range dashboardRoadmapSeeds {
+	for stageIndex, sourceStage := range roadmapStages {
 		stage := DashboardStage{
-			Index:       seed.Index,
-			Title:       seed.Title,
-			Badge:       seed.Badge,
-			Summary:     seed.Summary,
-			Checkpoints: make([]DashboardCheckpoint, 0, len(seed.Checkpoints)),
+			Index:       twoDigitIndex(stageIndex + 1),
+			Title:       sourceStage.Title,
+			Badge:       sourceStage.Badge,
+			Summary:     sourceStage.Summary,
+			Checkpoints: make([]DashboardCheckpoint, 0, len(sourceStage.Modules)),
 		}
 
-		for _, checkpointSeed := range seed.Checkpoints {
-			done, ok := progress[checkpointSeed.Key]
-			if !ok {
-				done = checkpointSeed.DefaultDone
-			}
-
+		for _, sourceModule := range sourceStage.Modules {
+			done := progress[sourceModule.Key]
 			stage.Checkpoints = append(stage.Checkpoints, DashboardCheckpoint{
-				Key:   checkpointSeed.Key,
-				Title: checkpointSeed.Title,
-				Note:  checkpointSeed.Note,
+				Key:   sourceModule.Key,
+				Title: sourceModule.Title,
+				Note:  sourceModule.Note,
 				Done:  done,
 			})
 			stage.TotalCount++
 			totalCheckpoints++
-
 			if done {
 				stage.DoneCount++
 				doneCheckpoints++
@@ -181,7 +118,7 @@ func buildDashboardViewFromProgress(progress map[string]bool) ([]DashboardStat, 
 		}
 
 		switch {
-		case stage.DoneCount == stage.TotalCount:
+		case stage.TotalCount > 0 && stage.DoneCount == stage.TotalCount:
 			stage.Status = "готово"
 			stage.StatusTone = "done"
 		case !foundActive:
@@ -230,28 +167,25 @@ func buildDashboardViewFromProgress(progress map[string]bool) ([]DashboardStat, 
 	return stats, focus, stages
 }
 
-func dashboardCheckpointDefaults() []store.CheckpointProgress {
-	defaults := make([]store.CheckpointProgress, 0, len(dashboardCheckpointIndex))
-	for _, stage := range dashboardRoadmapSeeds {
-		for _, checkpoint := range stage.Checkpoints {
+func dashboardCheckpointDefaults(roadmapStages []store.RoadmapStage) []store.CheckpointProgress {
+	defaults := make([]store.CheckpointProgress, 0, len(roadmapStages)*3)
+	for _, stage := range roadmapStages {
+		for _, module := range stage.Modules {
 			defaults = append(defaults, store.CheckpointProgress{
-				CheckpointKey: checkpoint.Key,
-				Done:          checkpoint.DefaultDone,
+				CheckpointKey: module.Key,
+				Done:          false,
 			})
 		}
 	}
-
 	return defaults
 }
 
-func formatProgress(done, total int) string {
-	return strings.Join([]string{intString(done), intString(total)}, "/")
-}
-
-func formatPercent(value int) string {
-	return intString(value) + "%"
-}
-
-func intString(value int) string {
-	return strconv.Itoa(value)
+func dashboardCheckpointIndex(roadmapStages []store.RoadmapStage) map[string]struct{} {
+	index := make(map[string]struct{}, len(roadmapStages)*3)
+	for _, stage := range roadmapStages {
+		for _, module := range stage.Modules {
+			index[module.Key] = struct{}{}
+		}
+	}
+	return index
 }

@@ -77,31 +77,35 @@
           <span class="admin-editor-step-index">02</span>
           <div>
             <strong>Позиция в маршруте</strong>
-            <p>Здесь задаются категория, раздел, порядок и тип блока. Можно выбрать уже существующее или сразу создать новое.</p>
+            <p>Здесь задаются этап маршрута, подраздел, порядок и тип блока. Можно выбрать уже готовую структуру или быстро открыть управление маршрутом.</p>
           </div>
         </div>
+
+        <p class="admin-editor-route-admin-link">
+          Нужно добавить новый этап или переименовать подраздел? <a href="/admin/roadmap">Открой управление маршрутом</a>.
+        </p>
 
         <div class="admin-editor-route-picker" data-editor-route-picker>
           <div class="admin-editor-choice-group">
             <div class="admin-editor-choice-head">
               <div>
-                <strong>Категория</strong>
-                <p>Быстрый выбор из того, что уже есть в маршруте. Если нужно новое направление, просто введи его ниже.</p>
+                <strong>Этап маршрута</strong>
+                <p>Быстрый выбор из уже настроенных этапов. Если временно нужен свой вариант, его тоже можно ввести вручную.</p>
               </div>
-              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-stage-new>Новая категория</button>
+              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-stage-new>Новый этап</button>
             </div>
 
             <div class="admin-editor-chip-list" data-editor-stage-options>
               {{range .AdminArticleOptions.Stages}}
                 <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Stage .Value}}is-active{{end}}" data-editor-stage-chip data-stage-value="{{.Value}}" data-stage-next-module="{{.NextModuleOrder}}">{{.Value}}</button>
               {{else}}
-                <p class="admin-editor-choice-empty">Пока нет готовых категорий. Первую можно создать прямо в поле ниже.</p>
+                <p class="admin-editor-choice-empty">Пока нет готовых этапов. Первый можно создать прямо в поле ниже или через админку маршрута.</p>
               {{end}}
             </div>
 
             <label class="field">
-              <span>Текущая категория</span>
-              <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" data-editor-stage-input placeholder="Linux Base" autocomplete="off">
+              <span>Текущий этап</span>
+              <input type="text" name="stage" value="{{.AdminArticleForm.Stage}}" data-editor-stage-input placeholder="Фундамент" autocomplete="off">
               <small class="admin-editor-note">Сохранится в front matter как <code>stage</code>.</small>
             </label>
           </div>
@@ -109,10 +113,10 @@
           <div class="admin-editor-choice-group">
             <div class="admin-editor-choice-head">
               <div>
-                <strong>Раздел</strong>
-                <p>Показываем подходящие разделы для выбранной категории. Если нужного нет, просто вводишь свой.</p>
+                <strong>Подраздел</strong>
+                <p>Показываем подходящие подразделы для выбранного этапа. Если нужного нет, можно ввести свой вариант или сначала добавить его в маршруте.</p>
               </div>
-              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-module-new>Новый раздел</button>
+              <button type="button" class="ghost-button admin-editor-choice-action" data-editor-module-new>Новый подраздел</button>
             </div>
 
             <div class="admin-editor-chip-list" data-editor-module-options>
@@ -123,11 +127,11 @@
                 {{end}}
               {{end}}
             </div>
-            <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этой категории пока нет готовых разделов. Можно создать свой.</p>
+            <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этого этапа пока нет готовых подразделов. Можно создать свой.</p>
 
             <label class="field">
-              <span>Текущий раздел</span>
-              <input type="text" name="module" value="{{.AdminArticleForm.Module}}" data-editor-module-input placeholder="Файловая система" autocomplete="off">
+              <span>Текущий подраздел</span>
+              <input type="text" name="module" value="{{.AdminArticleForm.Module}}" data-editor-module-input placeholder="Навигация по Linux без паники" autocomplete="off">
               <small class="admin-editor-note">Сохранится в front matter как <code>module</code>.</small>
             </label>
           </div>

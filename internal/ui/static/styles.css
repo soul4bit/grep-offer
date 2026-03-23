@@ -3357,6 +3357,60 @@ button.dashboard-checkpoint-pill {
   line-height: 1.45;
 }
 
+.admin-roadmap-grid,
+.admin-roadmap-module-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-roadmap-stage-card,
+.admin-roadmap-module-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.05rem 1.1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(243, 239, 227, 0.08);
+  background: rgba(8, 11, 10, 0.92);
+}
+
+.admin-roadmap-stage-head,
+.admin-roadmap-module-head,
+.admin-roadmap-meta,
+.admin-roadmap-form-actions {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.admin-roadmap-stage-title {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-roadmap-stage-title span {
+  color: rgba(243, 239, 227, 0.66);
+}
+
+.admin-roadmap-form,
+.admin-roadmap-module-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-roadmap-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.admin-roadmap-empty {
+  margin: 0;
+  color: rgba(243, 239, 227, 0.64);
+  line-height: 1.55;
+}
+
 .admin-table-head {
   justify-content: space-between;
   margin-bottom: 1rem;
@@ -4276,6 +4330,16 @@ button.dashboard-checkpoint-pill {
 .admin-editor-route-picker {
   display: grid;
   gap: 1rem;
+}
+
+.admin-editor-route-admin-link {
+  margin: 0 0 1rem;
+  color: rgba(243, 239, 227, 0.72);
+  line-height: 1.55;
+}
+
+.admin-editor-route-admin-link a {
+  color: var(--accent);
 }
 
 .admin-editor-choice-group {

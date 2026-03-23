@@ -492,6 +492,7 @@ func splitAdminOptions(raw string) []string {
 func buildAdminNav(active string) []AdminNavItem {
 	items := []AdminNavItem{
 		{Key: "articles", Label: "Статьи", Href: "/admin/articles"},
+		{Key: "roadmap", Label: "Маршрут", Href: "/admin/roadmap"},
 		{Key: "users", Label: "Пользователи", Href: "/admin/users"},
 		{Key: "logs", Label: "Лог", Href: "/admin/logs"},
 	}
