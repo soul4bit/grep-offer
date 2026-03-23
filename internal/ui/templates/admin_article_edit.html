@@ -322,3 +322,8 @@
   </aside>
 </section>
 {{end}}
+
+{{define "page_scripts"}}
+  <script defer src="/static/admin.js?v={{.StaticVersion}}"></script>
+  <script defer src="/static/editor.js?v={{.StaticVersion}}"></script>
+{{end}}

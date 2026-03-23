@@ -736,6 +736,14 @@ func TestLoginFormIncludesVersionedAssets(t *testing.T) {
 			t.Fatalf("expected versioned asset %q in body: %s", asset, body)
 		}
 	}
+	for _, asset := range []string{
+		`/static/admin.js?v=`,
+		`/static/editor.js?v=`,
+	} {
+		if strings.Contains(body, asset) {
+			t.Fatalf("did not expect page-specific asset %q in login body: %s", asset, body)
+		}
+	}
 }
 
 func TestVersionedStaticAssetsAreImmutableAndCompressed(t *testing.T) {
@@ -2115,10 +2123,66 @@ published: true
 		"data-editor-module-chip",
 		"Linux Base",
 		"Файловая система",
+		"/static/app.js?v=",
+		"/static/admin.js?v=",
+		"/static/editor.js?v=",
 	} {
 		if !strings.Contains(body, fragment) {
 			t.Fatalf("expected editor body to contain %q, got: %s", fragment, body)
 		}
+	}
+}
+
+func TestAdminArticlesPageUsesAdminBundleOnly(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-bundle-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/admin/articles", nil)
+	if err != nil {
+		t.Fatalf("build admin articles request: %v", err)
+	}
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("admin articles request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected admin articles status: %d", response.StatusCode)
+	}
+
+	body := readBody(t, response.Body)
+	if !strings.Contains(body, "/static/admin.js?v=") {
+		t.Fatalf("expected admin bundle in body: %s", body)
+	}
+	if strings.Contains(body, "/static/editor.js?v=") {
+		t.Fatalf("did not expect editor bundle in admin articles body: %s", body)
 	}
 }
 
