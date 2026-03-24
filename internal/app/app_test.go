@@ -2508,8 +2508,8 @@ func TestAdminRoadmapCanOpenSpecificStageFromQuery(t *testing.T) {
 	}
 
 	fragmentEnd := len(body)
-	if hrefIndex+240 < fragmentEnd {
-		fragmentEnd = hrefIndex + 240
+	if hrefIndex+420 < fragmentEnd {
+		fragmentEnd = hrefIndex + 420
 	}
 	fragment := body[hrefIndex:fragmentEnd]
 	if !strings.Contains(fragment, `aria-current="page"`) {
@@ -2636,6 +2636,143 @@ status: "draft"
 		if !strings.Contains(body, fragment) {
 			t.Fatalf("expected roadmap body to contain %q, got: %s", fragment, body)
 		}
+	}
+}
+
+func TestAdminRoadmapReorderPersistsStageAndModuleOrder(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-roadmap-reorder-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	stages, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load roadmap stages: %v", err)
+	}
+	if len(stages) < 2 {
+		t.Fatalf("expected at least two roadmap stages, got: %d", len(stages))
+	}
+	if len(stages[0].Modules) < 2 {
+		t.Fatalf("expected at least two roadmap modules in first stage, got: %d", len(stages[0].Modules))
+	}
+
+	pageRequest, err := http.NewRequest(http.MethodGet, server.URL+"/admin/roadmap?stage="+strconv.FormatInt(stages[0].ID, 10), nil)
+	if err != nil {
+		t.Fatalf("build roadmap page request: %v", err)
+	}
+	pageRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	pageResponse, err := server.Client().Do(pageRequest)
+	if err != nil {
+		t.Fatalf("roadmap page request: %v", err)
+	}
+	defer pageResponse.Body.Close()
+
+	if pageResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected roadmap page status: %d", pageResponse.StatusCode)
+	}
+
+	pageBody := readBody(t, pageResponse.Body)
+	for _, fragment := range []string{
+		`data-admin-roadmap-reorder-list`,
+		`/admin/roadmap/stages/reorder`,
+		`/admin/roadmap/modules/reorder`,
+		`draggable="true"`,
+	} {
+		if !strings.Contains(pageBody, fragment) {
+			t.Fatalf("expected roadmap body to contain %q, got: %s", fragment, pageBody)
+		}
+	}
+
+	stageForm := url.Values{}
+	for index := len(stages) - 1; index >= 0; index-- {
+		stageForm.Add("stage_id", strconv.FormatInt(stages[index].ID, 10))
+	}
+
+	stageRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/roadmap/stages/reorder", strings.NewReader(stageForm.Encode()))
+	if err != nil {
+		t.Fatalf("build stage reorder request: %v", err)
+	}
+	stageRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	stageRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(stageRequest)
+
+	stageResponse, err := server.Client().Do(stageRequest)
+	if err != nil {
+		t.Fatalf("stage reorder request: %v", err)
+	}
+	defer stageResponse.Body.Close()
+
+	if stageResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected stage reorder status: %d", stageResponse.StatusCode)
+	}
+
+	reorderedStages, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load reordered roadmap stages: %v", err)
+	}
+	if reorderedStages[0].ID != stages[len(stages)-1].ID {
+		t.Fatalf("expected first reordered stage id %d, got %d", stages[len(stages)-1].ID, reorderedStages[0].ID)
+	}
+
+	targetStage := reorderedStages[0]
+	moduleForm := url.Values{
+		"stage_id": {strconv.FormatInt(targetStage.ID, 10)},
+	}
+	for index := len(targetStage.Modules) - 1; index >= 0; index-- {
+		moduleForm.Add("module_id", strconv.FormatInt(targetStage.Modules[index].ID, 10))
+	}
+
+	moduleRequest, err := http.NewRequest(http.MethodPost, server.URL+"/admin/roadmap/modules/reorder", strings.NewReader(moduleForm.Encode()))
+	if err != nil {
+		t.Fatalf("build module reorder request: %v", err)
+	}
+	moduleRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	moduleRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+	addCSRFCookieAndHeader(moduleRequest)
+
+	moduleResponse, err := server.Client().Do(moduleRequest)
+	if err != nil {
+		t.Fatalf("module reorder request: %v", err)
+	}
+	defer moduleResponse.Body.Close()
+
+	if moduleResponse.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected module reorder status: %d", moduleResponse.StatusCode)
+	}
+
+	reorderedAgain, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load roadmap after module reorder: %v", err)
+	}
+
+	var persistedStage store.RoadmapStage
+	for _, stage := range reorderedAgain {
+		if stage.ID == targetStage.ID {
+			persistedStage = stage
+			break
+		}
+	}
+	if persistedStage.ID == 0 {
+		t.Fatalf("target stage missing after module reorder: %#v", reorderedAgain)
+	}
+	if persistedStage.Modules[0].ID != targetStage.Modules[len(targetStage.Modules)-1].ID {
+		t.Fatalf("expected first reordered module id %d, got %d", targetStage.Modules[len(targetStage.Modules)-1].ID, persistedStage.Modules[0].ID)
 	}
 }
 

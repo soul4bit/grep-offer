@@ -283,14 +283,17 @@
     </article>
 
     {{if .AdminRoadmapStages}}
-      <div class="admin-roadmap-stage-selector">
+      <div class="admin-roadmap-stage-selector" data-admin-roadmap-reorder-list data-reorder-endpoint="/admin/roadmap/stages/reorder" data-reorder-kind="stages">
         {{range $stage := .AdminRoadmapStages}}
           <a
             class="admin-roadmap-stage-tab {{if eq $.AdminRoadmapActiveStageID $stage.ID}}is-active{{end}}"
             href="/admin/roadmap?stage={{$stage.ID}}"
+            draggable="true"
+            data-admin-roadmap-reorder-item
+            data-stage-id="{{$stage.ID}}"
             {{if eq $.AdminRoadmapActiveStageID $stage.ID}}aria-current="page"{{end}}
           >
-            <span class="admin-roadmap-stage-tab-index">{{printf "%02d" $stage.OrderIndex}}</span>
+            <span class="admin-roadmap-stage-tab-index" data-roadmap-stage-order-label>{{printf "%02d" $stage.OrderIndex}}</span>
             <span class="admin-roadmap-stage-tab-copy">
               <strong>{{$stage.Title}}</strong>
               <small>{{len $stage.Modules}} подразделов · {{$stage.LessonCount}} уроков</small>
@@ -298,6 +301,7 @@
           </a>
         {{end}}
       </div>
+      <p class="admin-article-sort-status admin-roadmap-reorder-status" data-admin-roadmap-reorder-status hidden></p>
     {{end}}
 
     <div class="admin-roadmap-grid">
@@ -389,9 +393,9 @@
               </div>
             </div>
 
-            <div class="admin-roadmap-module-list">
+            <div class="admin-roadmap-module-list" data-admin-roadmap-reorder-list data-reorder-endpoint="/admin/roadmap/modules/reorder" data-reorder-kind="modules" data-stage-id="{{.ID}}">
               {{range .Modules}}
-                <article class="admin-roadmap-module-card">
+                <article class="admin-roadmap-module-card" draggable="true" data-admin-roadmap-reorder-item data-module-id="{{.ID}}">
                   <form method="post" action="/admin/roadmap/modules/{{.ID}}" class="admin-roadmap-form">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
 
@@ -465,6 +469,7 @@
                 <p class="admin-roadmap-empty">В этом этапе пока нет подразделов. Добавь первый ниже.</p>
               {{end}}
             </div>
+            <p class="admin-article-sort-status admin-roadmap-reorder-status" data-admin-roadmap-reorder-status hidden></p>
 
             <article class="admin-roadmap-module-card admin-roadmap-module-card-create">
               <div class="admin-roadmap-module-head">

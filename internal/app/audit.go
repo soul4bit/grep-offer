@@ -144,6 +144,10 @@ func humanizeAuditAction(action string) string {
 		return "загрузка изображения"
 	case "article_reordered":
 		return "пересортировка уроков"
+	case "roadmap_stage_reordered":
+		return "пересортировка этапов маршрута"
+	case "roadmap_module_reordered":
+		return "пересортировка подразделов маршрута"
 	case "test_question_created":
 		return "создание test-вопроса"
 	case "test_question_deleted":

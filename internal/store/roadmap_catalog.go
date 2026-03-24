@@ -282,6 +282,52 @@ func (s *Store) DeleteRoadmapStage(ctx context.Context, stageID int64) error {
 	return nil
 }
 
+func (s *Store) ReorderRoadmapStages(ctx context.Context, stageIDs []int64) error {
+	if len(stageIDs) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	nowUnix := time.Now().UTC().Unix()
+	for index, stageID := range stageIDs {
+		result, execErr := tx.ExecContext(
+			ctx,
+			s.bind(`UPDATE roadmap_stages
+			SET order_index = ?, updated_at = ?
+			WHERE id = ?`),
+			index+1,
+			nowUnix,
+			stageID,
+		)
+		if execErr != nil {
+			err = execErr
+			return err
+		}
+
+		rowsAffected, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			err = rowsErr
+			return err
+		}
+		if rowsAffected == 0 {
+			err = ErrRoadmapStageNotFound
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	return err
+}
+
 func (s *Store) CreateRoadmapModule(ctx context.Context, module RoadmapModule) (*RoadmapModule, error) {
 	nowUnix := time.Now().UTC().Unix()
 	id, err := s.insertID(
@@ -346,4 +392,51 @@ func (s *Store) DeleteRoadmapModule(ctx context.Context, moduleID int64) error {
 	}
 
 	return nil
+}
+
+func (s *Store) ReorderRoadmapModules(ctx context.Context, stageID int64, moduleIDs []int64) error {
+	if stageID <= 0 || len(moduleIDs) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	nowUnix := time.Now().UTC().Unix()
+	for index, moduleID := range moduleIDs {
+		result, execErr := tx.ExecContext(
+			ctx,
+			s.bind(`UPDATE roadmap_modules
+			SET order_index = ?, updated_at = ?
+			WHERE id = ? AND stage_id = ?`),
+			index+1,
+			nowUnix,
+			moduleID,
+			stageID,
+		)
+		if execErr != nil {
+			err = execErr
+			return err
+		}
+
+		rowsAffected, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			err = rowsErr
+			return err
+		}
+		if rowsAffected == 0 {
+			err = ErrRoadmapModuleNotFound
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	return err
 }

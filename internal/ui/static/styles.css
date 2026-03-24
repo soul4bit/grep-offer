@@ -3393,6 +3393,11 @@ button.dashboard-checkpoint-pill {
     color 180ms ease;
 }
 
+.admin-roadmap-stage-tab,
+.admin-roadmap-module-card[data-admin-roadmap-reorder-item] {
+  cursor: grab;
+}
+
 .admin-roadmap-stage-tab:hover {
   transform: translateY(-2px);
   border-color: rgba(243, 239, 227, 0.18);
@@ -3442,6 +3447,17 @@ button.dashboard-checkpoint-pill {
   background: rgba(8, 11, 10, 0.92);
 }
 
+.admin-roadmap-stage-tab.is-dragging,
+.admin-roadmap-module-card.is-dragging {
+  opacity: 0.58;
+  border-color: rgba(216, 255, 97, 0.22);
+}
+
+.admin-roadmap-stage-tab.is-drop-target,
+.admin-roadmap-module-card.is-drop-target {
+  box-shadow: inset 0 0 0 1px rgba(216, 255, 97, 0.18);
+}
+
 .admin-roadmap-stage-head,
 .admin-roadmap-module-head,
 .admin-roadmap-meta,
@@ -3478,6 +3494,10 @@ button.dashboard-checkpoint-pill {
   margin: 0;
   color: rgba(243, 239, 227, 0.64);
   line-height: 1.55;
+}
+
+.admin-roadmap-reorder-status {
+  margin-top: 0.8rem;
 }
 
 .admin-roadmap-empty-compact {

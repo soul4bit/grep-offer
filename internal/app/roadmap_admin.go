@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -29,6 +30,62 @@ func (a *App) handleAdminRoadmap(w http.ResponseWriter, r *http.Request) {
 		AdminRoadmapStages:        stages,
 		AdminRoadmapActiveStageID: activeStageID,
 		AdminRoadmapCurrentStage:  currentStage,
+	})
+}
+
+func (a *App) handleAdminRoadmapStageReorder(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	stageIDs, err := parseAdminInt64Fields(r.Form["stage_id"])
+	if err != nil || len(stageIDs) == 0 {
+		http.Error(w, "stage ids are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.store.ReorderRoadmapStages(r.Context(), stageIDs); err != nil {
+		http.Error(w, "reorder roadmap stages failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "roadmap_stage_reordered",
+		TargetType: "roadmap",
+		TargetKey:  "stages",
+		Details: map[string]string{
+			"stage_count": strconv.Itoa(len(stageIDs)),
+		},
+	})
+
+	items := make([]struct {
+		ID         int64  `json:"id"`
+		OrderIndex int    `json:"order_index"`
+		IndexLabel string `json:"index_label"`
+	}, 0, len(stageIDs))
+	for index, stageID := range stageIDs {
+		items = append(items, struct {
+			ID         int64  `json:"id"`
+			OrderIndex int    `json:"order_index"`
+			IndexLabel string `json:"index_label"`
+		}{
+			ID:         stageID,
+			OrderIndex: index + 1,
+			IndexLabel: twoDigitIndex(index + 1),
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Items interface{} `json:"items"`
+	}{
+		Items: items,
 	})
 }
 
@@ -271,6 +328,65 @@ func (a *App) handleAdminRoadmapModuleCreate(w http.ResponseWriter, r *http.Requ
 	})
 
 	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-created&stage="+strconv.FormatInt(stage.ID, 10), http.StatusSeeOther)
+}
+
+func (a *App) handleAdminRoadmapModuleReorder(w http.ResponseWriter, r *http.Request) {
+	if a.requireAdmin(w, r) == nil {
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	stageID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("stage_id")), 10, 64)
+	if err != nil || stageID <= 0 {
+		http.Error(w, "invalid roadmap stage id", http.StatusBadRequest)
+		return
+	}
+
+	moduleIDs, err := parseAdminInt64Fields(r.Form["module_id"])
+	if err != nil || len(moduleIDs) == 0 {
+		http.Error(w, "module ids are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.store.ReorderRoadmapModules(r.Context(), stageID, moduleIDs); err != nil {
+		http.Error(w, "reorder roadmap modules failed", http.StatusInternalServerError)
+		return
+	}
+
+	a.writeAuditLog(r.Context(), r, a.currentUser(r), store.AuditLogInput{
+		Scope:      "admin",
+		Action:     "roadmap_module_reordered",
+		TargetType: "roadmap_stage",
+		TargetKey:  strconv.FormatInt(stageID, 10),
+		Details: map[string]string{
+			"module_count": strconv.Itoa(len(moduleIDs)),
+		},
+	})
+
+	items := make([]struct {
+		ID         int64 `json:"id"`
+		OrderIndex int   `json:"order_index"`
+	}, 0, len(moduleIDs))
+	for index, moduleID := range moduleIDs {
+		items = append(items, struct {
+			ID         int64 `json:"id"`
+			OrderIndex int   `json:"order_index"`
+		}{
+			ID:         moduleID,
+			OrderIndex: index + 1,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Items interface{} `json:"items"`
+	}{
+		Items: items,
+	})
 }
 
 func (a *App) handleAdminRoadmapModuleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -778,4 +894,17 @@ func (a *App) renameArticlesModule(ctx context.Context, stageTitle, oldTitle, ne
 	}
 
 	return nil
+}
+
+func parseAdminInt64Fields(values []string) ([]int64, error) {
+	parsed := make([]int64, 0, len(values))
+	for _, raw := range values {
+		value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+		if err != nil || value <= 0 {
+			return nil, errors.New("invalid integer")
+		}
+		parsed = append(parsed, value)
+	}
+
+	return parsed, nil
 }
