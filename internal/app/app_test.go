@@ -729,7 +729,7 @@ func TestLoginFormIncludesVersionedAssets(t *testing.T) {
 	body := readBody(t, response.Body)
 	for _, asset := range []string{
 		`/static/favicon.svg?v=`,
-		`/static/styles.css?v=`,
+		`/static/public.css?v=`,
 		`/static/app.js?v=`,
 	} {
 		if !strings.Contains(body, asset) {
@@ -737,6 +737,7 @@ func TestLoginFormIncludesVersionedAssets(t *testing.T) {
 		}
 	}
 	for _, asset := range []string{
+		`/static/styles.css?v=`,
 		`/static/admin.js?v=`,
 		`/static/editor.js?v=`,
 	} {
@@ -2180,6 +2181,9 @@ func TestAdminArticlesPageUsesAdminBundleOnly(t *testing.T) {
 	body := readBody(t, response.Body)
 	if !strings.Contains(body, "/static/admin.js?v=") {
 		t.Fatalf("expected admin bundle in body: %s", body)
+	}
+	if !strings.Contains(body, "/static/styles.css?v=") {
+		t.Fatalf("expected full admin stylesheet in body: %s", body)
 	}
 	if strings.Contains(body, "/static/editor.js?v=") {
 		t.Fatalf("did not expect editor bundle in admin articles body: %s", body)

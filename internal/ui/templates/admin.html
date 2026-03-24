@@ -581,6 +581,10 @@
 {{end}}
 {{end}}
 
+{{define "page_styles"}}
+  <link rel="stylesheet" href="/static/styles.css?v={{.StaticVersion}}">
+{{end}}
+
 {{define "page_scripts"}}
   <script defer src="/static/admin.js?v={{.StaticVersion}}"></script>
 {{end}}
