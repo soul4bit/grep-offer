@@ -2529,6 +2529,116 @@ func TestAdminRoadmapCanOpenSpecificStageFromQuery(t *testing.T) {
 	}
 }
 
+func TestAdminRoadmapShowsLinkedLessonsForSelectedStage(t *testing.T) {
+	t.Parallel()
+
+	contentDir := filepath.Join(t.TempDir(), "articles")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("create content dir: %v", err)
+	}
+
+	files := map[string]string{
+		"02-01-linux-filesystem.md": `---
+title: "Linux Files"
+slug: "linux-filesystem"
+stage: "Linux Base"
+module: "Filesystem"
+module_order: 2
+block_order: 1
+kind: "theory"
+status: "published"
+---
+
+# Linux Files
+`,
+		"02-02-linux-permissions.md": `---
+title: "Linux Permissions"
+slug: "linux-permissions"
+stage: "Linux Base"
+module: "Permissions"
+module_order: 2
+block_order: 2
+kind: "practice"
+status: "draft"
+---
+
+# Linux Permissions
+`,
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(contentDir, name), []byte(body), 0o644); err != nil {
+			t.Fatalf("write article %s: %v", name, err)
+		}
+	}
+
+	testApp, st := newTestApp(t, testAppOptions{
+		articleDir: contentDir,
+	})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-roadmap-lessons-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	stages, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load roadmap stages: %v", err)
+	}
+
+	var foundationStage store.RoadmapStage
+	for _, stage := range stages {
+		if stage.Title == "Фундамент" {
+			foundationStage = stage
+			break
+		}
+	}
+	if foundationStage.ID == 0 {
+		t.Fatalf("foundation stage not found: %#v", stages)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/admin/roadmap?stage="+strconv.FormatInt(foundationStage.ID, 10), nil)
+	if err != nil {
+		t.Fatalf("build roadmap request: %v", err)
+	}
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("roadmap request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected roadmap status: %d", response.StatusCode)
+	}
+
+	body := readBody(t, response.Body)
+	for _, fragment := range []string{
+		"Привязанные уроки",
+		"Linux Files",
+		"Linux Permissions",
+		"published",
+		"draft",
+		`href="/admin/articles/linux-filesystem/edit"`,
+		`href="/admin/articles/linux-permissions/edit"`,
+	} {
+		if !strings.Contains(body, fragment) {
+			t.Fatalf("expected roadmap body to contain %q, got: %s", fragment, body)
+		}
+	}
+}
+
 func TestAdminArticleReorderPersistsBlockOrder(t *testing.T) {
 	t.Parallel()
 

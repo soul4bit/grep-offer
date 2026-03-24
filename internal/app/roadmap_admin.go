@@ -435,52 +435,78 @@ func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, err
 	}
 	catalog := buildRoadmapRouteCatalog(roadmapStages)
 
-	stageLessonCount := make(map[string]int)
-	moduleLessonCount := make(map[string]int)
-	if a.articles != nil {
-		articles, err := a.articles.ListAll()
-		if err != nil {
-			return nil, err
-		}
-		for _, article := range articles {
-			stageTitle, moduleTitle, _ := catalog.canonicalize(article.Stage, article.Module)
-			stageTitle = strings.TrimSpace(stageTitle)
-			moduleTitle = strings.TrimSpace(moduleTitle)
-			if stageTitle == "" {
-				continue
-			}
-			stageLessonCount[stageTitle]++
-			if moduleTitle != "" {
-				moduleLessonCount[stageTitle+"\x00"+moduleTitle]++
-			}
-		}
-	}
-
 	rows := make([]AdminRoadmapStageRow, 0, len(roadmapStages))
+	stageIndexes := make(map[string]int, len(roadmapStages))
+	moduleIndexes := make(map[string]map[string]int, len(roadmapStages))
 	for _, stage := range roadmapStages {
 		row := AdminRoadmapStageRow{
-			ID:          stage.ID,
-			Key:         stage.Key,
-			Title:       stage.Title,
-			Badge:       stage.Badge,
-			Summary:     stage.Summary,
-			Note:        stage.Note,
-			OrderIndex:  stage.OrderIndex,
-			LessonCount: stageLessonCount[stage.Title],
-			Modules:     make([]AdminRoadmapModuleRow, 0, len(stage.Modules)),
+			ID:                stage.ID,
+			Key:               stage.Key,
+			Title:             stage.Title,
+			Badge:             stage.Badge,
+			Summary:           stage.Summary,
+			Note:              stage.Note,
+			OrderIndex:        stage.OrderIndex,
+			Modules:           make([]AdminRoadmapModuleRow, 0, len(stage.Modules)),
+			UnassignedLessons: make([]AdminRoadmapLessonRow, 0, 1),
 		}
+		moduleIndexes[stage.Title] = make(map[string]int, len(stage.Modules))
 		for _, module := range stage.Modules {
+			moduleIndexes[stage.Title][module.Title] = len(row.Modules)
 			row.Modules = append(row.Modules, AdminRoadmapModuleRow{
-				ID:          module.ID,
-				StageID:     stage.ID,
-				Key:         module.Key,
-				Title:       module.Title,
-				Note:        module.Note,
-				OrderIndex:  module.OrderIndex,
-				LessonCount: moduleLessonCount[stage.Title+"\x00"+module.Title],
+				ID:         module.ID,
+				StageID:    stage.ID,
+				Key:        module.Key,
+				Title:      module.Title,
+				Note:       module.Note,
+				OrderIndex: module.OrderIndex,
+				Lessons:    make([]AdminRoadmapLessonRow, 0, 1),
 			})
 		}
+		stageIndexes[stage.Title] = len(rows)
 		rows = append(rows, row)
+	}
+
+	if a.articles == nil {
+		return rows, nil
+	}
+
+	articles, err := a.articles.ListAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, article := range articles {
+		stageTitle, moduleTitle, _ := catalog.canonicalize(article.Stage, article.Module)
+		stageTitle = strings.TrimSpace(stageTitle)
+		moduleTitle = strings.TrimSpace(moduleTitle)
+		if stageTitle == "" {
+			continue
+		}
+
+		stageIndex, ok := stageIndexes[stageTitle]
+		if !ok {
+			continue
+		}
+
+		lesson := AdminRoadmapLessonRow{
+			Title:       article.Title,
+			Slug:        article.Slug,
+			StatusLabel: adminArticleStatusLabel(article.Status),
+			StatusTone:  adminArticleStatusTone(article.Status),
+			Index:       formatLessonIndex(article.ModuleOrder, article.BlockOrder),
+		}
+
+		rows[stageIndex].LessonCount++
+
+		moduleIndex, ok := moduleIndexes[stageTitle][moduleTitle]
+		if !ok {
+			rows[stageIndex].UnassignedLessons = append(rows[stageIndex].UnassignedLessons, lesson)
+			continue
+		}
+
+		rows[stageIndex].Modules[moduleIndex].LessonCount++
+		rows[stageIndex].Modules[moduleIndex].Lessons = append(rows[stageIndex].Modules[moduleIndex].Lessons, lesson)
 	}
 
 	return rows, nil

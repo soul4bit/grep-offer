@@ -353,6 +353,34 @@
             </div>
           </form>
 
+          {{if .UnassignedLessons}}
+            <section class="admin-roadmap-stage-lessons">
+              <div class="admin-roadmap-module-head">
+                <div>
+                  <strong>Уроки этапа без совпавшего подраздела</strong>
+                  <p class="admin-section-copy">Эти уроки привязаны к этапу, но их `module` не совпадает с текущими подразделами. Можно либо поправить урок, либо добавить недостающий подраздел.</p>
+                </div>
+                <span class="admin-pill">{{len .UnassignedLessons}} уроков</span>
+              </div>
+
+              <div class="admin-roadmap-lesson-list">
+                {{range .UnassignedLessons}}
+                  <article class="admin-roadmap-lesson-card">
+                    <div class="admin-roadmap-lesson-copy">
+                      <strong>{{if .Index}}{{.Index}} {{end}}{{.Title}}</strong>
+                      <span>{{.Slug}}</span>
+                    </div>
+
+                    <div class="admin-roadmap-lesson-actions">
+                      <span class="admin-pill admin-pill-status-{{.StatusTone}}">{{.StatusLabel}}</span>
+                      <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+                    </div>
+                  </article>
+                {{end}}
+              </div>
+            </section>
+          {{end}}
+
           <div class="admin-roadmap-module-section">
             <div class="admin-roadmap-module-head">
               <div>
@@ -400,6 +428,33 @@
                       <button class="primary-button" type="submit">Сохранить подраздел</button>
                     </div>
                   </form>
+
+                  <section class="admin-roadmap-linked-lessons">
+                    <div class="admin-roadmap-linked-lessons-head">
+                      <strong>Привязанные уроки</strong>
+                      <span class="admin-pill">{{len .Lessons}} уроков</span>
+                    </div>
+
+                    {{if .Lessons}}
+                      <div class="admin-roadmap-lesson-list">
+                        {{range .Lessons}}
+                          <article class="admin-roadmap-lesson-card">
+                            <div class="admin-roadmap-lesson-copy">
+                              <strong>{{if .Index}}{{.Index}} {{end}}{{.Title}}</strong>
+                              <span>{{.Slug}}</span>
+                            </div>
+
+                            <div class="admin-roadmap-lesson-actions">
+                              <span class="admin-pill admin-pill-status-{{.StatusTone}}">{{.StatusLabel}}</span>
+                              <a class="ghost-button" href="/admin/articles/{{.Slug}}/edit">Редактировать</a>
+                            </div>
+                          </article>
+                        {{end}}
+                      </div>
+                    {{else}}
+                      <p class="admin-roadmap-empty admin-roadmap-empty-compact">Пока без уроков. Как только привяжешь урок к этому подразделу, он появится здесь.</p>
+                    {{end}}
+                  </section>
 
                   <form method="post" action="/admin/roadmap/modules/{{.ID}}/delete" data-confirm-submit="Удалить подраздел «{{.Title}}»? Это сработает только если в нем нет уроков.">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

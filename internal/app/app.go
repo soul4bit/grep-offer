@@ -255,15 +255,16 @@ type AdminArticleOptions struct {
 }
 
 type AdminRoadmapStageRow struct {
-	ID          int64
-	Key         string
-	Title       string
-	Badge       string
-	Summary     string
-	Note        string
-	OrderIndex  int
-	LessonCount int
-	Modules     []AdminRoadmapModuleRow
+	ID                int64
+	Key               string
+	Title             string
+	Badge             string
+	Summary           string
+	Note              string
+	OrderIndex        int
+	LessonCount       int
+	Modules           []AdminRoadmapModuleRow
+	UnassignedLessons []AdminRoadmapLessonRow
 }
 
 type AdminRoadmapModuleRow struct {
@@ -274,6 +275,15 @@ type AdminRoadmapModuleRow struct {
 	Note        string
 	OrderIndex  int
 	LessonCount int
+	Lessons     []AdminRoadmapLessonRow
+}
+
+type AdminRoadmapLessonRow struct {
+	Title       string
+	Slug        string
+	StatusLabel string
+	StatusTone  string
+	Index       string
 }
 
 type AdminStageOption struct {
