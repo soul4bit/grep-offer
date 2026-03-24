@@ -2518,6 +2518,12 @@ func TestAdminRoadmapCanOpenSpecificStageFromQuery(t *testing.T) {
 	if !strings.Contains(fragment, targetStage.Title) {
 		t.Fatalf("expected selected roadmap stage title near %q, got: %s", hrefMarker, fragment)
 	}
+	if !strings.Contains(body, `action="/admin/roadmap/stages/`+strconv.FormatInt(targetStage.ID, 10)+`"`) {
+		t.Fatalf("expected current roadmap stage form action for stage %d, got: %s", targetStage.ID, body)
+	}
+	if !strings.Contains(body, `value="`+targetStage.Title+`"`) {
+		t.Fatalf("expected current roadmap stage title value %q in body: %s", targetStage.Title, body)
+	}
 	if strings.Contains(body, `data-admin-roadmap-tab`) {
 		t.Fatalf("did not expect legacy roadmap tab hooks in body: %s", body)
 	}

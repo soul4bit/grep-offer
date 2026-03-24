@@ -92,6 +92,7 @@ type ViewData struct {
 	AdminArticleOptions       AdminArticleOptions
 	AdminRoadmapStages        []AdminRoadmapStageRow
 	AdminRoadmapActiveStageID int64
+	AdminRoadmapCurrentStage  *AdminRoadmapStageRow
 	AdminTestLessons          []AdminLessonOption
 	AdminTestQuestions        []AdminTestQuestionRow
 	AdminAuditLogs            []AdminAuditLogRow

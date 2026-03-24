@@ -20,12 +20,15 @@ func (a *App) handleAdminRoadmap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "load roadmap failed", http.StatusInternalServerError)
 		return
 	}
+	activeStageID := adminRoadmapActiveStageID(r, stages)
+	currentStage := adminRoadmapStageByID(stages, activeStageID)
 
 	a.renderAdminPage(w, r, http.StatusOK, ViewData{
 		Notice:                    noticeFromRequest(r),
 		AdminSection:              "roadmap",
 		AdminRoadmapStages:        stages,
-		AdminRoadmapActiveStageID: adminRoadmapActiveStageID(r, stages),
+		AdminRoadmapActiveStageID: activeStageID,
+		AdminRoadmapCurrentStage:  currentStage,
 	})
 }
 
@@ -414,6 +417,15 @@ func adminRoadmapActiveStageID(r *http.Request, stages []AdminRoadmapStageRow) i
 	}
 
 	return stages[0].ID
+}
+
+func adminRoadmapStageByID(stages []AdminRoadmapStageRow, stageID int64) *AdminRoadmapStageRow {
+	for i := range stages {
+		if stages[i].ID == stageID {
+			return &stages[i]
+		}
+	}
+	return nil
 }
 
 func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, error) {
