@@ -433,6 +433,7 @@ func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, err
 	if err != nil {
 		return nil, err
 	}
+	catalog := buildRoadmapRouteCatalog(roadmapStages)
 
 	stageLessonCount := make(map[string]int)
 	moduleLessonCount := make(map[string]int)
@@ -442,8 +443,9 @@ func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, err
 			return nil, err
 		}
 		for _, article := range articles {
-			stageTitle := strings.TrimSpace(article.Stage)
-			moduleTitle := strings.TrimSpace(article.Module)
+			stageTitle, moduleTitle, _ := catalog.canonicalize(article.Stage, article.Module)
+			stageTitle = strings.TrimSpace(stageTitle)
+			moduleTitle = strings.TrimSpace(moduleTitle)
 			if stageTitle == "" {
 				continue
 			}
@@ -485,14 +487,15 @@ func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, err
 }
 
 func (a *App) loadAdminArticleOptions(ctx context.Context) AdminArticleOptions {
-	stats := a.loadArticleRouteStats()
+	roadmapStages, err := a.roadmapStages(ctx)
+	catalog := buildRoadmapRouteCatalog(roadmapStages)
+	stats := a.loadArticleRouteStats(catalog)
 
 	options := AdminArticleOptions{
 		GlobalNextModuleOrder: stats.globalNextModuleOrder,
 		Stages:                make([]AdminStageOption, 0, len(stats.stageNextModuleOrder)),
 	}
 
-	roadmapStages, err := a.roadmapStages(ctx)
 	if err == nil {
 		stageIndexes := make(map[string]int, len(roadmapStages))
 		for _, roadmapStage := range roadmapStages {
@@ -573,7 +576,7 @@ type articleRouteStats struct {
 	moduleOptions         map[string]map[string]AdminModuleOption
 }
 
-func (a *App) loadArticleRouteStats() articleRouteStats {
+func (a *App) loadArticleRouteStats(catalog roadmapRouteCatalog) articleRouteStats {
 	stats := articleRouteStats{
 		globalNextModuleOrder: 1,
 		stageNextModuleOrder:  make(map[string]int),
@@ -593,8 +596,9 @@ func (a *App) loadArticleRouteStats() articleRouteStats {
 			stats.globalNextModuleOrder = article.ModuleOrder + 1
 		}
 
-		stageTitle := strings.TrimSpace(article.Stage)
-		moduleTitle := strings.TrimSpace(article.Module)
+		stageTitle, moduleTitle, _ := catalog.canonicalize(article.Stage, article.Module)
+		stageTitle = strings.TrimSpace(stageTitle)
+		moduleTitle = strings.TrimSpace(moduleTitle)
 		if stageTitle == "" {
 			continue
 		}

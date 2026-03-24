@@ -164,6 +164,11 @@ func (a *App) handleAdminArticleSave(w http.ResponseWriter, r *http.Request) {
 	form := adminArticleFormFromRequest(r)
 	form.ModuleOrder = moduleOrder
 	form.BlockOrder = blockOrder
+	form.Stage, form.Module, err = a.canonicalizeArticleRoute(r.Context(), form.Stage, form.Module)
+	if err != nil {
+		http.Error(w, "load roadmap failed", http.StatusInternalServerError)
+		return
+	}
 
 	saved, err := a.articles.SaveEditable(content.EditableArticle{
 		OriginalSlug: form.OriginalSlug,
@@ -419,6 +424,11 @@ func (a *App) handleAdminArticleReorder(w http.ResponseWriter, r *http.Request) 
 
 	if stage == "" || module == "" || moduleOrder <= 0 {
 		http.Error(w, "stage, module and module order are required", http.StatusBadRequest)
+		return
+	}
+	stage, module, err = a.canonicalizeArticleRoute(r.Context(), stage, module)
+	if err != nil {
+		http.Error(w, "load roadmap failed", http.StatusInternalServerError)
 		return
 	}
 

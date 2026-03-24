@@ -2122,8 +2122,8 @@ published: true
 	for _, fragment := range []string{
 		"data-editor-stage-chip",
 		"data-editor-module-chip",
-		"Linux Base",
-		"Файловая система",
+		"Фундамент",
+		"Навигация по Linux без паники",
 		"/static/app.js?v=",
 		"/static/admin.js?v=",
 		"/static/editor.js?v=",
@@ -2266,13 +2266,13 @@ published: true
 	if options.GlobalNextModuleOrder != 5 {
 		t.Fatalf("unexpected global next module order: %d", options.GlobalNextModuleOrder)
 	}
-	if len(options.Stages) < 6 {
+	if len(options.Stages) != 4 {
 		t.Fatalf("unexpected stage count: %d", len(options.Stages))
 	}
 
 	var linuxStage AdminStageOption
 	for _, stage := range options.Stages {
-		if stage.Value == "Linux Base" {
+		if stage.Value == "Фундамент" {
 			linuxStage = stage
 			break
 		}
@@ -2280,16 +2280,16 @@ published: true
 	if linuxStage.Value == "" {
 		t.Fatalf("linux stage missing from options: %#v", options.Stages)
 	}
-	if linuxStage.NextModuleOrder != 5 {
+	if linuxStage.NextModuleOrder != 4 {
 		t.Fatalf("unexpected linux next module order: %d", linuxStage.NextModuleOrder)
 	}
-	if len(linuxStage.Modules) != 2 {
+	if len(linuxStage.Modules) != 3 {
 		t.Fatalf("unexpected linux module count: %d", len(linuxStage.Modules))
 	}
 
 	var filesystemModule AdminModuleOption
 	for _, module := range linuxStage.Modules {
-		if module.Value == "Файловая система" {
+		if module.Value == "Навигация по Linux без паники" {
 			filesystemModule = module
 			break
 		}

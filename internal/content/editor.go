@@ -112,7 +112,7 @@ func (l *Library) SaveEditable(article EditableArticle) (*EditableArticle, error
 	}
 
 	if meta.Stage == "" {
-		meta.Stage = "Linux Base"
+		meta.Stage = "Фундамент"
 	}
 	if meta.Module == "" {
 		meta.Module = meta.Stage

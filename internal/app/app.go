@@ -418,6 +418,9 @@ func New(st *store.Store, cfg Config) (*App, error) {
 	if err := application.ensureRoadmapConfig(context.Background()); err != nil {
 		return nil, fmt.Errorf("ensure roadmap config: %w", err)
 	}
+	if err := application.migrateLegacyArticleRoutes(context.Background()); err != nil {
+		return nil, fmt.Errorf("migrate legacy article routes: %w", err)
+	}
 
 	return application, nil
 }

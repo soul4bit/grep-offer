@@ -3,7 +3,7 @@ title: "Название блока"
 slug: "slug-for-lesson"
 summary: "Короткое описание, что именно закрывает этот блок."
 badge: "linux"
-stage: "Linux Base"
+stage: "Фундамент"
 module: "Название модуля"
 module_order: 4
 block_order: 1
