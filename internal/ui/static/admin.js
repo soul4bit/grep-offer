@@ -156,3 +156,63 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll("[data-admin-roadmap-selector]").forEach(function (selector) {
+    var tabs = Array.from(selector.querySelectorAll("[data-admin-roadmap-tab]"));
+    if (!tabs.length) {
+      return;
+    }
+
+    var shell = selector.closest(".admin-table-shell");
+    var panels = shell ? Array.from(shell.querySelectorAll("[data-admin-roadmap-panel]")) : [];
+    if (!panels.length) {
+      return;
+    }
+
+    var storageKey = "grep-offer-admin-roadmap-stage";
+
+    var activateStage = function (stageID) {
+      var hasMatch = false;
+
+      tabs.forEach(function (tab) {
+        var isActive = tab.dataset.roadmapStageId === stageID;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+        if (isActive) {
+          hasMatch = true;
+        }
+      });
+
+      panels.forEach(function (panel) {
+        panel.hidden = panel.dataset.roadmapStageId !== stageID;
+      });
+
+      if (hasMatch) {
+        try {
+          window.localStorage.setItem(storageKey, stageID);
+        } catch (_error) {
+        }
+      }
+    };
+
+    var savedStageID = "";
+    try {
+      savedStageID = window.localStorage.getItem(storageKey) || "";
+    } catch (_error) {
+    }
+
+    var initialStageID = tabs[0].dataset.roadmapStageId || "";
+    if (savedStageID && tabs.some(function (tab) { return tab.dataset.roadmapStageId === savedStageID; })) {
+      initialStageID = savedStageID;
+    }
+
+    activateStage(initialStageID);
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        activateStage(tab.dataset.roadmapStageId || "");
+      });
+    });
+  });
+});
