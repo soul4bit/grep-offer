@@ -66,37 +66,38 @@ type Config struct {
 }
 
 type ViewData struct {
-	CurrentUser           *store.User
-	Error                 string
-	Notice                string
-	DeployLocked          bool
-	DeployLockMessage     string
-	CSRFToken             string
-	CSPNonce              string
-	StaticVersion         string
-	AdminSection          string
-	AdminNav              []AdminNavItem
-	Form                  AuthForm
-	PasswordResetToken    string
-	LandingRoadmap        []LandingStage
-	FeaturedArticles      []ArticleCard
-	CourseModules         []CourseModule
-	CourseProgress        CourseProgressView
-	Articles              []ArticleCard
-	Article               *ArticlePage
-	AdminUsers            []AdminUserRow
-	AdminArticles         []AdminArticleRow
-	AdminArticleGroups    []AdminArticleGroup
-	AdminArchivedArticles []AdminArticleRow
-	AdminArticleForm      AdminArticleForm
-	AdminArticleOptions   AdminArticleOptions
-	AdminRoadmapStages    []AdminRoadmapStageRow
-	AdminTestLessons      []AdminLessonOption
-	AdminTestQuestions    []AdminTestQuestionRow
-	AdminAuditLogs        []AdminAuditLogRow
-	DashboardStats        []DashboardStat
-	DashboardStages       []DashboardStage
-	DashboardFocus        DashboardFocus
+	CurrentUser               *store.User
+	Error                     string
+	Notice                    string
+	DeployLocked              bool
+	DeployLockMessage         string
+	CSRFToken                 string
+	CSPNonce                  string
+	StaticVersion             string
+	AdminSection              string
+	AdminNav                  []AdminNavItem
+	Form                      AuthForm
+	PasswordResetToken        string
+	LandingRoadmap            []LandingStage
+	FeaturedArticles          []ArticleCard
+	CourseModules             []CourseModule
+	CourseProgress            CourseProgressView
+	Articles                  []ArticleCard
+	Article                   *ArticlePage
+	AdminUsers                []AdminUserRow
+	AdminArticles             []AdminArticleRow
+	AdminArticleGroups        []AdminArticleGroup
+	AdminArchivedArticles     []AdminArticleRow
+	AdminArticleForm          AdminArticleForm
+	AdminArticleOptions       AdminArticleOptions
+	AdminRoadmapStages        []AdminRoadmapStageRow
+	AdminRoadmapActiveStageID int64
+	AdminTestLessons          []AdminLessonOption
+	AdminTestQuestions        []AdminTestQuestionRow
+	AdminAuditLogs            []AdminAuditLogRow
+	DashboardStats            []DashboardStat
+	DashboardStages           []DashboardStage
+	DashboardFocus            DashboardFocus
 }
 
 type AuthForm struct {

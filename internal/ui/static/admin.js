@@ -170,9 +170,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    var storageKey = "grep-offer-admin-roadmap-stage";
-
-    var activateStage = function (stageID) {
+    var activateStage = function (stageID, href) {
       var hasMatch = false;
 
       tabs.forEach(function (tab) {
@@ -188,30 +186,22 @@ document.addEventListener("DOMContentLoaded", function () {
         panel.hidden = panel.dataset.roadmapStageId !== stageID;
       });
 
-      if (hasMatch) {
-        try {
-          window.localStorage.setItem(storageKey, stageID);
-        } catch (_error) {
-        }
+      if (hasMatch && href && window.history && typeof window.history.replaceState === "function") {
+        window.history.replaceState(null, "", href);
       }
     };
 
-    var savedStageID = "";
-    try {
-      savedStageID = window.localStorage.getItem(storageKey) || "";
-    } catch (_error) {
-    }
-
-    var initialStageID = tabs[0].dataset.roadmapStageId || "";
-    if (savedStageID && tabs.some(function (tab) { return tab.dataset.roadmapStageId === savedStageID; })) {
-      initialStageID = savedStageID;
-    }
+    var activeTab = tabs.find(function (tab) {
+      return tab.classList.contains("is-active");
+    });
+    var initialStageID = (activeTab && activeTab.dataset.roadmapStageId) || tabs[0].dataset.roadmapStageId || "";
 
     activateStage(initialStageID);
 
     tabs.forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        activateStage(tab.dataset.roadmapStageId || "");
+      tab.addEventListener("click", function (event) {
+        event.preventDefault();
+        activateStage(tab.dataset.roadmapStageId || "", tab.getAttribute("href") || "");
       });
     });
   });

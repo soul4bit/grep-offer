@@ -22,9 +22,10 @@ func (a *App) handleAdminRoadmap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.renderAdminPage(w, r, http.StatusOK, ViewData{
-		Notice:             noticeFromRequest(r),
-		AdminSection:       "roadmap",
-		AdminRoadmapStages: stages,
+		Notice:                    noticeFromRequest(r),
+		AdminSection:              "roadmap",
+		AdminRoadmapStages:        stages,
+		AdminRoadmapActiveStageID: adminRoadmapActiveStageID(r, stages),
 	})
 }
 
@@ -79,7 +80,7 @@ func (a *App) handleAdminRoadmapStageCreate(w http.ResponseWriter, r *http.Reque
 		},
 	})
 
-	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-created", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-created&stage="+strconv.FormatInt(created.ID, 10), http.StatusSeeOther)
 }
 
 func (a *App) handleAdminRoadmapStageUpdate(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +145,7 @@ func (a *App) handleAdminRoadmapStageUpdate(w http.ResponseWriter, r *http.Reque
 		},
 	})
 
-	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-saved", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-saved&stage="+strconv.FormatInt(updated.ID, 10), http.StatusSeeOther)
 }
 
 func (a *App) handleAdminRoadmapStageDelete(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +267,7 @@ func (a *App) handleAdminRoadmapModuleCreate(w http.ResponseWriter, r *http.Requ
 		},
 	})
 
-	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-created", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-created&stage="+strconv.FormatInt(stage.ID, 10), http.StatusSeeOther)
 }
 
 func (a *App) handleAdminRoadmapModuleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +340,7 @@ func (a *App) handleAdminRoadmapModuleUpdate(w http.ResponseWriter, r *http.Requ
 		},
 	})
 
-	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-saved", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-saved&stage="+strconv.FormatInt(stage.ID, 10), http.StatusSeeOther)
 }
 
 func (a *App) handleAdminRoadmapModuleDelete(w http.ResponseWriter, r *http.Request) {
@@ -392,7 +393,27 @@ func (a *App) handleAdminRoadmapModuleDelete(w http.ResponseWriter, r *http.Requ
 		},
 	})
 
-	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-deleted", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-deleted&stage="+strconv.FormatInt(module.StageID, 10), http.StatusSeeOther)
+}
+
+func adminRoadmapActiveStageID(r *http.Request, stages []AdminRoadmapStageRow) int64 {
+	if len(stages) == 0 {
+		return 0
+	}
+
+	rawID := strings.TrimSpace(r.URL.Query().Get("stage"))
+	if rawID != "" {
+		stageID, err := strconv.ParseInt(rawID, 10, 64)
+		if err == nil && stageID > 0 {
+			for _, stage := range stages {
+				if stage.ID == stageID {
+					return stageID
+				}
+			}
+		}
+	}
+
+	return stages[0].ID
 }
 
 func (a *App) loadAdminRoadmap(ctx context.Context) ([]AdminRoadmapStageRow, error) {
