@@ -54,23 +54,4 @@
   </article>
 </section>
 
-<section class="landing-section landing-roadmap-section landing-roadmap-section-minimal">
-  <div class="section-copy section-copy-minimal">
-    <div class="eyebrow">этапы пути</div>
-    <h2 class="section-title">Сначала понять систему, потом автоматизировать.</h2>
-  </div>
-
-  <ol class="roadmap-stage-grid roadmap-stage-grid-minimal">
-    {{range .LandingRoadmap}}
-      <li class="roadmap-stage-card roadmap-stage-card-minimal">
-        <div class="roadmap-stage-top">
-          <span class="roadmap-stage-index">{{.Index}}</span>
-          <span class="roadmap-stage-badge">{{.Badge}}</span>
-        </div>
-        <h3>{{.Title}}</h3>
-        <p class="roadmap-stage-summary">{{.Summary}}</p>
-      </li>
-    {{end}}
-  </ol>
-</section>
 {{end}}
