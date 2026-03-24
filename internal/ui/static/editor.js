@@ -74,12 +74,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var blockOrderInput = form.querySelector("[data-editor-block-order]");
         var stageInput = form.querySelector("[data-editor-stage-input]");
         var moduleInput = form.querySelector("[data-editor-module-input]");
+        var moduleOptionsNode = form.querySelector("[data-editor-module-options]");
         var moduleEmptyNode = form.querySelector("[data-editor-module-empty]");
         var stageNewButton = form.querySelector("[data-editor-stage-new]");
         var moduleNewButton = form.querySelector("[data-editor-module-new]");
         var orderHintNode = form.querySelector("[data-editor-order-hint]");
         var stageChipButtons = form.querySelectorAll("[data-editor-stage-chip]");
-        var moduleChipButtons = form.querySelectorAll("[data-editor-module-chip]");
+        var moduleTemplateNodes = Array.from(form.querySelectorAll("[data-editor-module-template]"));
         var fileNameNode = shell && shell.querySelector("[data-editor-file-name]");
         var pathNode = shell && shell.querySelector("[data-editor-learn-path]");
         var learnLink = shell && shell.querySelector("[data-editor-learn-link]");
@@ -445,25 +446,87 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         };
 
+        var moduleTemplateForStage = function (stageValue) {
+          return moduleTemplateNodes.find(function (templateNode) {
+            return templateNode.dataset.stageValue === stageValue;
+          }) || null;
+        };
+
+        var getModuleChipButtons = function () {
+          if (!moduleOptionsNode) {
+            return [];
+          }
+
+          return Array.from(moduleOptionsNode.querySelectorAll("[data-editor-module-chip]"));
+        };
+
+        var stageHasKnownModules = function (stageValue) {
+          var templateNode = moduleTemplateForStage(stageValue);
+          if (!templateNode || !templateNode.content) {
+            return false;
+          }
+
+          return templateNode.content.querySelector("[data-editor-module-chip]") !== null;
+        };
+
+        var moduleExistsInStage = function (stageValue, moduleValue) {
+          var templateNode = moduleTemplateForStage(stageValue);
+          if (!templateNode || !templateNode.content || !moduleValue) {
+            return false;
+          }
+
+          return Array.from(templateNode.content.querySelectorAll("[data-editor-module-chip]")).some(function (button) {
+            return button.dataset.moduleValue === moduleValue;
+          });
+        };
+
         var knownModuleMatchesStage = function (stageValue, moduleValue) {
           var hasKnownModule = false;
           var moduleBelongsToStage = false;
 
-          moduleChipButtons.forEach(function (button) {
-            if (button.dataset.moduleValue !== moduleValue) {
+          moduleTemplateNodes.forEach(function (templateNode) {
+            if (!templateNode.content) {
               return;
             }
 
-            hasKnownModule = true;
-            if (button.dataset.moduleStage === stageValue) {
-              moduleBelongsToStage = true;
-            }
+            Array.from(templateNode.content.querySelectorAll("[data-editor-module-chip]")).forEach(function (button) {
+              if (button.dataset.moduleValue !== moduleValue) {
+                return;
+              }
+
+              hasKnownModule = true;
+              if (button.dataset.moduleStage === stageValue) {
+                moduleBelongsToStage = true;
+              }
+            });
           });
 
           return {
             hasKnownModule: hasKnownModule,
             moduleBelongsToStage: moduleBelongsToStage
           };
+        };
+
+        var renderModuleOptions = function (stageValue) {
+          if (!moduleOptionsNode) {
+            return;
+          }
+
+          var renderedStage = moduleOptionsNode.dataset.renderedStage || "";
+          if (renderedStage === stageValue) {
+            return;
+          }
+
+          while (moduleOptionsNode.firstChild) {
+            moduleOptionsNode.removeChild(moduleOptionsNode.firstChild);
+          }
+
+          var templateNode = moduleTemplateForStage(stageValue);
+          if (templateNode && templateNode.content) {
+            moduleOptionsNode.appendChild(templateNode.content.cloneNode(true));
+          }
+
+          moduleOptionsNode.dataset.renderedStage = stageValue || "";
         };
 
         var syncRoutePicker = function () {
@@ -480,6 +543,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           });
 
+          renderModuleOptions(currentStage);
+
           if (moduleInput && currentStage && currentModule) {
             var moduleState = knownModuleMatchesStage(currentStage, currentModule);
             if (moduleState.hasKnownModule && !moduleState.moduleBelongsToStage) {
@@ -488,12 +553,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           }
 
-          moduleChipButtons.forEach(function (button) {
-            var matchesStage = Boolean(currentStage) && button.dataset.moduleStage === currentStage;
-            button.hidden = !matchesStage;
-            button.disabled = !matchesStage;
-            button.classList.toggle("is-active", matchesStage && button.dataset.moduleValue === currentModule);
-            if (matchesStage) {
+          getModuleChipButtons().forEach(function (button) {
+            var isActive = button.dataset.moduleValue === currentModule;
+            button.classList.toggle("is-active", isActive);
+            if (button.dataset.moduleStage === currentStage) {
               visibleModules++;
             }
           });
@@ -502,6 +565,8 @@ document.addEventListener("DOMContentLoaded", function () {
             moduleEmptyNode.hidden = !currentStage || visibleModules > 0;
             if (currentStage && !knownStage) {
               moduleEmptyNode.textContent = "Для нового этапа пока нет готовых подразделов. Можно ввести свой.";
+            } else if (currentStage && !stageHasKnownModules(currentStage)) {
+              moduleEmptyNode.textContent = "Для этого этапа пока нет готовых подразделов. Можно создать свой.";
             } else {
               moduleEmptyNode.textContent = "Для этого этапа пока нет готовых подразделов. Можно создать свой.";
             }
@@ -530,7 +595,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           });
 
-          moduleChipButtons.forEach(function (button) {
+          getModuleChipButtons().forEach(function (button) {
             if (button.hidden) {
               return;
             }
@@ -720,13 +785,7 @@ document.addEventListener("DOMContentLoaded", function () {
               blockOrderInput.dataset.manual = "";
             }
             if (moduleInput) {
-              var moduleExistsInStage = false;
-              moduleChipButtons.forEach(function (moduleButton) {
-                if (moduleButton.dataset.moduleStage === (button.dataset.stageValue || "") && moduleButton.dataset.moduleValue === moduleInput.value.trim()) {
-                  moduleExistsInStage = true;
-                }
-              });
-              if (!moduleExistsInStage) {
+              if (!moduleExistsInStage(button.dataset.stageValue || "", moduleInput.value.trim())) {
                 moduleInput.value = "";
               }
             }
@@ -734,8 +793,13 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         });
 
-        moduleChipButtons.forEach(function (button) {
-          button.addEventListener("click", function () {
+        if (moduleOptionsNode) {
+          moduleOptionsNode.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-editor-module-chip]");
+            if (!button || !moduleOptionsNode.contains(button)) {
+              return;
+            }
+
             if (moduleInput) {
               moduleInput.value = button.dataset.moduleValue || "";
             }
@@ -747,7 +811,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             touchEditorState(false);
           });
-        });
+        }
 
         if (stageNewButton) {
           stageNewButton.addEventListener("click", function () {

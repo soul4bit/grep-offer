@@ -121,10 +121,22 @@
 
             <div class="admin-editor-chip-list" data-editor-module-options>
               {{range .AdminArticleOptions.Stages}}
-                {{$stage := .Value}}
-                {{range .Modules}}
-                  <button type="button" class="admin-editor-choice-chip {{if and (eq $.AdminArticleForm.Stage $stage) (eq $.AdminArticleForm.Module .Value)}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
+                {{if eq $.AdminArticleForm.Stage .Value}}
+                  {{$stage := .Value}}
+                  {{range .Modules}}
+                    <button type="button" class="admin-editor-choice-chip {{if eq $.AdminArticleForm.Module .Value}}is-active{{end}}" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
+                  {{end}}
                 {{end}}
+              {{end}}
+            </div>
+            <div hidden aria-hidden="true">
+              {{range .AdminArticleOptions.Stages}}
+                {{$stage := .Value}}
+                <template data-editor-module-template data-stage-value="{{$stage}}">
+                  {{range .Modules}}
+                    <button type="button" class="admin-editor-choice-chip" data-editor-module-chip data-module-stage="{{$stage}}" data-module-value="{{.Value}}" data-module-order="{{.ModuleOrder}}" data-module-next-block="{{.NextBlockOrder}}">{{.Value}}</button>
+                  {{end}}
+                </template>
               {{end}}
             </div>
             <p class="admin-editor-choice-empty" data-editor-module-empty hidden>Для этого этапа пока нет готовых подразделов. Можно создать свой.</p>
