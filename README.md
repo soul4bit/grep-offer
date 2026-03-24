@@ -1,38 +1,75 @@
 # grep-offer
 
-`grep-offer.ru` — это рофл-роадмап до DevOps в формате продукта: с маршрутом, уроками, тестами, прогрессом, админкой и приватным контентом вне публичного репозитория.
+<div align="center">
+  <p><strong>Путь до DevOps без карго-культа</strong></p>
+  <p>Go-платформа с roadmap, уроками, тестами, прогрессом, приватным контентом и админкой.</p>
+  <p>
+    <img src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go 1.26">
+    <img src="https://img.shields.io/badge/PostgreSQL-runtime-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
+    <img src="https://img.shields.io/badge/Rendering-html%2Ftemplate-111827?style=flat-square" alt="html/template">
+    <img src="https://img.shields.io/badge/Deploy-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="GitHub Actions">
+  </p>
+</div>
 
-## Что уже есть
+## Что это
 
+`grep-offer.ru` собирает маршрут до DevOps в нормальном порядке: база, доставка, платформа и рынок. Это не просто лендинг, а полноценный продукт с авторизацией, кабинетом, прогрессом, тестами, редактором уроков и продовым деплоем.
+
+Главная идея репозитория: код лежит в открытом GitHub, а реальные уроки и пользовательские загрузки живут на сервере вне публичного репо.
+
+## Скриншоты
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Главная страница grep-offer" width="100%">
+  <img src="docs/screenshots/login.png" alt="Экран авторизации grep-offer" width="100%">
+</p>
+
+## Что внутри
+
+- главная с позиционированием и дорожной картой по этапам
 - регистрация с approve через Telegram и подтверждением по email
 - вход, выход и сброс пароля
-- маршрут обучения с прогрессом по урокам и тестам
+- кабинет с прогрессом, текущим фокусом и следующими чекпоинтами
+- маршрут обучения с теорией, практикой и test-уроками
 - приватные markdown-уроки на сервере
-- редактор уроков в админке
-- загрузка картинок в редакторе прямо в `UPLOADS_DIR`
+- редактор уроков в админке с live preview и загрузкой изображений
 - управление пользователями: admin, ban, delete
 - audit log для admin-действий и чувствительных событий
-- прод на `PostgreSQL`
-- автодеплой через GitHub Actions + self-hosted runner на Ubuntu
+- deploy lock на время релиза
+- автодеплой через GitHub Actions и self-hosted runner на Ubuntu
 
 ## Стек
 
-- `Go`
-- `net/http`
-- `html/template`
-- `PostgreSQL`
-- `systemd`
-- `nginx`
-- `GitHub Actions`
+| Слой | Что используется |
+| --- | --- |
+| Backend | `Go`, `net/http`, `html/template` |
+| Data | `PostgreSQL` |
+| Content | server-side markdown в `CONTENT_DIR` |
+| Assets | uploads в `UPLOADS_DIR` |
+| Infra | `nginx`, `systemd`, `GitHub Actions`, self-hosted runner |
 
-## Локальный запуск
+## Структура репозитория
 
-Нужны:
+```text
+cmd/grep-offer/         entrypoint приложения
+internal/app/           HTTP-маршруты, auth, dashboard, admin, security
+internal/content/       библиотека markdown-уроков
+internal/store/         PostgreSQL-слой и инициализация данных
+internal/notify/        SMTP и Telegram-уведомления
+internal/ui/            шаблоны и статические файлы интерфейса
+deploy/                 setup-скрипт, env example, systemd template
+content/articles/       шаблон урока для публичного репозитория
+shared/                 локальные uploads и служебные директории
+```
 
-- `Go`
+## Быстрый старт
+
+### Требования
+
+- `Go 1.26+`
 - доступный `PostgreSQL`
 
-Минимальный набор переменных:
+### Минимальные env-переменные
 
 ```env
 ADDR=:8080
@@ -43,21 +80,24 @@ DEPLOY_LOCK_PATH=shared/flags/deploy.lock
 APP_BASE_URL=http://localhost:8080
 ```
 
-Запуск:
+### Запуск
 
 ```bash
 go run ./cmd/grep-offer
 ```
 
-Приложение само:
+При старте приложение само:
 
+- проверит подключение к `PostgreSQL`
 - создаст недостающие таблицы
-- создаст директории для контента и uploads
+- создаст директории для контента, uploads и deploy lock
 - поднимет HTTP-сервер
 
-## Основные env-переменные
+Полный пример переменных окружения лежит в [deploy/grep-offer.env.example](deploy/grep-offer.env.example).
 
-### База и приложение
+## Основные переменные окружения
+
+### Приложение и база
 
 ```env
 ADDR=127.0.0.1:8080
@@ -88,29 +128,25 @@ TELEGRAM_ADMIN_CHAT_ID=123456789
 TELEGRAM_WEBHOOK_SECRET=change-me
 ```
 
-Полный пример лежит в [deploy/grep-offer.env.example](/d:/work/proj/github/grep-offer/deploy/grep-offer.env.example).
+Если SMTP и Telegram не настроены, approval-flow регистрации отключается.
 
-## Регистрация
-
-Текущий flow такой:
+## Как работает регистрация
 
 1. Пользователь отправляет форму регистрации.
-2. Заявка уходит в Telegram-бота админу.
+2. Заявка уходит админу в Telegram.
 3. Админ жмет `Approve`.
 4. Пользователь получает письмо с подтверждением.
-5. После перехода по ссылке аккаунт подтверждается и пользователь автоматически входит.
+5. После перехода по ссылке аккаунт подтверждается, и пользователь автоматически входит.
 
-Если SMTP или Telegram не настроены, approval-flow не включается.
+## Как хранится контент
 
-## Контент
-
-Публичный GitHub-репозиторий хранит код, но не реальные уроки.
+Публичный репозиторий хранит код, но не боевые уроки.
 
 Рабочий контент живет на сервере:
 
 - `CONTENT_DIR` — markdown-уроки
-- `UPLOADS_DIR` — картинки и вложения
-- `DEPLOY_LOCK_PATH` — lock-файл, который включает read-only banner на время деплоя
+- `UPLOADS_DIR` — изображения и вложения
+- `DEPLOY_LOCK_PATH` — lock-файл, который включает read-only режим на время деплоя
 
 Типовая прод-схема:
 
@@ -124,29 +160,29 @@ TELEGRAM_WEBHOOK_SECRET=change-me
     uploads/
 ```
 
-Это значит:
+Это дает три полезных свойства:
 
-- уроки не светятся в открытом репозитории
-- картинки не лежат в git
-- редактор пишет прямо в server-side storage
+- уроки не попадают в публичный git
+- картинки не хранятся в репозитории
+- редактор пишет напрямую в server-side storage
 
 ## Редактор уроков
 
-Админский редактор доступен по `/admin/articles/new` и `/admin/articles/{slug}/edit`.
+Админский редактор доступен по:
+
+- `/admin/articles/new`
+- `/admin/articles/{slug}/edit`
 
 Он умеет:
 
 - создавать и редактировать markdown-уроки
-- ставить `stage`, `module`, `kind`, порядок модуля и блока
+- задавать `stage`, `module`, `kind`, порядок модуля и блока
 - сохранять `draft` или `published`
 - показывать live preview
 - загружать картинки в `/uploads/editor/...`
-- вставлять путь картинки в markdown
 - добавлять вопросы для `test`-уроков
 
-### Frontmatter урока
-
-Каждый урок хранится как `.md` с frontmatter:
+Пример frontmatter:
 
 ```yaml
 title: "Название блока"
@@ -161,7 +197,7 @@ kind: "theory" # theory | practice | test
 published: true
 ```
 
-В публичной репе оставлен только шаблон: [content/articles/_template.lesson.md](/d:/work/proj/github/grep-offer/content/articles/_template.lesson.md).
+В публичном репо оставлен только шаблон: [content/articles/_template.lesson.md](content/articles/_template.lesson.md).
 
 ## Админка
 
@@ -182,66 +218,28 @@ Audit log хранит:
 
 ## Деплой
 
-Прод-схема такая:
+Продовый сценарий такой:
 
-- push в `main`
-- GitHub Actions прогоняет тесты
-- deploy job работает на self-hosted runner на Ubuntu
-- на сервере собирается релиз
-- на время релиза ставится deploy lock: чтение остается доступным, а формы и прогресс ставятся на паузу
-- обновляется `/var/www/grep-offer/current`
-- `systemd` перезапускает `grep-offer`
+1. Push в `main`.
+2. GitHub Actions запускает `go test ./...`.
+3. Self-hosted runner на Ubuntu собирает Linux binary.
+4. На сервере создается новый release в `/var/www/grep-offer/releases/<commit>`.
+5. Ставится deploy lock, обновляется symlink `current`, затем `systemd` перезапускает сервис.
+6. Если `healthz` не проходит, release откатывается на предыдущий.
 
-Workflow лежит в [deploy.yml](/d:/work/proj/github/grep-offer/.github/workflows/deploy.yml).
+Полезные файлы:
+
+- [deploy/setup-server.sh](deploy/setup-server.sh)
+- [deploy/systemd/grep-offer.service.tmpl](deploy/systemd/grep-offer.service.tmpl)
+- [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
 
 ### Первый запуск на сервере
-
-Один раз выполни:
 
 ```bash
 bash deploy/setup-server.sh
 ```
 
-Скрипт:
-
-- создает `releases`
-- создает `shared/content/articles`
-- создает `shared/flags`
-- создает `shared/uploads`
-- ставит `systemd` unit
-- создает `/etc/grep-offer.env`, если его еще нет
-
-## GitHub Runner
-
-Для прод-деплоя нужен self-hosted runner на Ubuntu-сервере.
-
-Базовый сценарий:
-
-1. `Settings -> Actions -> Runners -> New self-hosted runner`
-2. выбрать `Linux` и `x64`
-3. выполнить команды GitHub на сервере
-4. поставить runner как service
-
-Runner должен иметь labels:
-
-- `self-hosted`
-- `Linux`
-- `X64`
-
-## sudo для runner
-
-Пользователь runner-а должен без пароля уметь выполнять:
-
-```bash
-sudo /usr/bin/systemctl restart grep-offer
-sudo /usr/bin/systemctl is-active grep-offer
-```
-
-Пример `sudoers`:
-
-```sudoers
-deploy ALL=NOPASSWD: /usr/bin/systemctl restart grep-offer, /usr/bin/systemctl is-active grep-offer
-```
+Скрипт создает `releases`, `shared/content/articles`, `shared/flags`, `shared/uploads`, ставит `systemd` unit и подготавливает `/etc/grep-offer.env`.
 
 ## Telegram webhook
 
@@ -259,18 +257,11 @@ curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
 curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```
 
-## Что важно держать в голове
-
-- рантайм полностью работает через `PostgreSQL`
-- реальный контент не должен лежать в публичном git
-- uploads сейчас хранятся на сервере, не в S3
-- автодеплой срабатывает на `push` в `main`, не на локальный `git commit`
-- в `/var/www/grep-offer` должны жить только `current`, `releases`, `shared`
-- клон репозитория лучше держать отдельно, например в `/home/deploy/grep-offer`
-
 ## Полезные пути
 
 - `/` — главная
+- `/login` — авторизация
+- `/register` — заявка на доступ
 - `/dashboard` — кабинет
 - `/learn` — маршрут
 - `/admin/articles` — уроки и тесты
