@@ -2454,6 +2454,75 @@ func TestAdminCanManageRoadmapAndSeeItInEditor(t *testing.T) {
 	}
 }
 
+func TestAdminRoadmapCanOpenSpecificStageFromQuery(t *testing.T) {
+	t.Parallel()
+
+	testApp, st := newTestApp(t, testAppOptions{})
+	server := httptest.NewServer(testApp.Routes())
+	defer server.Close()
+
+	ctx := context.Background()
+	adminUser, err := st.CreateUser(ctx, "root_ops", "admin@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := st.SetUserAdmin(ctx, adminUser.ID, true); err != nil {
+		t.Fatalf("promote admin user: %v", err)
+	}
+
+	const sessionToken = "admin-roadmap-query-session"
+	if err := st.CreateSession(ctx, adminUser.ID, sessionToken, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	stages, err := st.Roadmap(ctx)
+	if err != nil {
+		t.Fatalf("load roadmap stages: %v", err)
+	}
+	if len(stages) < 2 {
+		t.Fatalf("expected at least two roadmap stages, got: %d", len(stages))
+	}
+
+	targetStage := stages[1]
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/admin/roadmap?stage="+strconv.FormatInt(targetStage.ID, 10), nil)
+	if err != nil {
+		t.Fatalf("build roadmap stage request: %v", err)
+	}
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
+
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatalf("roadmap stage request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected roadmap stage status: %d", response.StatusCode)
+	}
+
+	body := readBody(t, response.Body)
+	hrefMarker := `href="/admin/roadmap?stage=` + strconv.FormatInt(targetStage.ID, 10) + `"`
+	hrefIndex := strings.Index(body, hrefMarker)
+	if hrefIndex == -1 {
+		t.Fatalf("expected roadmap body to contain %q, got: %s", hrefMarker, body)
+	}
+
+	fragmentEnd := len(body)
+	if hrefIndex+240 < fragmentEnd {
+		fragmentEnd = hrefIndex + 240
+	}
+	fragment := body[hrefIndex:fragmentEnd]
+	if !strings.Contains(fragment, `aria-current="page"`) {
+		t.Fatalf("expected selected roadmap stage marker near %q, got: %s", hrefMarker, fragment)
+	}
+	if !strings.Contains(fragment, targetStage.Title) {
+		t.Fatalf("expected selected roadmap stage title near %q, got: %s", hrefMarker, fragment)
+	}
+	if strings.Contains(body, `data-admin-roadmap-tab`) {
+		t.Fatalf("did not expect legacy roadmap tab hooks in body: %s", body)
+	}
+}
+
 func TestAdminArticleReorderPersistsBlockOrder(t *testing.T) {
 	t.Parallel()
 

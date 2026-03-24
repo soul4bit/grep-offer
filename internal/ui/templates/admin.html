@@ -283,14 +283,12 @@
     </article>
 
     {{if .AdminRoadmapStages}}
-      <div class="admin-roadmap-stage-selector" data-admin-roadmap-selector>
+      <div class="admin-roadmap-stage-selector">
         {{range $stage := .AdminRoadmapStages}}
           <a
             class="admin-roadmap-stage-tab {{if eq $.AdminRoadmapActiveStageID $stage.ID}}is-active{{end}}"
-            data-admin-roadmap-tab
-            data-roadmap-stage-id="{{$stage.ID}}"
             href="/admin/roadmap?stage={{$stage.ID}}"
-            {{if eq $.AdminRoadmapActiveStageID $stage.ID}}aria-selected="true"{{else}}aria-selected="false"{{end}}
+            {{if eq $.AdminRoadmapActiveStageID $stage.ID}}aria-current="page"{{end}}
           >
             <span class="admin-roadmap-stage-tab-index">{{printf "%02d" $stage.OrderIndex}}</span>
             <span class="admin-roadmap-stage-tab-copy">
@@ -304,7 +302,7 @@
 
     <div class="admin-roadmap-grid">
       {{range $stage := .AdminRoadmapStages}}
-        <article class="admin-roadmap-stage-card" data-admin-roadmap-panel data-roadmap-stage-id="{{$stage.ID}}" {{if ne $.AdminRoadmapActiveStageID $stage.ID}}hidden{{end}}>
+        <article class="admin-roadmap-stage-card" {{if ne $.AdminRoadmapActiveStageID $stage.ID}}hidden{{end}}>
           <div class="admin-roadmap-stage-head">
             <div class="admin-roadmap-stage-title">
               <strong>{{$stage.Title}}</strong>
