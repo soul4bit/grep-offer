@@ -3382,6 +3382,7 @@ button.dashboard-checkpoint-pill {
   background: rgba(8, 11, 10, 0.82);
   color: var(--text-soft);
   text-align: left;
+  text-decoration: none;
   font: inherit;
   cursor: pointer;
   transition:

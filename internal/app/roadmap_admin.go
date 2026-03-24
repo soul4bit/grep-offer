@@ -110,12 +110,12 @@ func (a *App) handleAdminRoadmapStageUpdate(w http.ResponseWriter, r *http.Reque
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == "" {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-title-required", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-title-required&stage="+strconv.FormatInt(stageID, 10), http.StatusSeeOther)
 		return
 	}
 	orderIndex, err := parseAdminIntField(r.FormValue("order_index"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid&stage="+strconv.FormatInt(stageID, 10), http.StatusSeeOther)
 		return
 	}
 
@@ -179,7 +179,7 @@ func (a *App) handleAdminRoadmapStageDelete(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 		if len(stage.Modules) > 0 || stage.LessonCount > 0 {
-			http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-delete-blocked", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/roadmap?notice=roadmap-stage-delete-blocked&stage="+strconv.FormatInt(existing.ID, 10), http.StatusSeeOther)
 			return
 		}
 	}
@@ -219,12 +219,12 @@ func (a *App) handleAdminRoadmapModuleCreate(w http.ResponseWriter, r *http.Requ
 	}
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == "" {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-title-required", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-title-required&stage="+strconv.FormatInt(stageID, 10), http.StatusSeeOther)
 		return
 	}
 	orderIndex, err := parseAdminIntField(r.FormValue("order_index"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid&stage="+strconv.FormatInt(stageID, 10), http.StatusSeeOther)
 		return
 	}
 
@@ -306,12 +306,12 @@ func (a *App) handleAdminRoadmapModuleUpdate(w http.ResponseWriter, r *http.Requ
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == "" {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-title-required", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-title-required&stage="+strconv.FormatInt(stage.ID, 10), http.StatusSeeOther)
 		return
 	}
 	orderIndex, err := parseAdminIntField(r.FormValue("order_index"))
 	if err != nil {
-		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/roadmap?notice=roadmap-order-invalid&stage="+strconv.FormatInt(stage.ID, 10), http.StatusSeeOther)
 		return
 	}
 
@@ -372,7 +372,7 @@ func (a *App) handleAdminRoadmapModuleDelete(w http.ResponseWriter, r *http.Requ
 	for _, stage := range stages {
 		for _, row := range stage.Modules {
 			if row.ID == module.ID && row.LessonCount > 0 {
-				http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-delete-blocked", http.StatusSeeOther)
+				http.Redirect(w, r, "/admin/roadmap?notice=roadmap-module-delete-blocked&stage="+strconv.FormatInt(module.StageID, 10), http.StatusSeeOther)
 				return
 			}
 		}
